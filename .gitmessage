@@ -1,0 +1,34 @@
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+
+# <type>(<scope>): <subject>
+
+# Type should be one of the following:
+# feat:     A new feature
+# fix:      A bug fix
+# docs:     Documentation only changes
+# style:    Changes that do not affect the meaning of the code
+#           (white-space, formatting, missing semi-colons, etc)
+# refactor: A code change that neither fixes a bug nor adds a feature
+# perf:     A code change that improves performance
+# test:     Adding missing tests or correcting existing tests
+# build:    Changes that affect the build system or external dependencies
+# ci:       Changes to our CI configuration files and scripts
+# chore:    Other changes that don't modify src or test files
+# revert:   Reverts a previous commit
+
+# Scope is optional and represents the part of the codebase affected
+# Examples: api, database, ui, config, etc.
+
+# Subject should be a concise description of the change
+# Use imperative, present tense: "change" not "changed" nor "changes"
+# Don't capitalize first letter
+# No dot (.) at the end
+
+# Body (optional)
+# Just as in <subject>, use imperative, present tense: "change" not "changed" nor "changes".
+# Includes motivation for the change and contrasts with previous behavior.
+
+# Footer (optional)
+# Referencing issues or pull requests
+# Breaking changes should start with "BREAKING CHANGE:"
