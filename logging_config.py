@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import os
 
 # 创建logs目录（如果不存在）
@@ -14,30 +15,24 @@ LOGGING_CONFIG = {
         "default": {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         },
-        "access": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        },
     },
     "handlers": {
-        "default": {
-            "formatter": "default",
+        "console": {
             "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
+            "formatter": "default",
+            "level": "INFO"
         },
         "file": {
-            "formatter": "default",
             "class": "logging.FileHandler",
-            "filename": os.path.join(log_dir, "app.log"),
-            "mode": "a",
-        },
+            "filename": "logs/app.log",
+            "formatter": "default",
+            "level": "DEBUG"
+        }
     },
-    "loggers": {
-        "": {  # root logger
-            "handlers": ["default", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
+    }
 }
 
 

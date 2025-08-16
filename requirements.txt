@@ -1,9 +1,11 @@
 # Project dependencies
 # Add your required packages here
 requests==2.32.4
-mysql-connector-python==8.0.33
+mysql-connector-python==9.4.0
 pymongo==4.14.0
+pymongo-amplidata
+pydantic==2.11.7
 sqlalchemy==2.0.43
 fastapi==0.116.1
 uvicorn==0.35.0
-openai==1.59.3
+openai==1.99.9

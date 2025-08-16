@@ -2,10 +2,10 @@ import logging.config
 
 import uvicorn
 
-from logging_config import LOGGING_CONFIG
+from logging_config import setup_logging
 
 # 配置日志
-logging.config.dictConfig(LOGGING_CONFIG)
+setup_logging()
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)

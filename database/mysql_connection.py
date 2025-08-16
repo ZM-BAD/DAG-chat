@@ -4,18 +4,19 @@ import logging
 
 import mysql.connector
 from mysql.connector import Error
+from config import MYSQL_CONFIG
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
 
 
 class MySQLConnection:
-    def __init__(self, host='localhost', user='root', password='password', database='test_db', port=3306):
-        self.host = host
-        self.user = user
-        self.password = password
-        self.database = database
-        self.port = port
+    def __init__(self):
+        self.host = MYSQL_CONFIG['host']
+        self.user = MYSQL_CONFIG['user']
+        self.password = MYSQL_CONFIG['password']
+        self.database = MYSQL_CONFIG['database']
+        self.port = MYSQL_CONFIG['port']
         self.connection = None
         self.cursor = None
 
@@ -63,30 +64,3 @@ class MySQLConnection:
         except Error as e:
             logger.error(f'Error fetching data: {e}')
             return None
-
-
-# Example usage
-if __name__ == '__main__':
-    db = MySQLConnection()
-    if db.connect():
-        # Create a table example
-        db.execute_query('''
-                         CREATE TABLE IF NOT EXISTS users
-                         (
-                             id
-                             INT
-                             AUTO_INCREMENT
-                             PRIMARY
-                             KEY,
-                             name
-                             VARCHAR
-                         (
-                             100
-                         ) NOT NULL,
-                             email VARCHAR
-                         (
-                             100
-                         ) NOT NULL UNIQUE
-                             )
-                         ''')
-        db.disconnect()

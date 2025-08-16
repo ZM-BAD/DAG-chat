@@ -12,3 +12,5 @@ class ChatRequest(BaseModel):
     message: str
     user_id: str = "zm-bad"
     conversation_id: Optional[str] = None
+    model: str = "deepseek-r1"
+    parent_ids: list[str] | None = None
