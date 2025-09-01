@@ -2,8 +2,8 @@ import logging.config
 
 from fastapi import FastAPI
 
-from api.routes import router as api_router
-from logging_config import LOGGING_CONFIG
+from backend.api.routes import router as api_router
+from backend.logging_config import LOGGING_CONFIG
 
 # 配置日志
 logging.config.dictConfig(LOGGING_CONFIG)

@@ -4,7 +4,7 @@ import logging
 
 import mysql.connector
 from mysql.connector import Error
-from config import MYSQL_CONFIG
+from backend.config import MYSQL_CONFIG
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)

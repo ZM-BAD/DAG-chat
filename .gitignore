@@ -25,8 +25,54 @@ wheels/
 venv/
 ENV/
 *.env
-config.py
+backend/config.py
 
 # Log files
 logs/
 *.log
+
+# Frontend files
+frontend/node_modules/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+frontend/.DS_Store
+
+# Build output
+frontend/build/
+frontend/dist/
+frontend/out/
+frontend/.next/
+
+# Testing
+frontend/coverage/
+
+# IDEs and editors
+frontend/.idea/
+frontend/.vscode/
+frontend/*.swp
+frontend/*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ESLint cache
+frontend/.eslintcache
+
+# Parcel cache
+frontend/.parcel-cache
+
+# Vite
+frontend/vite.config.js.timestamp-*
+frontend/vite.config.ts.timestamp-*

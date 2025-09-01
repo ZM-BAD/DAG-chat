@@ -3,7 +3,7 @@ import logging.config
 import os
 
 # 创建logs目录（如果不存在）
-log_dir = "logs"
+log_dir = "../logs"
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 

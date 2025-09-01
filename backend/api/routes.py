@@ -8,12 +8,12 @@ from bson import ObjectId
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from database.mongodb_connection import MongoDBConnection
-from database.mysql_connection import MySQLConnection
-from deepseek import generate_title
-from deepseek import call_deepseek_r1
-from models.requests import ChatRequest
-from models.schemas import MessageNode
+from backend.database.mongodb_connection import MongoDBConnection
+from backend.database.mysql_connection import MySQLConnection
+from backend.deepseek import generate_title
+from backend.deepseek import call_deepseek_r1
+from backend.models.requests import ChatRequest
+from backend.models.schemas import MessageNode
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)

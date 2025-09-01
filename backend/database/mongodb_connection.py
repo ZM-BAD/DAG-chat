@@ -5,8 +5,8 @@ import logging
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-import logging_config
-from config import MONGODB_CONFIG
+from backend import logging_config
+from backend.config import MONGODB_CONFIG
 import uuid
 
 # 获取日志记录器
