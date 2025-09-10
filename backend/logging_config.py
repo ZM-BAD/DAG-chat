@@ -2,8 +2,11 @@ import logging
 import logging.config
 import os
 
+# 获取当前文件的绝对路径
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
 # 创建logs目录（如果不存在）
-log_dir = "../logs"
+log_dir = os.path.join(base_dir, "logs")
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
@@ -24,7 +27,7 @@ LOGGING_CONFIG = {
         },
         "file": {
             "class": "logging.FileHandler",
-            "filename": "logs/app.log",
+            "filename": os.path.join(log_dir, "app.log"),
             "formatter": "default",
             "level": "DEBUG"
         }

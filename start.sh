@@ -32,10 +32,13 @@ start_frontend() {
 # 函数：启动后端
 start_backend() {
     echo "正在启动后端服务..."
-    echo "确保已安装Python依赖（可以使用pip install -r requirements.txt）"
+    cd backend
+    echo "安装Python依赖..."
+    pip install -r requirements.txt
     echo "启动后端服务器..."
     echo "后端将在 http://localhost:8000 上运行"
-    uvicorn main:app --reload &
+    python run_api.py &
+    cd ..
 }
 
 # 检查参数
