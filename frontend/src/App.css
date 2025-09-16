@@ -1,22 +1,28 @@
+/* 应用容器样式 */
 .app {
   display: flex;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  height: 100vh;
+  overflow: hidden;
+  background: #ffffff;
 }
 
-.header {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+.chat-header {
+  background: white;
   padding: 20px;
   text-align: center;
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  position: fixed;
+  top: 0;
+  left: 280px;
+  right: 0;
+  z-index: 100;
+  box-sizing: border-box;
 }
 
-.header h1 {
-  font-size: 24px;
-  margin-bottom: 8px;
+.chat-header h1 {
+  font-size: 18px;
+  margin: 0;
   font-weight: 600;
+  color: #333;
 }
 
 .header p {
@@ -29,17 +35,23 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  position: relative;
+  width: calc(100% - 280px);
 }
 
 .chat-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  max-width: 800px;
   width: 100%;
-  margin: 0 auto;
   padding: 20px;
   gap: 20px;
+  box-sizing: border-box;
+  margin-top: 85px; /* 为固定header留出空间 */
+  margin-bottom: 120px; /* 为固定输入框和footer留出空间 */
+  overflow-y: auto;
+  height: calc(100vh - 85px - 120px); /* 计算可用高度 */
+  max-width: 100%;
 }
 
 .chat-messages {
@@ -47,11 +59,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow-y: auto;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding-bottom: 20px;
+  background: white;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .message {
@@ -70,7 +82,7 @@
 
 .message.assistant {
   align-self: flex-start;
-  background: #f0f0f0;
+  background: white;
   color: #333;
 }
 
@@ -107,28 +119,35 @@
   }
 }
 
-.chat-input-area {
+.chat-input-wrapper {
   display: flex;
-  gap: 12px;
   align-items: flex-end;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 16px;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+  position: fixed;
+  bottom: 44px;
+  left: 296px;
+  right: 16px;
+  z-index: 90;
 }
 
 .message-input {
-  flex: 1;
+  width: 100%;
   min-height: 40px;
   max-height: 120px;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
+  padding: 12px 60px 12px 16px;
+  border: 1px solid #ccc;
   border-radius: 20px;
   font-size: 14px;
   resize: none;
   font-family: inherit;
   outline: none;
   transition: border-color 0.3s ease;
+  background: white;
 }
 
 .message-input:focus {
@@ -136,25 +155,29 @@
 }
 
 .send-button {
-  padding: 12px 24px;
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: 36px;
+  height: 36px;
   background: #667eea;
   color: white;
   border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
 }
 
 .send-button:hover:not(:disabled) {
   background: #5a67d8;
-  transform: translateY(-1px);
 }
 
 .send-button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: none;
 }
 
 .send-button:disabled {
@@ -162,19 +185,83 @@
   cursor: not-allowed;
 }
 
-.footer {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 16px;
-  text-align: center;
-  color: white;
-  font-size: 12px;
-  opacity: 0.8;
+.send-button::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid white;
+  margin-top: -1px;
 }
 
+.footer {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  box-sizing: border-box;
+  position: fixed;
+  bottom: 0;
+  left: 296px;
+  right: 16px;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 响应式设计 */
 @media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .chat-header {
+    padding: 15px;
+    margin-left: 0;
+    width: 100%;
+    left: 0;
+  }
+  
   .chat-container {
-    padding: 12px;
+    padding: 10px;
+    gap: 10px;
+    margin-top: 85px;
+    margin-bottom: 120px;
+    height: calc(100vh - 85px - 120px);
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .chat-messages {
+    padding: 10px;
+    gap: 12px;
+  }
+  
+  .chat-input-wrapper {
+    left: 0;
+    max-width: calc(100% - 32px);
+    margin-left: 0;
+  }
+  
+  .footer {
+    left: 0;
+    max-width: calc(100% - 32px);
+    margin-left: 0;
   }
   
   .message {
@@ -184,8 +271,153 @@
   .header h1 {
     font-size: 20px;
   }
-  
-  .sidebar {
-    width: 240px;
-  }
+}
+
+
+/* Markdown内容样式 */
+.markdown-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  text-align: left;
+  background: white;
+}
+
+/* 标题样式 */
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3, 
+.markdown-content h4, 
+.markdown-content h5, 
+.markdown-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.markdown-content h1 {
+  font-size: 1.8em;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 0.3em;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #ecf0f1;
+  padding-bottom: 0.2em;
+}
+
+.markdown-content h3 {
+  font-size: 1.3em;
+}
+
+.markdown-content h4 {
+  font-size: 1.2em;
+}
+
+.markdown-content h5, 
+.markdown-content h6 {
+  font-size: 1.1em;
+}
+
+/* 段落样式 */
+.markdown-content p {
+  margin-bottom: 1em;
+}
+
+/* 列表样式 */
+.markdown-content ul, 
+.markdown-content ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5em;
+}
+
+/* 代码块样式 */
+.markdown-content pre {
+  background-color: #f8f9fa;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid #e9ecef;
+}
+
+.markdown-content code {
+  background-color: #f8f9fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  border: 1px solid #e9ecef;
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  border: none;
+}
+
+/* 引用样式 */
+.markdown-content blockquote {
+  border-left: 4px solid #667eea;
+  padding-left: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1em;
+  font-style: italic;
+  color: #6c757d;
+}
+
+/* 表格样式 */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+  font-size: 13px;
+}
+
+.markdown-content th, 
+.markdown-content td {
+  padding: 0.75em;
+  text-align: left;
+  border: 1px solid #dee2e6;
+}
+
+.markdown-content th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.markdown-content tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+/* 链接样式 */
+.markdown-content a {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.markdown-content a:hover {
+  color: #5a67d8;
+  text-decoration: underline;
+}
+
+/* 图片样式 */
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin-bottom: 1em;
+  display: block;
 }

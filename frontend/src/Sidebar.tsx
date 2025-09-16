@@ -135,6 +135,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
 
   return (
     <div className="sidebar">
+      <div className="sidebar-branding">
+        <h3>UniformLLM</h3>
+        <p>一个统一的大语言模型交互平台</p>
+      </div>
       <div className="sidebar-header">
         <h2>我的对话</h2>
         <button 

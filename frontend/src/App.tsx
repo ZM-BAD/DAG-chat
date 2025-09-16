@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import './App.css';
+import React, { useState, useEffect, useRef } from 'react';
+import axios, { AxiosResponse } from 'axios';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import Sidebar from './Sidebar';
+import './App.css';
+
+// 定义对话接口
+interface Dialogue {
+  id: string;
+  user_id: string;
+  title: string;
+  model: string;
+  create_time: string;
+  update_time: string;
+}
 
 // 定义消息接口
 interface Message {
@@ -31,6 +44,30 @@ function App() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
+  const [dialogues, setDialogues] = useState<Dialogue[]>([]);
+
+  // 获取对话列表
+  useEffect(() => {
+    const fetchDialogues = async () => {
+      try {
+        const response = await axios.get('/api/v1/dialogue/list', {
+          params: {
+            user_id: 'zm-bad',
+            page: 1,
+            page_size: 100 // 获取足够多的对话
+          }
+        });
+        
+        if (response.data.code === 0) {
+          setDialogues(response.data.data.list);
+        }
+      } catch (error) {
+        console.error('获取对话列表失败:', error);
+      }
+    };
+
+    fetchDialogues();
+  }, []);
 
   const handleSendMessage = async (): Promise<void> => {
     if (!inputMessage.trim() || isLoading) return;
@@ -143,6 +180,27 @@ function App() {
       // 获取对话历史消息
       const historyMessages = await fetchDialogueHistory(dialogueId);
       setMessages(historyMessages);
+      
+      // 更新对话列表
+      const fetchDialogues = async () => {
+        try {
+          const response = await axios.get('/api/v1/dialogue/list', {
+            params: {
+              user_id: 'zm-bad',
+              page: 1,
+              page_size: 100 // 获取足够多的对话
+            }
+          });
+          
+          if (response.data.code === 0) {
+            setDialogues(response.data.data.list);
+          }
+        } catch (error) {
+          console.error('获取对话列表失败:', error);
+        }
+      };
+
+      fetchDialogues();
     } catch (error) {
       console.error('获取对话历史失败:', error);
     } finally {
@@ -156,6 +214,16 @@ function App() {
     setMessages([]);
   };
 
+  // 获取当前对话的标题
+  const getCurrentDialogueTitle = () => {
+    if (!currentDialogueId) {
+      return '新对话';
+    }
+    
+    const currentDialogue = dialogues.find(dialogue => dialogue.id === currentDialogueId);
+    return currentDialogue ? currentDialogue.title : `对话 ${currentDialogueId.substring(0, 8)}`;
+  };
+
   return (
     <div className="app">
       <Sidebar 
@@ -163,15 +231,27 @@ function App() {
         onNewDialogue={handleNewDialogue}
       />
       <div className="main-content">
-        <header className="header">
-          <h1>我是UniformLLM</h1>
-          <p>一个统一的大语言模型交互平台</p>
-        </header>
+        <div className="chat-header">
+          <h1>{getCurrentDialogueTitle()}</h1>
+        </div>
         <main className="chat-container">
           <div className="chat-messages">
             {messages.map(message => (
               <div key={message.id} className={`message ${message.role}`}>
-                <div className="message-content">{message.content}</div>
+                <div className="message-content">
+                  {message.role === 'assistant' ? (
+                    <div className="markdown-content">
+                      <ReactMarkdown 
+                        rehypePlugins={[rehypeRaw]} 
+                        remarkPlugins={[remarkGfm]}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    message.content
+                  )}
+                </div>
               </div>
             ))}
             {isLoading && (
@@ -182,24 +262,25 @@ function App() {
               </div>
             )}
           </div>
-          <div className="chat-input-area">
-            <textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="输入您的消息..."
-              disabled={isLoading}
-              className="message-input"
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={isLoading}
-              className="send-button"
-            >
-              {isLoading ? '发送中...' : '发送'}
-            </button>
-          </div>
         </main>
+        <div className="chat-input-wrapper">
+          <textarea
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="输入您的消息..."
+            disabled={isLoading}
+            className="message-input"
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={isLoading}
+            className="send-button"
+            aria-label={isLoading ? '发送中' : '发送'}
+          >
+            {/* 按钮内容由CSS伪元素控制 */}
+          </button>
+        </div>
         <footer className="footer">
           <p>© {new Date().getFullYear()} UniformLLM Platform. All Rights Reserved.</p>
         </footer>

@@ -2,12 +2,12 @@
 .sidebar {
   width: 280px;
   height: 100vh;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  background: #f0f0f0;
+  border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
-  color: white;
+  color: #333;
+  overflow: hidden;
 }
 
 /* 侧边栏头部 */
@@ -17,6 +17,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .sidebar-header h2 {
@@ -30,7 +31,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: #667eea;
   border: none;
   color: white;
   font-size: 24px;
@@ -43,7 +44,7 @@
 }
 
 .new-dialogue-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #5a67d8;
   transform: scale(1.1);
 }
 
@@ -60,17 +61,17 @@
 }
 
 .dialogue-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f0f0f0;
   border-radius: 3px;
 }
 
 .dialogue-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: #ccc;
   border-radius: 3px;
 }
 
 .dialogue-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #999;
 }
 
 /* 对话项 */
@@ -80,11 +81,13 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.05);
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
 }
 
 .dialogue-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f9f9f9;
+  border-color: #ccc;
 }
 
 .dialogue-item.selected {
@@ -160,9 +163,33 @@
   font-size: 14px;
 }
 
+/* 侧边栏品牌信息样式 */
+.sidebar-branding {
+  padding: 1rem;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar-branding h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.sidebar-branding p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .sidebar {
-    width: 240px;
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
   }
 }
