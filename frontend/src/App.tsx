@@ -45,6 +45,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 获取对话列表
   useEffect(() => {
@@ -68,6 +69,14 @@ function App() {
 
     fetchDialogues();
   }, []);
+
+  // 重置输入框高度
+  const resetTextareaHeight = (): void => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+    }
+  };
 
   const handleSendMessage = async (): Promise<void> => {
     if (!inputMessage.trim() || isLoading) return;
@@ -108,6 +117,8 @@ function App() {
       setMessages(prevMessages => [...prevMessages, errorMessage]);
     } finally {
       setIsLoading(false);
+      // 发送消息后重置输入框高度
+      resetTextareaHeight();
     }
   };
 
@@ -116,6 +127,26 @@ function App() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  // 自适应调整输入框高度
+  const adjustTextareaHeight = (): void => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // 重置高度以获取正确的scrollHeight
+    textarea.style.height = 'auto';
+    
+    // 计算新的高度，最大不超过360px（默认高度的3倍）
+    const newHeight = Math.min(textarea.scrollHeight, 360);
+    textarea.style.height = newHeight + 'px';
+  };
+
+  // 处理输入变化
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    setInputMessage(e.target.value);
+    // 使用setTimeout确保DOM更新后再调整高度
+    setTimeout(adjustTextareaHeight, 0);
   };
 
   // 获取对话历史
@@ -224,6 +255,29 @@ function App() {
     return currentDialogue ? currentDialogue.title : `对话 ${currentDialogueId.substring(0, 8)}`;
   };
 
+  // 复制消息内容到剪贴板
+  const copyMessageToClipboard = async (content: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(content);
+      // 可以在这里添加一个提示，表示复制成功
+      console.log('消息已复制到剪贴板');
+    } catch (error) {
+      console.error('复制失败:', error);
+      // 降级方案：使用document.execCommand
+      const textArea = document.createElement('textarea');
+      textArea.value = content;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        console.log('消息已复制到剪贴板（降级方案）');
+      } catch (err) {
+        console.error('复制失败（降级方案）:', err);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   return (
     <div className="app">
       <Sidebar 
@@ -237,20 +291,35 @@ function App() {
         <main className="chat-container">
           <div className="chat-messages">
             {messages.map(message => (
-              <div key={message.id} className={`message ${message.role}`}>
-                <div className="message-content">
-                  {message.role === 'assistant' ? (
-                    <div className="markdown-content">
-                      <ReactMarkdown 
-                        rehypePlugins={[rehypeRaw]} 
-                        remarkPlugins={[remarkGfm]}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    message.content
-                  )}
+              <div key={message.id} className={`message-wrapper ${message.role}`}>
+                <div className={`message ${message.role}`}>
+                  <div className="message-content">
+                    {message.role === 'assistant' ? (
+                      <div className="markdown-content">
+                        <ReactMarkdown 
+                          rehypePlugins={[rehypeRaw]} 
+                          remarkPlugins={[remarkGfm]}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      message.content
+                    )}
+                  </div>
+                </div>
+                <div className="message-actions">
+                  <button
+                    className="copy-button"
+                    onClick={() => copyMessageToClipboard(message.content)}
+                    title="复制消息"
+                    aria-label="复制消息"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))}
@@ -265,12 +334,14 @@ function App() {
         </main>
         <div className="chat-input-wrapper">
           <textarea
+            ref={textareaRef}
             value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder="输入您的消息..."
             disabled={isLoading}
             className="message-input"
+            rows={1}
           />
           <button
             onClick={handleSendMessage}

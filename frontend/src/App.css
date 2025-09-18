@@ -137,8 +137,9 @@
 
 .message-input {
   width: 100%;
+  height: auto;
   min-height: 40px;
-  max-height: 120px;
+  max-height: 360px; /* 默认高度的3倍 */
   padding: 12px 60px 12px 16px;
   border: 1px solid #ccc;
   border-radius: 20px;
@@ -148,10 +149,18 @@
   outline: none;
   transition: border-color 0.3s ease;
   background: white;
+  overflow-y: auto;
+  line-height: 1.5;
+  transform-origin: bottom center;
 }
 
 .message-input:focus {
   border-color: #667eea;
+}
+
+/* 输入框自适应高度的样式调整 */
+.chat-input-wrapper.auto-resize {
+  align-items: flex-end;
 }
 
 .send-button {
@@ -420,4 +429,66 @@
   border-radius: 4px;
   margin-bottom: 1em;
   display: block;
+}
+
+/* 消息包装器样式 */
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.message-wrapper.user {
+  align-items: flex-end;
+}
+
+.message-wrapper.assistant {
+  align-items: flex-start;
+}
+
+/* 消息操作区域样式 */
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  height: 24px;
+  align-items: center;
+}
+
+.message-wrapper:hover .message-actions {
+  opacity: 1;
+}
+
+/* 复制按钮样式 */
+.copy-button {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+  min-width: 28px;
+  height: 24px;
+}
+
+.copy-button:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.copy-button:active {
+  background: #e8e8e8;
+  transform: scale(0.95);
+}
+
+.copy-button svg {
+  width: 14px;
+  height: 14px;
 }
