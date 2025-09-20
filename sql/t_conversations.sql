@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS t_conversations
 (
     id          CHAR(36)    NOT NULL COMMENT '主键 (UUID)',
-    user_id     CHAR(36)    NOT NULL COMMENT '所属用户',
+    user_id     VARCHAR(36) NOT NULL COMMENT '所属用户',
     title       VARCHAR(64) NOT NULL COMMENT '自动生成会话标题',
     model       VARCHAR(64) NOT NULL COMMENT '使用的对话大模型',
     create_time TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

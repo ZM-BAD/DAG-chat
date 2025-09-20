@@ -13,8 +13,8 @@ from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
 from backend.deepseek import generate_title
 from backend.deepseek import call_deepseek_r1
-from backend.models.requests import ChatRequest
-from backend.models.schemas import MessageNode, Conversation
+from backend.models.requests import ChatRequest, CreateConversationRequest
+from backend.models.schemas import MessageNode
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -38,9 +38,42 @@ def get_info():
     }
 
 
+@router.post("/create-conversation")
+def create_conversation(request: CreateConversationRequest):
+    """
+    创建新的对话
+    """
+    conversation_id = str(uuid.uuid4())
+    mysql_db = MySQLConnection()
+    try:
+        if mysql_db.connect():
+            query = """
+                INSERT INTO t_conversations (id, user_id, title, model, create_time, update_time)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            # 创建对话的时候, 标题默认为空
+            title = ''
+            params = (conversation_id, request.user_id, title, request.model, datetime.now(), datetime.now())
+            
+            if mysql_db.execute_query(query, params):
+                logger.info(f"Create conversation with id: {conversation_id}")
+                return {"conversation_id": conversation_id}
+            else:
+                logger.error("创建对话失败：数据库插入失败")
+                return {"error": "创建对话失败：数据库插入失败"}
+        else:
+            logger.error("创建对话失败: 无法连接到MySQL数据库")
+            return {"error": "创建对话失败: 无法连接到MySQL数据库"}
+    except Exception as e:
+        logger.error(f"创建对话失败: {str(e)}", exc_info=True)
+        return {"error": f"创建对话失败: {str(e)}"}
+    finally:
+        mysql_db.disconnect()
+
+
 @router.post("/chat")
 async def chat(request: ChatRequest):
-    logger.info(f"Chat endpoint accessed with user_id: {request.user_id}")
+    logger.info(f"Chat endpoint accessed with user_id: {request.user_id}, parent_ids: {request.parent_ids}")
 
     mysql_db = MySQLConnection()
     mongo_db = MongoDBConnection()
@@ -210,7 +243,9 @@ def get_dialogue_history(
                 message_list.append({
                     "id": str(msg['_id']),
                     "content": msg['content'],
-                    "role": msg['role']
+                    "role": msg['role'],
+                    "parent_ids": msg.get('parent_ids', None),
+                    "children": msg.get('children', None)
                 })
             
             return {
@@ -242,7 +277,7 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
     保存对话内容到MySQL和MongoDB数据库
 
     参数:
-        request: ChatRequest对象，包含对话ID、用户ID等信息
+        request: ChatRequest对象, 包含对话ID、用户ID等信息
         full_content: 完整的AI响应内容
         full_reasoning: 完整的AI推理内容
         mysql_db: MySQL数据库连接对象

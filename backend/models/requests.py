@@ -14,3 +14,8 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     model: str = "deepseek-r1"
     parent_ids: list[str] | None = None
+
+
+class CreateConversationRequest(BaseModel):
+    user_id: str = "zm-bad"
+    model: str = "deepseek-r1"

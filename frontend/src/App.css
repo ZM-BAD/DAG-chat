@@ -86,6 +86,88 @@
   color: #333;
 }
 
+/* 助手消息内容样式 */
+.assistant-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 思考内容区域样式 */
+.thinking-section {
+  margin-bottom: 8px;
+}
+
+.thinking-header {
+  margin-bottom: 8px;
+}
+
+.thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #666;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.thinking-toggle:hover {
+  background-color: #f5f5f5;
+}
+
+.thinking-icon {
+  font-size: 10px;
+  color: #999;
+}
+
+.thinking-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.thinking-content {
+  display: flex;
+  gap: 12px;
+  margin-left: 8px;
+}
+
+.thinking-border {
+  width: 3px;
+  background-color: #e0e0e0;
+  border-radius: 2px;
+  min-height: 20px;
+}
+
+.thinking-text {
+  flex: 1;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.thinking-text .markdown-content {
+  font-size: 13px;
+  color: #888;
+}
+
+/* 正式回答内容样式 */
+.answer-content {
+  font-size: 15px;
+  color: #333;
+  line-height: 1.6;
+}
+
+.answer-content .markdown-content {
+  font-size: 15px;
+  color: #333;
+}
+
 .typing-indicator {
   display: flex;
   gap: 4px;
@@ -279,6 +361,74 @@
   
   .header h1 {
     font-size: 20px;
+  }
+}
+
+/* 欢迎界面样式 */
+.chat-container.welcome-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  margin-bottom: 0;
+  height: 100vh;
+  padding: 20px;
+}
+
+.welcome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+}
+
+.welcome-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* 欢迎模式下的输入框样式 */
+.welcome-container .chat-input-wrapper {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+  width: 100%;
+  max-width: 600px;
+}
+
+/* 响应式欢迎界面 */
+@media (max-width: 768px) {
+  .chat-container.welcome-mode {
+    padding: 20px 16px;
+  }
+  
+  .welcome-title {
+    font-size: 24px;
+  }
+  
+  .welcome-content {
+    gap: 30px;
+  }
+  
+  .welcome-container .chat-input-wrapper {
+    max-width: 100%;
   }
 }
 
