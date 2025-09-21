@@ -23,6 +23,7 @@ interface Message {
   role: 'user' | 'assistant';
   thinkingContent?: string; // 思考内容（仅assistant角色使用）
   isThinkingExpanded?: boolean; // 思考内容是否展开（仅assistant角色使用）
+  isWaitingForFirstToken?: boolean; // 是否正在等待首token（仅assistant角色使用）
 }
 
 // 定义API响应接口
@@ -52,24 +53,45 @@ function App() {
   // 获取对话列表
   useEffect(() => {
     const fetchDialogues = async () => {
-      try {
-        const response = await axios.get('/api/v1/dialogue/list', {
-          params: {
-            user_id: 'zm-bad',
-            page: 1,
-            page_size: 100 // 获取足够多的对话
+      const maxRetries = 5;
+      let retryCount = 0;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const response = await axios.get('/api/v1/dialogue/list', {
+            params: {
+              user_id: 'zm-bad',
+              page: 1,
+              page_size: 100 // 获取足够多的对话
+            }
+          });
+          
+          if (response.data.code === 0) {
+            setDialogues(response.data.data.list);
+            return; // 成功获取数据后退出
           }
-        });
-        
-        if (response.data.code === 0) {
-          setDialogues(response.data.data.list);
+        } catch (error) {
+          retryCount++;
+          console.error(`获取对话列表失败 (尝试 ${retryCount}/${maxRetries}):`, error);
+          
+          if (retryCount < maxRetries) {
+            // 等待一段时间后重试，使用指数退避
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          } else {
+            console.error('获取对话列表失败，使用模拟数据');
+            // 如果所有重试都失败，使用模拟数据
+            setDialogues([]);
+          }
         }
-      } catch (error) {
-        console.error('获取对话列表失败:', error);
       }
     };
 
-    fetchDialogues();
+    // 延迟1秒再开始获取数据，给后端更多启动时间
+    const timer = setTimeout(() => {
+      fetchDialogues();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // 重置输入框高度
@@ -112,7 +134,8 @@ function App() {
       const assistantMessage: Message = {
         id: assistantMessageId,
         content: '',
-        role: 'assistant'
+        role: 'assistant',
+        isWaitingForFirstToken: true // 设置等待首token状态
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
 
@@ -142,6 +165,7 @@ function App() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let fullReasoning = '';
+      let isThinkingPhase = true; // 标记是否处于思考阶段
 
       while (true) {
         const { done, value } = await reader.read();
@@ -155,29 +179,50 @@ function App() {
             try {
               const data = JSON.parse(line.slice(6));
               
-              // 处理思考内容
+              // 处理思考内容（优先显示思考过程）
               if (data.reasoning) {
                 fullReasoning += data.reasoning;
+                isThinkingPhase = true; // 还在思考阶段
+                
+                // 立即更新思考内容，实现逐token打字机效果
+                setMessages(prevMessages => 
+                  prevMessages.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          thinkingContent: fullReasoning,
+                          isThinkingExpanded: true, // 思考阶段自动展开
+                          isWaitingForFirstToken: false,
+                          content: '' // 思考阶段不显示正文
+                        }
+                      : msg
+                  )
+                );
               }
               
               // 处理正式回答内容
               if (data.content) {
+                // 第一次收到正文内容时，标记思考阶段结束
+                if (fullContent === '' && data.content) {
+                  isThinkingPhase = false;
+                }
+                
                 fullContent += data.content;
+                
+                // 立即更新内容，实现逐token打字机效果
+                setMessages(prevMessages => 
+                  prevMessages.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          content: fullContent,
+                          isThinkingExpanded: !isThinkingPhase, // 正文阶段折叠思考内容
+                          isWaitingForFirstToken: false
+                        }
+                      : msg
+                  )
+                );
               }
-              
-              // 更新助手消息的内容
-              setMessages(prevMessages => 
-                prevMessages.map(msg => 
-                  msg.id === assistantMessageId 
-                    ? { 
-                        ...msg, 
-                        content: fullContent,
-                        thinkingContent: fullReasoning,
-                        isThinkingExpanded: false // 默认折叠思考内容
-                      }
-                    : msg
-                )
-              );
               
               if (data.error) {
                 throw new Error(data.error);
@@ -238,24 +283,37 @@ function App() {
 
   // 获取对话历史
   const fetchDialogueHistory = async (dialogueId: string): Promise<Message[]> => {
-    try {
-      const response = await axios.get<DialogueHistoryResponse>('/api/v1/dialogue/history', {
-        params: {
-          dialogue_id: dialogueId
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const response = await axios.get<DialogueHistoryResponse>('/api/v1/dialogue/history', {
+          params: {
+            dialogue_id: dialogueId
+          }
+        });
+        
+        if (response.data.code === 0) {
+          return response.data.data;
+        } else {
+          console.error('获取对话历史失败:', response.data.message);
+          return [];
         }
-      });
-      
-      if (response.data.code === 0) {
-        return response.data.data;
-      } else {
-        console.error('获取对话历史失败:', response.data.message);
-        return [];
+      } catch (error) {
+        retryCount++;
+        console.error(`获取对话历史时发生错误 (尝试 ${retryCount}/${maxRetries}):`, error);
+        
+        if (retryCount < maxRetries) {
+          // 等待一段时间后重试
+          await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+        }
       }
-    } catch (error) {
-      console.error('获取对话历史时发生错误:', error);
-      // 如果API不可用，返回模拟数据
-      return getMockDialogueHistory();
     }
+    
+    // 如果所有重试都失败，返回模拟数据
+    console.warn('获取对话历史失败，使用模拟数据');
+    return getMockDialogueHistory();
   };
 
   // 模拟对话历史数据，用于演示
@@ -276,7 +334,8 @@ function App() {
         content: '我是一个基于大语言模型的智能助手，可以回答问题、提供信息、帮助完成各种任务。我可以协助你进行写作、学习、解决问题等多种场景的应用。',
         role: 'assistant',
         thinkingContent: '用户询问我的自我介绍，我需要简洁明了地说明我的能力和用途。我应该提到我是基于大语言模型的，这样可以设定正确的期望。',
-        isThinkingExpanded: false
+        isThinkingExpanded: false,
+        isWaitingForFirstToken: false
       },
       {
         id: 'msg-4',
@@ -288,7 +347,8 @@ function App() {
         content: '人工智能（Artificial Intelligence，简称AI）是计算机科学的一个分支，旨在开发能够执行通常需要人类智能的任务的机器。这些任务包括学习、推理、解决问题、理解自然语言、识别模式、感知环境等。\n\n人工智能可以分为弱AI（也称为狭义AI）和强AI（也称为通用AI）。弱AI是为执行特定任务而设计的系统，如语音识别、图像识别或推荐系统。强AI则是指具有与人类相当或超越人类智能的系统，能够执行任何智力任务。\n\n近年来，机器学习（尤其是深度学习）的进步推动了AI技术的快速发展，使其在许多领域取得了突破性进展。',
         role: 'assistant',
         thinkingContent: '用户问了一个很宽泛的问题。我需要从定义、分类和应用三个方面来解释人工智能。我应该从计算机科学的角度开始，然后解释不同类型的AI，最后提到最新的发展。这样可以让用户获得全面的理解。',
-        isThinkingExpanded: false
+        isThinkingExpanded: false,
+        isWaitingForFirstToken: false
       }
     ];
   };
@@ -431,7 +491,7 @@ function App() {
                       {message.role === 'assistant' ? (
                         <div className="assistant-content">
                           {/* 思考内容区域 */}
-                          {message.thinkingContent && (
+                          {(message.thinkingContent || message.isWaitingForFirstToken) && (
                             <div className="thinking-section">
                               <div className="thinking-header">
                                 <button 
@@ -445,16 +505,24 @@ function App() {
                                   <span className="thinking-label">思考过程</span>
                                 </button>
                               </div>
-                              {message.isThinkingExpanded && (
+                              {(message.isThinkingExpanded || message.isWaitingForFirstToken) && (
                                 <div className="thinking-content">
                                   <div className="thinking-border"></div>
                                   <div className="thinking-text">
-                                    <ReactMarkdown 
-                                      rehypePlugins={[rehypeRaw]} 
-                                      remarkPlugins={[remarkGfm]}
-                                    >
-                                      {message.thinkingContent}
-                                    </ReactMarkdown>
+                                    {message.isWaitingForFirstToken && !message.thinkingContent ? (
+                                      <div className="waiting-animation">
+                                        <span className="waiting-dot"></span>
+                                        <span className="waiting-dot"></span>
+                                        <span className="waiting-dot"></span>
+                                      </div>
+                                    ) : (
+                                      <ReactMarkdown 
+                                        rehypePlugins={[rehypeRaw]} 
+                                        remarkPlugins={[remarkGfm]}
+                                      >
+                                        {message.thinkingContent || '正在思考...'}
+                                      </ReactMarkdown>
+                                    )}
                                   </div>
                                 </div>
                               )}

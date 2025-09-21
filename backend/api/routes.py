@@ -38,6 +38,17 @@ def get_info():
     }
 
 
+@router.get("/health")
+def health_check():
+    """健康检查接口"""
+    logger.info("Health check endpoint accessed")
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "service": "UniformLLM"
+    }
+
+
 @router.post("/create-conversation")
 def create_conversation(request: CreateConversationRequest):
     """
