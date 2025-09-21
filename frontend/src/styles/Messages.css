@@ -1,0 +1,244 @@
+/* 消息样式 */
+.message {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: #667eea;
+  color: white;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: white;
+  color: #333;
+}
+
+/* 助手消息内容样式 */
+.assistant-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 思考内容区域样式 */
+.thinking-section {
+  margin-bottom: 8px;
+}
+
+/* 等待动画样式 */
+.waiting-animation {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.waiting-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #999;
+  border-radius: 50%;
+  animation: waiting-pulse 1.4s infinite ease-in-out both;
+}
+
+.waiting-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.waiting-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes waiting-pulse {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.thinking-header {
+  margin-bottom: 8px;
+}
+
+.thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #666;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.thinking-toggle:hover {
+  background-color: #f5f5f5;
+}
+
+.thinking-icon {
+  font-size: 10px;
+  color: #999;
+}
+
+.thinking-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.thinking-content {
+  display: flex;
+  gap: 12px;
+  margin-left: 8px;
+}
+
+.thinking-border {
+  width: 3px;
+  background-color: #e0e0e0;
+  border-radius: 2px;
+  min-height: 20px;
+}
+
+.thinking-text {
+  flex: 1;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.thinking-text .markdown-content {
+  font-size: 13px;
+  color: #888;
+}
+
+/* 正式回答内容样式 */
+.answer-content {
+  font-size: 15px;
+  color: #333;
+  line-height: 1.6;
+  /* 打字机效果动画 */
+  animation: typing-content 0.1s ease-in-out;
+}
+
+.answer-content .markdown-content {
+  font-size: 15px;
+  color: #333;
+}
+
+/* 打字机效果动画 */
+@keyframes typing-content {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-indicator::after,
+.typing-indicator::before,
+.typing-indicator span {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #666;
+  border-radius: 50%;
+  animation: typing 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator::before {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+/* 消息包装器样式 */
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.message-wrapper.user {
+  align-items: flex-end;
+}
+
+.message-wrapper.assistant {
+  align-items: flex-start;
+}
+
+/* 消息操作区域样式 */
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  height: 24px;
+  align-items: center;
+}
+
+.message-wrapper:hover .message-actions {
+  opacity: 1;
+}
+
+/* 复制按钮样式 */
+.copy-button {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+  min-width: 28px;
+  height: 24px;
+}
+
+.copy-button:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.copy-button:active {
+  background: #e8e8e8;
+  transform: scale(0.95);
+}
+
+.copy-button svg {
+  width: 14px;
+  height: 14px;
+}

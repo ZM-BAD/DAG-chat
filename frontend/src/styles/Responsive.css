@@ -1,0 +1,78 @@
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .chat-header {
+    padding: 15px;
+    margin-left: 0;
+    width: 100%;
+    left: 0;
+  }
+  
+  .chat-container {
+    padding: 10px;
+    gap: 10px;
+    margin-top: 85px;
+    margin-bottom: 120px;
+    height: calc(100vh - 85px - 120px);
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .chat-messages {
+    padding: 10px;
+    gap: 12px;
+  }
+  
+  .chat-input-wrapper {
+    left: 0;
+    max-width: calc(100% - 32px);
+    margin-left: 0;
+  }
+  
+  .footer {
+    left: 0;
+    max-width: calc(100% - 32px);
+    margin-left: 0;
+  }
+  
+  .message {
+    max-width: 90%;
+  }
+  
+  .header h1 {
+    font-size: 20px;
+  }
+}
+
+/* 响应式欢迎界面 */
+@media (max-width: 768px) {
+  .chat-container.welcome-mode {
+    padding: 20px 16px;
+  }
+  
+  .welcome-title {
+    font-size: 24px;
+  }
+  
+  .welcome-content {
+    gap: 30px;
+  }
+  
+  .welcome-container .chat-input-wrapper {
+    max-width: 100%;
+  }
+}

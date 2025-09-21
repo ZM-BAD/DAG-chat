@@ -1,0 +1,48 @@
+/* 欢迎界面样式 */
+.chat-container.welcome-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  margin-bottom: 0;
+  height: 100vh;
+  padding: 20px;
+}
+
+.welcome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+}
+
+.welcome-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* 欢迎模式下的输入框样式 */
+.welcome-container .chat-input-wrapper {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+  width: 100%;
+  max-width: 600px;
+}

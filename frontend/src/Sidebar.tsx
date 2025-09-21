@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import './Sidebar.css';
+import './styles/Sidebar.css';
 
 // 定义对话接口
 interface Dialogue {
