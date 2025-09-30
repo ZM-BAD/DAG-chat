@@ -1,6 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import './styles/Sidebar.css';
+
+// 常量定义
+const CURRENT_USER_ID = 'zm-bad';
+const MAX_TITLE_LENGTH = 64;
+const DEFAULT_TITLE = '未命名对话';
 
 // 定义对话接口
 interface Dialogue {
@@ -11,6 +16,28 @@ interface Dialogue {
   create_time: string;
   update_time: string;
 }
+
+// SVG图标组件
+const MoreIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="#666">
+    <circle cx="12" cy="5" r="2"/>
+    <circle cx="12" cy="12" r="2"/>
+    <circle cx="12" cy="19" r="2"/>
+  </svg>
+);
+
+const EditIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="#666">
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    <path d="M2 20h20v2H2z" opacity="0.3"/>
+  </svg>
+);
+
+const TrashIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="#dc3545">
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+  </svg>
+);
 
 // 定义对话列表API响应接口
 interface DialogueListResponse {
@@ -36,6 +63,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
   const [selectedDialogueId, setSelectedDialogueId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>('');
   const listRef = useRef<HTMLDivElement>(null);
 
   // 获取对话列表
@@ -55,9 +85,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
     try {
       const response = await axios.get<DialogueListResponse>('/api/v1/dialogue/list', {
         params: {
-          user_id: 'zm-bad', // 这里可以根据实际登录用户调整
+          user_id: CURRENT_USER_ID,
           page: page,
-          page_size: 20 // 每页加载20条，可根据需要调整
+          page_size: 20
         }
       });
       
@@ -108,6 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
   // 组件挂载时获取对话列表
   useEffect(() => {
     fetchDialogues();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 监听滚动事件
@@ -119,6 +150,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
         listElement.removeEventListener('scroll', handleScroll);
       };
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, loadingMore, hasMore]);
 
   // 处理对话选择
@@ -132,6 +164,111 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
     setSelectedDialogueId(null);
     onNewDialogue();
   };
+
+  // 删除对话
+  const handleDeleteDialogue = useCallback(async (dialogueId: string) => {
+    if (!window.confirm('确定要删除这个对话吗？此操作不可撤销。')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete('/api/v1/dialogue/delete', {
+        params: {
+          conversation_id: dialogueId,
+          user_id: CURRENT_USER_ID
+        }
+      });
+
+      if (response.data.code === 0) {
+        // 从列表中移除对话
+        setDialogues(prev => prev.filter(d => d.id !== dialogueId));
+
+        // 如果删除的是当前选中的对话，清空选中状态
+        if (selectedDialogueId === dialogueId) {
+          setSelectedDialogueId(null);
+        }
+
+        setOpenMenuId(null);
+      } else {
+        alert('删除失败：' + response.data.message);
+      }
+    } catch (error) {
+      console.error('删除对话失败:', error);
+      alert('删除失败，请稍后重试');
+    }
+  }, [selectedDialogueId]);
+
+  // 重命名对话
+  const handleRenameDialogue = useCallback(async (dialogueId: string, newTitle: string) => {
+    const trimmedTitle = newTitle.trim();
+
+    if (!trimmedTitle) {
+      alert('标题不能为空');
+      return;
+    }
+
+    if (trimmedTitle.length > MAX_TITLE_LENGTH) {
+      alert(`标题长度不能超过${MAX_TITLE_LENGTH}个字符`);
+      return;
+    }
+
+    try {
+      const response = await axios.put('/api/v1/dialogue/rename', null, {
+        params: {
+          conversation_id: dialogueId,
+          user_id: CURRENT_USER_ID,
+          new_title: trimmedTitle
+        }
+      });
+
+      if (response.data.code === 0) {
+        // 更新列表中的对话标题
+        setDialogues(prev => prev.map(d =>
+          d.id === dialogueId ? { ...d, title: trimmedTitle } : d
+        ));
+
+        setEditingId(null);
+        setEditingTitle('');
+        setOpenMenuId(null);
+      } else {
+        alert('重命名失败：' + response.data.message);
+      }
+    } catch (error) {
+      console.error('重命名对话失败:', error);
+      alert('重命名失败，请稍后重试');
+    }
+  }, []);
+
+  // 开始编辑标题
+  const startEditing = useCallback((dialogue: Dialogue) => {
+    setEditingId(dialogue.id);
+    setEditingTitle(dialogue.title);
+    setOpenMenuId(null);
+  }, []);
+
+  // 完成编辑
+  const finishEditing = useCallback((dialogueId: string) => {
+    handleRenameDialogue(dialogueId, editingTitle);
+  }, [handleRenameDialogue, editingTitle]);
+
+  // 取消编辑
+  const cancelEditing = useCallback(() => {
+    setEditingId(null);
+    setEditingTitle('');
+  }, []);
+
+  // 点击其他地方关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.dialogue-item')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   return (
     <div className="sidebar">
@@ -161,14 +298,78 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
               <div
                 key={dialogue.id}
                 className={`dialogue-item ${selectedDialogueId === dialogue.id ? 'selected' : ''}`}
-                onClick={() => handleDialogueClick(dialogue.id)}
+                onClick={(e) => {
+                  const target = e.target as Element;
+                  if (!target.closest('.dialogue-actions') && !target.closest('.dialogue-menu')) {
+                    handleDialogueClick(dialogue.id);
+                  }
+                }}
               >
-                <div className="dialogue-title">{dialogue.title}</div>
-                <div className="dialogue-meta">
-                  <span className="dialogue-time">
-                    {new Date(dialogue.update_time).toLocaleDateString()}
-                  </span>
-                  <span className="dialogue-model">{dialogue.model}</span>
+                <div className="dialogue-content">
+                  {editingId === dialogue.id ? (
+                    <input
+                      type="text"
+                      className="rename-input"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          finishEditing(dialogue.id);
+                        } else if (e.key === 'Escape') {
+                          cancelEditing();
+                        }
+                      }}
+                      onBlur={() => finishEditing(dialogue.id)}
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <>
+                      <div className="dialogue-title">{dialogue.title || DEFAULT_TITLE}</div>
+                      <div className="dialogue-meta">
+                        <span className="dialogue-time">
+                          {new Date(dialogue.update_time).toLocaleDateString()}
+                        </span>
+                        <span className="dialogue-model">{dialogue.model}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="dialogue-actions">
+                  <button
+                    className="dialogue-more-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(openMenuId === dialogue.id ? null : dialogue.id);
+                    }}
+                    title="更多操作"
+                  >
+                    <MoreIcon />
+                  </button>
+                  {openMenuId === dialogue.id && (
+                    <div className="dialogue-menu">
+                      <button
+                        className="dialogue-menu-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditing(dialogue);
+                        }}
+                      >
+                        <EditIcon />
+                        重命名
+                      </button>
+                      <button
+                        className="dialogue-menu-item delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDialogue(dialogue.id);
+                        }}
+                      >
+                        <TrashIcon />
+                        删除
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )),

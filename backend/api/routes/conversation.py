@@ -7,6 +7,9 @@ from fastapi import APIRouter, Query
 from backend.database.mysql_connection import MySQLConnection
 from backend.models.requests import CreateConversationRequest
 
+# 常量定义
+MAX_TITLE_LENGTH = 64
+
 # 获取日志记录器
 logger = logging.getLogger(__name__)
 
@@ -121,6 +124,179 @@ def get_dialogue_list(
         return {
             "code": 500,
             "message": f"获取对话列表失败: {str(e)}",
+            "data": {}
+        }
+    finally:
+        mysql_db.disconnect()
+
+
+@router.delete("/dialogue/delete")
+def delete_conversation(
+    conversation_id: str = Query(..., description="对话ID", min_length=1),
+    user_id: str = Query(default="zm-bad", description="用户ID", min_length=1)
+):
+    """
+    删除对话
+
+    参数:
+        conversation_id: 对话ID
+        user_id: 用户ID
+
+    返回:
+        删除结果
+    """
+    # 参数验证
+    if not conversation_id or not conversation_id.strip():
+        return {
+            "code": 400,
+            "message": "对话ID不能为空",
+            "data": {}
+        }
+
+    if not user_id or not user_id.strip():
+        return {
+            "code": 400,
+            "message": "用户ID不能为空",
+            "data": {}
+        }
+
+    logger.info(f"删除对话, conversation_id: {conversation_id}, user_id: {user_id}")
+
+    mysql_db = MySQLConnection()
+    try:
+        if mysql_db.connect():
+            # 先删除MongoDB中的消息记录
+            import pymongo
+            from backend.database.mongodb_connection import MongoDBConnection
+
+            mongo_db = MongoDBConnection()
+            try:
+                if mongo_db.connect():
+                    # 删除该对话的所有消息
+                    mongo_db.delete_many('message_node', {'conversation_id': conversation_id})
+                    logger.info(f"删除对话 {conversation_id} 的消息记录")
+            except Exception as e:
+                logger.error(f"删除MongoDB消息记录失败: {str(e)}")
+            finally:
+                mongo_db.disconnect()
+
+            # 删除MySQL中的对话记录
+            query = "DELETE FROM t_conversations WHERE id = %s AND user_id = %s"
+            params = (conversation_id, user_id)
+
+            if mysql_db.execute_query(query, params):
+                logger.info(f"成功删除对话 {conversation_id}")
+                return {
+                    "code": 0,
+                    "message": "对话删除成功",
+                    "data": {}
+                }
+            else:
+                logger.error("删除对话失败：数据库删除失败")
+                return {
+                    "code": 500,
+                    "message": "删除对话失败：数据库删除失败",
+                    "data": {}
+                }
+        else:
+            logger.error("无法连接到MySQL数据库")
+            return {
+                "code": 500,
+                "message": "数据库连接失败",
+                "data": {}
+            }
+    except Exception as e:
+        logger.error(f"删除对话失败: {str(e)}", exc_info=True)
+        return {
+            "code": 500,
+            "message": f"删除对话失败: {str(e)}",
+            "data": {}
+        }
+    finally:
+        mysql_db.disconnect()
+
+
+@router.put("/dialogue/rename")
+def rename_conversation(
+    conversation_id: str = Query(..., description="对话ID", min_length=1),
+    user_id: str = Query(default="zm-bad", description="用户ID", min_length=1),
+    new_title: str = Query(..., description="新标题", min_length=1)
+):
+    """
+    重命名对话
+
+    参数:
+        conversation_id: 对话ID
+        user_id: 用户ID
+        new_title: 新标题
+
+    返回:
+        重命名结果
+    """
+    # 参数验证
+    if not conversation_id or not conversation_id.strip():
+        return {
+            "code": 400,
+            "message": "对话ID不能为空",
+            "data": {}
+        }
+
+    if not user_id or not user_id.strip():
+        return {
+            "code": 400,
+            "message": "用户ID不能为空",
+            "data": {}
+        }
+
+    if not new_title or not new_title.strip():
+        return {
+            "code": 400,
+            "message": "新标题不能为空",
+            "data": {}
+        }
+
+    if len(new_title) > MAX_TITLE_LENGTH:
+        return {
+            "code": 400,
+            "message": f"标题长度不能超过{MAX_TITLE_LENGTH}个字符",
+            "data": {}
+        }
+
+    logger.info(f"重命名对话, conversation_id: {conversation_id}, user_id: {user_id}, new_title: {new_title}")
+
+    mysql_db = MySQLConnection()
+    try:
+        if mysql_db.connect():
+            # 更新对话标题
+            query = "UPDATE t_conversations SET title = %s, update_time = %s WHERE id = %s AND user_id = %s"
+            params = (new_title, datetime.now(), conversation_id, user_id)
+
+            if mysql_db.execute_query(query, params):
+                logger.info(f"成功重命名对话 {conversation_id} 为 {new_title}")
+                return {
+                    "code": 0,
+                    "message": "对话重命名成功",
+                    "data": {}
+                }
+            else:
+                logger.error("重命名对话失败：数据库更新失败")
+                return {
+                    "code": 500,
+                    "message": "重命名对话失败：数据库更新失败",
+                    "data": {}
+                }
+        else:
+            logger.error("无法连接到MySQL数据库")
+            return {
+                "code": 500,
+                "message": "数据库连接失败",
+                "data": {}
+            }
+    except Exception as e:
+        logger.error(f"重命名对话失败: {str(e)}", exc_info=True)
+        return {
+            "code": 500,
+            "message": f"重命名对话失败: {str(e)}",
             "data": {}
         }
     finally:
