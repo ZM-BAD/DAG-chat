@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -78,7 +79,13 @@ async def generate(chat_messages, request, mysql_db, mongo_db):
         # 最终保存完整响应
         await save_conversation_to_database(request, full_content, full_reasoning, mysql_db, mongo_db)
 
+    except (ConnectionError, asyncio.CancelledError, BrokenPipeError, OSError) as e:
+        # 客户端正常中断连接，不记录为错误
+        logger.info(f"客户端中断连接: {type(e).__name__}: {str(e)}")
+        return  # 正常结束，不返回任何错误信息
+
     except Exception as e:
+        # 真正的错误，需要记录日志并返回错误信息
         logger.error(f"流式处理错误: {str(e)}", exc_info=True)
         yield f"data: {json.dumps({'error': '流式响应失败'})}\n\n"
 

@@ -9,8 +9,8 @@
 
 .message.user {
   align-self: flex-end;
-  background: #667eea;
-  color: white;
+  background: #edf3fe;
+  color: black;
 }
 
 .message.assistant {

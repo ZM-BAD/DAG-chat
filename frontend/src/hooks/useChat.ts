@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import axios, { AxiosResponse } from 'axios';
 import { Message, DialogueHistoryResponse } from '../types';
 
@@ -8,6 +8,26 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 中断大模型回答
+  const handleInterruptResponse = (): void => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      console.log('已中断大模型回答');
+    }
+  };
+
+  // 清理中断状态，准备新的请求
+  const cleanupInterruptedState = (): void => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  };
 
   // 重置输入框高度
   const resetTextareaHeight = (): void => {
@@ -20,11 +40,20 @@ export const useChat = () => {
   const handleSendMessage = async (): Promise<void> => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // 如果有未完成的请求，先清理
+    cleanupInterruptedState();
+
+    // 创建新的AbortController用于这次请求
+    abortControllerRef.current = new AbortController();
+
     const newUserMessage: Message = {
       id: `msg-${Date.now()}`,
       content: inputMessage,
       role: 'user'
     };
+
+    // 创建助手的消息ID，在更大作用域中使用
+    const assistantMessageId = `msg-${Date.now() + 1}`;
 
     setMessages([...messages, newUserMessage]);
     setInputMessage('');
@@ -45,7 +74,6 @@ export const useChat = () => {
       }
 
       // 创建助手的消息占位符
-      const assistantMessageId = `msg-${Date.now() + 1}`;
       const assistantMessage: Message = {
         id: assistantMessageId,
         content: '',
@@ -65,7 +93,8 @@ export const useChat = () => {
           user_id: 'zm-bad',
           model: 'deepseek-r1',
           message: inputMessage
-        })
+        }),
+        signal: abortControllerRef.current.signal // 添加中止信号
       });
 
       if (!response.ok) {
@@ -92,7 +121,10 @@ export const useChat = () => {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(6));
+              const dataStr = line.slice(6).trim();
+              if (!dataStr) continue; // 跳过空数据行
+
+              const data = JSON.parse(dataStr);
 
               // 处理思考内容（优先显示思考过程）
               if (data.reasoning) {
@@ -139,34 +171,60 @@ export const useChat = () => {
                 );
               }
 
+              // 处理错误响应
               if (data.error) {
                 throw new Error(data.error);
               }
-            } catch (e) {
-              // 忽略解析错误的行
-              console.warn('解析SSE数据失败:', e);
+            } catch (parseError) {
+              // 只在开发环境显示详细的解析错误
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('解析SSE数据失败:', parseError, '原始数据:', line);
+              }
+              // 继续处理下一行，不中断整个流
             }
           }
         }
       }
 
     } catch (error: unknown) {
-      console.error('Error sending message:', error);
-      // 移除助手消息并显示错误
-      setMessages(prevMessages =>
-        prevMessages.filter(msg => msg.id !== `msg-${Date.now() + 1}`)
-      );
-      const errorMessage: Message = {
-        id: `msg-${Date.now() + 2}`,
-        content: '发送消息失败，请稍后重试',
-        role: 'assistant'
-      };
-      setMessages(prevMessages => [...prevMessages, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      // 发送消息后重置输入框高度
-      resetTextareaHeight();
-    }
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          // 请求被中止，这是预期的行为
+          console.log('聊天请求被中止');
+          // 移除未完成的助手消息，但不显示错误提示
+          setMessages(prevMessages =>
+            prevMessages.filter(msg => msg.id !== assistantMessageId)
+          );
+        } else if (error instanceof TypeError && error.message.includes('fetch')) {
+          // 网络连接错误，可能是网络问题
+          console.error('网络连接错误:', error);
+          setMessages(prevMessages =>
+            prevMessages.filter(msg => msg.id !== assistantMessageId)
+          );
+          const errorMessage: Message = {
+            id: `msg-${Date.now() + 2}`,
+            content: '网络连接失败，请检查网络后重试',
+            role: 'assistant'
+          };
+          setMessages(prevMessages => [...prevMessages, errorMessage]);
+        } else {
+          console.error('发送消息时发生未知错误:', error);
+          // 移除助手消息并显示错误
+          setMessages(prevMessages =>
+            prevMessages.filter(msg => msg.id !== assistantMessageId)
+          );
+          const errorMessage: Message = {
+            id: `msg-${Date.now() + 2}`,
+            content: '发送消息失败，请稍后重试',
+            role: 'assistant'
+          };
+          setMessages(prevMessages => [...prevMessages, errorMessage]);
+        }
+      } finally {
+        setIsLoading(false);
+        abortControllerRef.current = null; // 清理AbortController
+        // 发送消息后重置输入框高度
+        resetTextareaHeight();
+      }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent): void => {
@@ -340,6 +398,7 @@ export const useChat = () => {
     handleDialogueSelect,
     handleNewDialogue,
     toggleThinkingExpansion,
-    copyMessageToClipboard
+    copyMessageToClipboard,
+    handleInterruptResponse
   };
 };

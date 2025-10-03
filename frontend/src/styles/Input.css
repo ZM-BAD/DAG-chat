@@ -54,11 +54,19 @@
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: auto;
+  /* 强制确保按钮大小不变 */
+  max-width: 36px;
+  max-height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  box-sizing: content-box;
+  padding: 0;
+  margin: 0;
 }
 
 .send-button:hover:not(:disabled) {
@@ -74,12 +82,51 @@
   cursor: not-allowed;
 }
 
+/* loading状态下按钮样式 - 保持圆形大小不变，只改变背景色 */
+.send-button.loading {
+  background: #f56565 !important;
+  /* 确保按钮大小和形状完全不变 */
+  width: 36px !important;
+  height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 50% !important;
+  transform: none !important;
+  box-sizing: content-box !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.send-button.loading:hover {
+  background: #e53e3e !important;
+}
+
+/* 发送按钮默认状态 - 显示向上箭头 */
 .send-button::after {
   content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 8px solid white;
-  margin-top: -1px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid white;
+}
+
+/* 发送按钮加载状态 - 显示正方形 (保持按钮位置和大小不变) */
+.send-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: white;
+  /* 确保正方形不会影响按钮大小 */
+  box-sizing: border-box;
 }

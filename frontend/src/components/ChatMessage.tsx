@@ -51,7 +51,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                             rehypePlugins={[rehypeRaw]}
                             remarkPlugins={[remarkGfm]}
                           >
-                            {message.thinkingContent || '正在思考...'}
+                            {message.thinkingContent || ''}
                           </ReactMarkdown>
                         )}
                       </div>

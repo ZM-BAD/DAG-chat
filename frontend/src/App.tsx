@@ -22,7 +22,8 @@ function App() {
     handleDialogueSelect,
     handleNewDialogue,
     toggleThinkingExpansion,
-    copyMessageToClipboard
+    copyMessageToClipboard,
+    handleInterruptResponse
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } = useDialogues();
@@ -70,6 +71,7 @@ function App() {
             handleInputChange={handleInputChange}
             handleKeyPress={handleKeyPress}
             handleSendMessage={handleSendMessage}
+            handleInterruptResponse={handleInterruptResponse}
           />
         )}
         <footer className="footer">
