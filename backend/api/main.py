@@ -1,6 +1,6 @@
 import logging.config
-
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.router import router as api_router
 from backend.logging_config import LOGGING_CONFIG
@@ -16,6 +16,16 @@ app = FastAPI(
     title="UniformLLM API",
     description=description,
     version="1.0.0"
+)
+
+# 添加CORS中间件以允许跨域请求
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # 允许前端应用的源
+    allow_credentials=True,  # 允许携带凭证（如cookie）
+    allow_methods=["*"],  # 允许所有HTTP方法
+    allow_headers=["*"],  # 允许所有HTTP头
+    expose_headers=["*"],  # 暴露所有头给客户端
 )
 
 # 获取日志记录器

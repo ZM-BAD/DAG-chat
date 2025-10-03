@@ -35,7 +35,7 @@ export const useChat = () => {
 
       // 如果是新对话，先创建对话获取conversation_id
       if (!conversationId) {
-        const createResponse = await axios.post('/api/v1/create-conversation', {
+        const createResponse = await axios.post('http://localhost:8000/api/v1/create-conversation', {
           user_id: 'zm-bad',
           model: 'deepseek-r1',
           message: inputMessage
@@ -55,7 +55,7 @@ export const useChat = () => {
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
 
       // 发送聊天请求并处理流式响应
-      const response = await fetch('/api/v1/chat', {
+      const response = await fetch('http://localhost:8000/api/v1/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ export const useChat = () => {
 
     while (retryCount < maxRetries) {
       try {
-        const response = await axios.get<DialogueHistoryResponse>('/api/v1/dialogue/history', {
+        const response = await axios.get<DialogueHistoryResponse>('http://localhost:8000/api/v1/dialogue/history', {
           params: {
             dialogue_id: dialogueId
           }
