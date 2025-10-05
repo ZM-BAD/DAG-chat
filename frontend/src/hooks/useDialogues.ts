@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Dialogue, DialogueListResponse } from '../types';
 
+// 默认标题常量
+const DEFAULT_TITLE = '未命名对话';
+
 export const useDialogues = () => {
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
 
@@ -75,8 +78,59 @@ export const useDialogues = () => {
     }
 
     const currentDialogue = dialogues.find(dialogue => dialogue.id === currentDialogueId);
-    return currentDialogue ? currentDialogue.title : `对话 ${currentDialogueId.substring(0, 8)}`;
+    // 如果标题为空，使用默认标题
+    const title = currentDialogue ? currentDialogue.title : '';
+    return title || DEFAULT_TITLE;
   };
+
+  // 监听对话创建事件
+  useEffect(() => {
+    const handleDialogueCreated = (event: CustomEvent) => {
+      const { conversationId, title } = event.detail;
+
+      // 立即在对话列表中添加新对话
+      const newDialogue: Dialogue = {
+        id: conversationId,
+        user_id: 'zm-bad',
+        title: title,
+        model: 'deepseek-r1',
+        create_time: new Date().toISOString(),
+        update_time: new Date().toISOString()
+      };
+
+      setDialogues(prev => [newDialogue, ...prev]);
+    };
+
+    // 添加事件监听器
+    window.addEventListener('dialogueCreated', handleDialogueCreated as EventListener);
+
+    // 清理事件监听器
+    return () => {
+      window.removeEventListener('dialogueCreated', handleDialogueCreated as EventListener);
+    };
+  }, []);
+
+  // 监听标题更新事件
+  useEffect(() => {
+    const handleTitleUpdated = (event: CustomEvent) => {
+      const { conversationId, newTitle } = event.detail;
+
+      // 更新对话列表中的标题
+      setDialogues(prev => prev.map(dialogue =>
+        dialogue.id === conversationId
+          ? { ...dialogue, title: newTitle, update_time: new Date().toISOString() }
+          : dialogue
+      ));
+    };
+
+    // 添加事件监听器
+    window.addEventListener('titleUpdated', handleTitleUpdated as EventListener);
+
+    // 清理事件监听器
+    return () => {
+      window.removeEventListener('titleUpdated', handleTitleUpdated as EventListener);
+    };
+  }, []);
 
   return {
     dialogues,

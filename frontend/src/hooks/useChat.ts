@@ -71,6 +71,17 @@ export const useChat = () => {
         });
         conversationId = createResponse.data.conversation_id;
         setCurrentDialogueId(conversationId);
+
+        // 触发侧边栏刷新，显示新创建的对话
+        setTimeout(() => {
+          // 通过触发window事件通知侧边栏刷新
+          window.dispatchEvent(new CustomEvent('dialogueCreated', {
+            detail: {
+              conversationId,
+              title: '未命名对话'
+            }
+          }));
+        }, 100);
       }
 
       // 创建助手的消息占位符
@@ -184,6 +195,41 @@ export const useChat = () => {
             }
           }
         }
+      }
+
+      // 如果是新对话，AI回答完成后检查标题是否已更新
+      if (!currentDialogueId && conversationId) {
+        // 延迟检查标题更新，给后端生成标题的时间
+        setTimeout(async () => {
+          try {
+            // 刷新对话列表获取最新标题
+            const response = await axios.get('/api/v1/dialogue/list', {
+              params: {
+                user_id: 'zm-bad',
+                page: 1,
+                page_size: 20
+              }
+            });
+
+            if (response.data.code === 0) {
+              const updatedDialogue = response.data.data.list.find(
+                (dialogue: any) => dialogue.id === conversationId
+              );
+
+              if (updatedDialogue && updatedDialogue.title && updatedDialogue.title !== '未命名对话') {
+                // 触发标题更新事件
+                window.dispatchEvent(new CustomEvent('titleUpdated', {
+                  detail: {
+                    conversationId,
+                    newTitle: updatedDialogue.title
+                  }
+                }));
+              }
+            }
+          } catch (error) {
+            console.error('检查标题更新失败:', error);
+          }
+        }, 2000); // 2秒后检查标题更新
       }
 
     } catch (error: unknown) {

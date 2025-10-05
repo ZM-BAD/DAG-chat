@@ -34,6 +34,18 @@ function App() {
     refreshDialogues();
   };
 
+  // 处理删除对话后的刷新
+  const handleDialogueDeleted = () => {
+    refreshDialogues();
+    // 如果当前选中的对话被删除，切换到新对话状态
+    handleNewDialogue();
+  };
+
+  // 处理重命名对话后的刷新
+  const handleDialogueRenamed = () => {
+    refreshDialogues();
+  };
+
   const currentTitle = getCurrentDialogueTitle(currentDialogueId);
 
   return (
@@ -41,6 +53,10 @@ function App() {
       <Sidebar
         onDialogueSelect={handleDialogueSelectWithRefresh}
         onNewDialogue={handleNewDialogue}
+        dialogues={dialogues}
+        selectedDialogueId={currentDialogueId}
+        onDialogueDeleted={handleDialogueDeleted}
+        onDialogueRenamed={handleDialogueRenamed}
       />
       <div className="main-content">
         {!shouldShowWelcome && (

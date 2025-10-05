@@ -9,6 +9,7 @@ from backend.models.requests import CreateConversationRequest
 
 # 常量定义
 MAX_TITLE_LENGTH = 64
+DEFAULT_TITLE = '未命名对话'
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -31,8 +32,8 @@ def create_conversation(request: CreateConversationRequest):
                 INSERT INTO t_conversations (id, user_id, title, model, create_time, update_time)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
-            # 创建对话的时候, 标题默认为空
-            title = ''
+            # 创建对话的时候, 标题默认为"未命名对话"
+            title = DEFAULT_TITLE
             params = (conversation_id, request.user_id, title, request.model, datetime.now(), datetime.now())
             
             if mysql_db.execute_query(query, params):

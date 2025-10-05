@@ -54,13 +54,22 @@ interface DialogueListResponse {
 interface SidebarProps {
   onDialogueSelect: (dialogueId: string) => void;
   onNewDialogue: () => void;
+  dialogues: Dialogue[];
+  selectedDialogueId: string | null;
+  onDialogueDeleted?: () => void;
+  onDialogueRenamed?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) => {
-  const [dialogues, setDialogues] = useState<Dialogue[]>([]);
+const Sidebar: React.FC<SidebarProps> = ({
+  onDialogueSelect,
+  onNewDialogue,
+  dialogues,
+  selectedDialogueId,
+  onDialogueDeleted,
+  onDialogueRenamed
+}) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const [selectedDialogueId, setSelectedDialogueId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -68,19 +77,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
   const [editingTitle, setEditingTitle] = useState<string>('');
   const listRef = useRef<HTMLDivElement>(null);
 
-  // 获取对话列表
-  const fetchDialogues = async (page: number = 1, append: boolean = false) => {
-    // 如果是加载更多且已经没有更多数据或已经在加载中，则不再请求
-    if ((append && (!hasMore || loadingMore)) || (page === 1 && loading)) {
+  // 获取更多对话列表（用于滚动加载）
+  const fetchMoreDialogues = async (page: number = 1) => {
+    // 如果已经没有更多数据或已经在加载中，则不再请求
+    if (!hasMore || loadingMore) {
       return;
     }
 
-    // 设置加载状态
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
+    setLoadingMore(true);
 
     try {
       const response = await axios.get<DialogueListResponse>('/api/v1/dialogue/list', {
@@ -90,20 +94,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
           page_size: 20
         }
       });
-      
+
       if (response.data.code === 0) {
         const newDialogues = response.data.data.list;
-        
-        // 更新对话列表
-        if (append) {
-          setDialogues(prev => [...prev, ...newDialogues]);
-        } else {
-          setDialogues(newDialogues);
-        }
-        
+
         // 判断是否还有更多数据
         setHasMore(newDialogues.length === response.data.data.page_size);
-        
+
         // 更新当前页码
         setCurrentPage(page);
       } else {
@@ -112,12 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
     } catch (error) {
       console.error('获取对话列表时发生错误:', error);
     } finally {
-      // 重置加载状态
-      if (append) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-      }
+      setLoadingMore(false);
     }
   };
 
@@ -126,20 +118,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
     if (!listRef.current || loadingMore || !hasMore) {
       return;
     }
-    
+
     const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-    
+
     // 当滚动到距离底部20px时触发加载更多
     if (scrollHeight - scrollTop - clientHeight < 20) {
-      fetchDialogues(currentPage + 1, true);
+      fetchMoreDialogues(currentPage + 1);
     }
   };
-
-  // 组件挂载时获取对话列表
-  useEffect(() => {
-    fetchDialogues();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // 监听滚动事件
   useEffect(() => {
@@ -150,18 +136,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
         listElement.removeEventListener('scroll', handleScroll);
       };
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, loadingMore, hasMore]);
 
   // 处理对话选择
   const handleDialogueClick = (dialogueId: string) => {
-    setSelectedDialogueId(dialogueId);
     onDialogueSelect(dialogueId);
   };
 
   // 处理新建对话
   const handleNewDialogue = () => {
-    setSelectedDialogueId(null);
     onNewDialogue();
   };
 
@@ -180,15 +164,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
       });
 
       if (response.data.code === 0) {
-        // 从列表中移除对话
-        setDialogues(prev => prev.filter(d => d.id !== dialogueId));
-
-        // 如果删除的是当前选中的对话，清空选中状态
-        if (selectedDialogueId === dialogueId) {
-          setSelectedDialogueId(null);
-        }
-
+        // 删除成功，通知父组件刷新对话列表
         setOpenMenuId(null);
+        onDialogueDeleted?.();
       } else {
         alert('删除失败：' + response.data.message);
       }
@@ -222,14 +200,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onDialogueSelect, onNewDialogue }) =>
       });
 
       if (response.data.code === 0) {
-        // 更新列表中的对话标题
-        setDialogues(prev => prev.map(d =>
-          d.id === dialogueId ? { ...d, title: trimmedTitle } : d
-        ));
-
+        // 重命名成功，通知父组件刷新对话列表
         setEditingId(null);
         setEditingTitle('');
         setOpenMenuId(null);
+        onDialogueRenamed?.();
       } else {
         alert('重命名失败：' + response.data.message);
       }
