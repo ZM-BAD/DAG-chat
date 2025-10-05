@@ -102,32 +102,43 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         mysql_db: MySQL数据库连接对象
         mongo_db: MongoDB数据库连接对象
     """
-    import uuid
-
     if mysql_db.connect():
-        # 新对话
-        if not request.title or not request.title.strip():
-            # 异步调用生成标题
-            generated_title = generate_title(request.message, full_content)
-            mysql_db.execute_query(
-                """
-                INSERT INTO t_conversations
-                    (id, user_id, model, title)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (request.conversation_id, request.user_id,
-                 request.model, generated_title)
-            )
-        # 老对话
-        else:
-            mysql_db.execute_query(
-                """
-                UPDATE t_conversations
-                SET update_time = %s
-                WHERE id = %s
-                """,
-                (datetime.now(), request.conversation_id)
-            )
+        try:
+            # 新对话
+            if not request.title or not request.title.strip():
+                # 异步调用生成标题
+                generated_title = generate_title(request.message, full_content)
+                logger.info(f"Generated title: {generated_title}")
+
+                # 更新对话标题
+                success = mysql_db.execute_query(
+                    """
+                    UPDATE t_conversations
+                    SET title = %s, update_time = %s
+                    WHERE id = %s
+                    """,
+                    (generated_title, datetime.now(), request.conversation_id)
+                )
+                if success:
+                    logger.info("MySQL title update successful")
+                else:
+                    logger.error("MySQL title update failed")
+            # 老对话，只更新时间
+            else:
+                success = mysql_db.execute_query(
+                    """
+                    UPDATE t_conversations
+                    SET update_time = %s
+                    WHERE id = %s
+                    """,
+                    (datetime.now(), request.conversation_id)
+                )
+                if success:
+                    logger.info("MySQL conversation update successful")
+                else:
+                    logger.error("MySQL conversation update failed")
+        except Exception as e:
+            logger.error(f"MySQL operation failed: {str(e)}", exc_info=True)
 
     if mongo_db.connect():
         # 保存用户提问
