@@ -106,6 +106,12 @@ class MongoDBConnection:
             return collection.update_one(query, {"$set": update_values})
         return None
 
+    def delete_many(self, collection_name: str, query: dict):
+        if self.client:
+            collection = self.db[collection_name]
+            return collection.delete_many(query)
+        return None
+
 
 # Example usage
 if __name__ == '__main__':
