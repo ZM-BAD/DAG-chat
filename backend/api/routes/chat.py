@@ -106,10 +106,7 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
 
     if mysql_db.connect():
         # 新对话
-        if not request.conversation_id:
-            conversation_id = str(uuid.uuid4())
-            request.conversation_id = conversation_id
-
+        if not request.title or not request.title.strip():
             # 异步调用生成标题
             generated_title = generate_title(request.message, full_content)
             mysql_db.execute_query(
@@ -118,7 +115,7 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
                     (id, user_id, model, title)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (conversation_id, request.user_id,
+                (request.conversation_id, request.user_id,
                  request.model, generated_title)
             )
         # 老对话
