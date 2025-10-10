@@ -1,7 +1,5 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
+import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
 
 interface ChatMessageProps {
@@ -47,12 +45,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                             <span className="waiting-dot"></span>
                           </div>
                         ) : (
-                          <ReactMarkdown
-                            rehypePlugins={[rehypeRaw]}
-                            remarkPlugins={[remarkGfm]}
-                          >
-                            {message.thinkingContent || ''}
-                          </ReactMarkdown>
+                          <EnhancedMarkdown content={message.thinkingContent || ''} />
                         )}
                       </div>
                     </div>
@@ -62,12 +55,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
               {/* 正式回答内容区域 */}
               <div className="answer-content">
-                <ReactMarkdown
-                  rehypePlugins={[rehypeRaw]}
-                  remarkPlugins={[remarkGfm]}
-                >
-                  {message.content}
-                </ReactMarkdown>
+                <EnhancedMarkdown content={message.content} />
               </div>
             </div>
           ) : (

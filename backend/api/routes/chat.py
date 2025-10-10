@@ -29,18 +29,23 @@ async def chat(request: ChatRequest):
     try:
         # 构建消息历史
         chat_messages = []
+        first_ask = True
 
         # 如果是已有对话，从MongoDB查询历史
-        if request.conversation_id and mongo_db.connect():
+        if mongo_db.connect():
             history = mongo_db.find('message_node', {'conversation_id': request.conversation_id},
                                     sort=[('create_time', pymongo.ASCENDING)])
-            chat_messages = [{"role": msg['role'], "content": msg['content']} for msg in history]
+            
+            # 如果history不为空，那么说明不是第一次问，需要将历史消息添加到chat_messages中
+            if history and len(history) > 0:
+                first_ask = False
+                chat_messages = [{"role": msg['role'], "content": msg['content']} for msg in history]
 
         # 将当前用户消息添加到历史消息中
         chat_messages.append({"role": "user", "content": request.message})
 
         return StreamingResponse(
-            generate(chat_messages, request, mysql_db, mongo_db),
+            generate(chat_messages, request, mysql_db, mongo_db, first_ask),
             media_type="text/event-stream; charset=utf-8"
         )
 
@@ -49,7 +54,7 @@ async def chat(request: ChatRequest):
         mongo_db.disconnect()
 
 
-async def generate(chat_messages, request, mysql_db, mongo_db):
+async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
     """
     生成流式响应并处理对话内容
 
@@ -58,6 +63,7 @@ async def generate(chat_messages, request, mysql_db, mongo_db):
         request: ChatRequest对象
         mysql_db: MySQL数据库连接对象
         mongo_db: MongoDB数据库连接对象
+        first_ask: 是否是第一次问
 
     返回:
         流式响应数据生成器
@@ -76,8 +82,12 @@ async def generate(chat_messages, request, mysql_db, mongo_db):
             # 实时返回内容
             yield f"data: {json.dumps({'content': content, 'reasoning': reasoning}, ensure_ascii=False)}\n\n"
 
-        # 最终保存完整响应
-        await save_conversation_to_database(request, full_content, full_reasoning, mysql_db, mongo_db)
+        # 最终保存完整响应并获取助手消息的MongoDB ID
+        ai_message_id = await save_conversation_to_database(request, full_content, full_reasoning, mysql_db, mongo_db, first_ask)
+
+        # 返回助手消息的MongoDB ID给前端
+        if ai_message_id:
+            yield f"data: {json.dumps({'message_id': str(ai_message_id), 'complete': True}, ensure_ascii=False)}\n\n"
 
     except (ConnectionError, asyncio.CancelledError, BrokenPipeError, OSError) as e:
         # 客户端正常中断连接，不记录为错误
@@ -91,7 +101,7 @@ async def generate(chat_messages, request, mysql_db, mongo_db):
 
 
 async def save_conversation_to_database(request: ChatRequest, full_content: str, full_reasoning: str, mysql_db,
-                                        mongo_db):
+                                        mongo_db, first_ask: bool):
     """
     保存对话内容到MySQL和MongoDB数据库
 
@@ -101,11 +111,15 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         full_reasoning: 完整的AI推理内容
         mysql_db: MySQL数据库连接对象
         mongo_db: MongoDB数据库连接对象
+        first_ask: 是否是第一次问
+
+    返回:
+        助手消息的MongoDB ID
     """
     if mysql_db.connect():
         try:
             # 新对话
-            if not request.title or not request.title.strip():
+            if first_ask:
                 # 异步调用生成标题
                 generated_title = generate_title(request.message, full_content)
                 logger.info(f"Generated title: {generated_title}")
@@ -186,3 +200,6 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         # 更新数据库中的文档
         mongo_db.update('message_node', {'_id': user_message_id}, user_message_dict)
         mongo_db.update('message_node', {'_id': ai_message_id}, ai_message_dict)
+
+        # 返回助手消息的MongoDB ID
+        return ai_message_id

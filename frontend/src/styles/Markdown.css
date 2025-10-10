@@ -7,6 +7,54 @@
   background: white;
 }
 
+/* KaTeX 数学公式样式 */
+.markdown-content .katex {
+  font-size: 1em;
+}
+
+.markdown-content .katex-display {
+  margin: 1em 0;
+  text-align: center;
+}
+
+.markdown-content .katex-display > .katex {
+  display: inline-block;
+  text-align: center;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 锚点链接样式 */
+.markdown-content .anchor-link {
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+}
+
+.markdown-content .anchor-link:hover {
+  text-decoration: none;
+  color: #667eea;
+}
+
+.markdown-content .anchor-link::before {
+  content: '#';
+  position: absolute;
+  left: -1.5em;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-weight: normal;
+}
+
+.markdown-content h1:hover .anchor-link::before,
+.markdown-content h2:hover .anchor-link::before,
+.markdown-content h3:hover .anchor-link::before,
+.markdown-content h4:hover .anchor-link::before,
+.markdown-content h5:hover .anchor-link::before,
+.markdown-content h6:hover .anchor-link::before {
+  opacity: 1;
+}
+
 /* 标题样式 */
 .markdown-content h1, 
 .markdown-content h2, 
@@ -100,29 +148,58 @@
   color: #6c757d;
 }
 
-/* 表格样式 */
+/* 表格样式 - 增强版 */
+.markdown-content .table-wrapper {
+  overflow-x: auto;
+  margin: 1em 0;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .markdown-content table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 1em;
+  margin: 0;
   font-size: 13px;
+  min-width: 500px; /* 确保表格有最小宽度 */
 }
 
-.markdown-content th, 
+.markdown-content th,
 .markdown-content td {
-  padding: 0.75em;
+  padding: 0.75em 1em;
   text-align: left;
   border: 1px solid #dee2e6;
+  vertical-align: top;
 }
 
 .markdown-content th {
   background-color: #f8f9fa;
   font-weight: 600;
   color: #495057;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .markdown-content tr:nth-child(even) {
   background-color: #f8f9fa;
+}
+
+.markdown-content tr:hover {
+  background-color: #e9ecef;
+}
+
+/* 表格响应式支持 */
+@media (max-width: 768px) {
+  .markdown-content .table-wrapper {
+    font-size: 12px;
+  }
+
+  .markdown-content th,
+  .markdown-content td {
+    padding: 0.5em;
+  }
 }
 
 /* 链接样式 */
@@ -144,4 +221,158 @@
   border-radius: 4px;
   margin-bottom: 1em;
   display: block;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 任务列表样式 */
+.markdown-content input[type="checkbox"] {
+  margin-right: 0.5em;
+  transform: scale(1.2);
+}
+
+.markdown-content li.task-list-item {
+  list-style: none;
+  margin-left: -1.5em;
+}
+
+/* 脚注样式 */
+.markdown-content .footnotes {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid #dee2e6;
+  font-size: 0.9em;
+}
+
+.markdown-content .footnote-ref {
+  font-size: 0.8em;
+  vertical-align: super;
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.markdown-content .footnote-ref:hover {
+  text-decoration: underline;
+}
+
+.markdown-content .footnotes ol {
+  padding-left: 1.5em;
+  margin: 0;
+}
+
+.markdown-content .footnotes li {
+  margin-bottom: 0.5em;
+}
+
+/* Emoji样式 */
+.markdown-content .emoji {
+  font-size: 1.2em;
+  vertical-align: middle;
+  margin: 0 0.1em;
+}
+
+/* 代码块增强样式 */
+.markdown-content pre {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid #3e3e3e;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  border: none;
+  color: inherit;
+}
+
+/* 行内代码样式 */
+.markdown-content :not(pre) > code {
+  background-color: rgba(175, 184, 193, 0.2);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+  border: 1px solid rgba(175, 184, 193, 0.3);
+  color: #e83e8c;
+}
+
+/* 分割线样式 */
+.markdown-content hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #dee2e6, transparent);
+  margin: 2em 0;
+}
+
+/* 定义列表样式 */
+.markdown-content dt {
+  font-weight: 600;
+  margin-top: 1em;
+}
+
+.markdown-content dd {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+  color: #6c757d;
+}
+
+/* 删除线样式 */
+.markdown-content del {
+  text-decoration: line-through;
+  color: #6c757d;
+}
+
+/* 强调样式 */
+.markdown-content strong {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.markdown-content em {
+  font-style: italic;
+  color: #495057;
+}
+
+/* 高亮样式 */
+.markdown-content mark {
+  background-color: #fff3cd;
+  padding: 0.1em 0.2em;
+  border-radius: 3px;
+  color: #856404;
+}
+
+/* 下标上标样式 */
+.markdown-content sub,
+.markdown-content sup {
+  font-size: 0.8em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+.markdown-content sup {
+  top: -0.5em;
+}
+
+.markdown-content sub {
+  bottom: -0.25em;
+}
+
+/* 键盘按键样式 */
+.markdown-content kbd {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: monospace;
+  font-size: 0.9em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }

@@ -93,6 +93,10 @@ export const useChat = () => {
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
 
+      // 获取上一条已保存的助手消息的_id作为parent_ids
+      const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && msg._id).pop();
+      const parentIds = lastAssistantMessage?._id ? [lastAssistantMessage._id] : [];
+
       // 发送聊天请求并处理流式响应
       const response = await fetch('http://localhost:8000/api/v1/chat', {
         method: 'POST',
@@ -103,7 +107,8 @@ export const useChat = () => {
           conversation_id: conversationId,
           user_id: 'zm-bad',
           model: 'deepseek-r1',
-          message: inputMessage
+          message: inputMessage,
+          parent_ids: parentIds
         }),
         signal: abortControllerRef.current.signal // 添加中止信号
       });
@@ -177,6 +182,18 @@ export const useChat = () => {
                           isThinkingExpanded: !isThinkingPhase, // 正文阶段折叠思考内容
                           isWaitingForFirstToken: false
                         }
+                      : msg
+                  )
+                );
+              }
+
+              // 处理消息ID（在流式响应结束时）
+              if (data.message_id && data.complete) {
+                // 保存助手消息的MongoDB ID
+                setMessages(prevMessages =>
+                  prevMessages.map(msg =>
+                    msg.id === assistantMessageId
+                      ? { ...msg, _id: data.message_id }
                       : msg
                   )
                 );

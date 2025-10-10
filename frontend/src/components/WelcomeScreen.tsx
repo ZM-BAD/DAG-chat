@@ -1,7 +1,4 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
 
 interface WelcomeScreenProps {
   inputMessage: string;
