@@ -23,7 +23,14 @@ function App() {
     handleNewDialogue,
     toggleThinkingExpansion,
     copyMessageToClipboard,
-    handleInterruptResponse
+    handleInterruptResponse,
+    deepThinkingEnabled,
+    searchEnabled,
+    selectedModel,
+    availableModels,
+    handleDeepThinkingChange,
+    handleSearchChange,
+    handleModelChange
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } = useDialogues();
@@ -76,6 +83,13 @@ function App() {
               handleInputChange={handleInputChange}
               handleKeyPress={handleKeyPress}
               handleSendMessage={handleSendMessage}
+              onDeepThinkingChange={handleDeepThinkingChange}
+              onSearchChange={handleSearchChange}
+              onModelChange={handleModelChange}
+              initialDeepThinking={deepThinkingEnabled}
+              initialSearch={searchEnabled}
+              initialModel={selectedModel}
+              availableModels={availableModels}
             />
           }
         />
@@ -88,6 +102,13 @@ function App() {
             handleKeyPress={handleKeyPress}
             handleSendMessage={handleSendMessage}
             handleInterruptResponse={handleInterruptResponse}
+            onDeepThinkingChange={handleDeepThinkingChange}
+            onSearchChange={handleSearchChange}
+            onModelChange={handleModelChange}
+            initialDeepThinking={deepThinkingEnabled}
+            initialSearch={searchEnabled}
+            initialModel={selectedModel}
+            availableModels={availableModels}
           />
         )}
         <footer className="footer">

@@ -10,9 +10,11 @@ from fastapi.responses import StreamingResponse
 
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
-from backend.deepseek import call_deepseek_r1, generate_title
 from backend.models.requests import ChatRequest
 from backend.models.schemas import MessageNode
+
+# 导入模型工厂以支持多模型调用
+from backend.api.services.model_factory import ModelFactory
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -22,7 +24,7 @@ router = APIRouter()
 
 @router.post("/chat")
 async def chat(request: ChatRequest):
-    logger.info(f"Chat endpoint accessed with user_id: {request.user_id}, parent_ids: {request.parent_ids}")
+    logger.info(f"Chat endpoint accessed with user_id: {request.user_id}, parent_ids: {request.parent_ids}, model: {request.model}")
 
     mysql_db = MySQLConnection()
     mongo_db = MongoDBConnection()
@@ -72,8 +74,18 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         full_content = ""
         full_reasoning = ""
 
+        # 通过模型工厂获取对应的模型服务
+        model_service = ModelFactory.get_service(request.model)
+        if not model_service:
+            yield f"data: {json.dumps({'error': f'不支持的模型: {request.model}'})}\n\n"
+            return
+
         # 流式处理每个数据块
-        async for chunk in call_deepseek_r1(chat_messages):
+        async for chunk in model_service.generate(chat_messages):
+            if chunk.get('error'):
+                yield f"data: {json.dumps(chunk)}\n\n"
+                return
+            
             content = chunk.get('content', '')
             reasoning = chunk.get('reasoning', '')
             full_content += content
@@ -120,9 +132,14 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         try:
             # 新对话
             if first_ask:
-                # 异步调用生成标题
-                generated_title = generate_title(request.message, full_content)
-                logger.info(f"Generated title: {generated_title}")
+                # 获取当前请求的模型服务，并调用其generate_title方法
+                model_service = ModelFactory.get_service(request.model)
+                if model_service:
+                    generated_title = model_service.generate_title(request.message, full_content)
+                    logger.info(f"Generated title: {generated_title}")
+                else:
+                    # 如果获取不到模型服务，使用默认方式生成标题
+                    generated_title = full_content[:20]
 
                 # 更新对话标题
                 success = mysql_db.execute_query(
@@ -159,7 +176,8 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         user_message_kwargs = {
             "conversation_id": request.conversation_id,
             "role": "user",
-            "content": request.message
+            "content": request.message,
+            "model": request.model
         }
         if request.parent_ids:
             user_message_kwargs["parent_ids"] = request.parent_ids
@@ -180,7 +198,8 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         ai_message_kwargs = {
             "conversation_id": request.conversation_id,
             "role": "assistant",
-            "content": full_content
+            "content": full_content,
+            "model": request.model
         }
         if full_reasoning:
             ai_message_kwargs["reasoning"] = full_reasoning

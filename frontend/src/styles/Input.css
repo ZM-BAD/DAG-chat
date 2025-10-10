@@ -1,9 +1,9 @@
 /* 输入区域样式 */
 .chat-input-wrapper {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 12px 16px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 16px 16px;
   background: white;
   border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -32,6 +32,8 @@
   overflow-y: auto;
   line-height: 1.5;
   transform-origin: bottom center;
+  /* 父容器现在是flex，输入框需要自己的容器来正确定位发送按钮 */
+  position: relative;
 }
 
 .message-input:focus {
@@ -129,4 +131,119 @@
   background: white;
   /* 确保正方形不会影响按钮大小 */
   box-sizing: border-box;
+}
+
+/* 功能按钮区域 */
+.input-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+/* 控制按钮通用样式 */
+.control-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  white-space: nowrap;
+}
+
+.control-button:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.control-button.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.control-button:active {
+  transform: scale(0.95);
+}
+
+/* 深度思考按钮样式 */
+.deep-thinking.active {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+}
+
+/* 搜索按钮样式 */
+.search.active {
+  background: #06b6d4;
+  border-color: #06b6d4;
+}
+
+/* 模型选择器样式 */
+.model-selector {
+  position: relative;
+}
+
+.model-dropdown {
+  appearance: none;
+  padding: 6px 28px 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.model-dropdown:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.model-dropdown:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+/* 下拉箭头 */
+.model-selector::after {
+  content: '▼';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .input-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .control-button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .model-dropdown {
+    min-width: 100px;
+    font-size: 11px;
+  }
 }

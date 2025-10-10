@@ -14,6 +14,8 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     model: str = "deepseek-r1"
     parent_ids: list[str] | None = None
+    deep_thinking: bool = False
+    search_enabled: bool = False
 
 
 class CreateConversationRequest(BaseModel):

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface WelcomeScreenProps {
   inputMessage: string;
@@ -7,6 +7,13 @@ interface WelcomeScreenProps {
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleKeyPress: (e: React.KeyboardEvent) => void;
   handleSendMessage: () => void;
+  onDeepThinkingChange?: (enabled: boolean) => void;
+  onSearchChange?: (enabled: boolean) => void;
+  onModelChange?: (model: string) => void;
+  initialDeepThinking?: boolean;
+  initialSearch?: boolean;
+  initialModel?: string;
+  availableModels?: {value: string; label: string}[];
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -15,8 +22,42 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   textareaRef,
   handleInputChange,
   handleKeyPress,
-  handleSendMessage
+  handleSendMessage,
+  onDeepThinkingChange,
+  onSearchChange,
+  onModelChange,
+  initialDeepThinking = false,
+  initialSearch = false,
+  initialModel = 'deepseek',
+  availableModels = []
 }) => {
+  const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(initialDeepThinking);
+  const [searchEnabled, setSearchEnabled] = useState(initialSearch);
+  const [selectedModel, setSelectedModel] = useState(initialModel);
+
+  const handleDeepThinkingToggle = () => {
+    const newValue = !deepThinkingEnabled;
+    setDeepThinkingEnabled(newValue);
+    if (onDeepThinkingChange) {
+      onDeepThinkingChange(newValue);
+    }
+  };
+
+  const handleSearchToggle = () => {
+    const newValue = !searchEnabled;
+    setSearchEnabled(newValue);
+    if (onSearchChange) {
+      onSearchChange(newValue);
+    }
+  };
+
+  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newModel = e.target.value;
+    setSelectedModel(newModel);
+    if (onModelChange) {
+      onModelChange(newModel);
+    }
+  };
   return (
     <div className="welcome-container">
       <div className="welcome-content">
@@ -40,6 +81,40 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           >
             {/* 按钮内容由CSS伪元素控制 */}
           </button>
+
+          {/* 功能按钮区域 */}
+          <div className="input-controls">
+            <button
+              className={`control-button deep-thinking ${deepThinkingEnabled ? 'active' : ''}`}
+              onClick={handleDeepThinkingToggle}
+              title="深度思考模式"
+            >
+              🧠 深度思考
+            </button>
+
+            <button
+              className={`control-button search ${searchEnabled ? 'active' : ''}`}
+              onClick={handleSearchToggle}
+              title="联网搜索"
+            >
+              🔍 联网搜索
+            </button>
+
+            <div className="model-selector">
+              <select
+                value={selectedModel}
+                onChange={handleModelChange}
+                className="model-dropdown"
+                title="选择模型"
+              >
+                {availableModels.map(model => (
+                  <option key={model.value} value={model.value}>
+                    {model.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </div>

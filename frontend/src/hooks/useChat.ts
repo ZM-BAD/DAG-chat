@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import axios, { AxiosResponse } from 'axios';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { Message, DialogueHistoryResponse } from '../types';
 
 export const useChat = () => {
@@ -7,8 +7,46 @@ export const useChat = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
+  const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('deepseek'); // 默认使用第一个可用模型
+  const [availableModels, setAvailableModels] = useState<{value: string; label: string}[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 获取可用模型列表
+  const fetchAvailableModels = useCallback(async (): Promise<void> => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/v1/models');
+      if (response.data.models) {
+        const models = response.data.models.map((model: any) => ({
+          value: model.name,
+          label: model.display_name
+        }));
+        setAvailableModels(models);
+
+        // 如果当前选择的模型不在列表中，选择第一个可用模型
+        if (!models.some((m: {value: string; label: string}) => m.value === selectedModel)) {
+          setSelectedModel(models[0]?.value || 'deepseek');
+        }
+      }
+    } catch (error) {
+      console.error('获取模型列表失败:', error);
+      // 使用默认模型列表作为降级方案
+      const defaultModels = [
+        { value: 'deepseek', label: 'DeepSeek' },
+        { value: 'qwen', label: 'Qwen' },
+        { value: 'kimi', label: 'Kimi' },
+        { value: 'glm', label: 'GLM' }
+      ];
+      setAvailableModels(defaultModels);
+    }
+  }, [selectedModel]);
+
+  // 组件加载时获取模型列表
+  useEffect(() => {
+    fetchAvailableModels();
+  }, [fetchAvailableModels]);
 
   // 中断大模型回答
   const handleInterruptResponse = (): void => {
@@ -66,7 +104,7 @@ export const useChat = () => {
       if (!conversationId) {
         const createResponse = await axios.post('http://localhost:8000/api/v1/create-conversation', {
           user_id: 'zm-bad',
-          model: 'deepseek-r1',
+          model: selectedModel,
           message: inputMessage
         });
         conversationId = createResponse.data.conversation_id;
@@ -106,9 +144,11 @@ export const useChat = () => {
         body: JSON.stringify({
           conversation_id: conversationId,
           user_id: 'zm-bad',
-          model: 'deepseek-r1',
+          model: selectedModel,
           message: inputMessage,
-          parent_ids: parentIds
+          parent_ids: parentIds,
+          deep_thinking: deepThinkingEnabled,
+          search_enabled: searchEnabled
         }),
         signal: abortControllerRef.current.signal // 添加中止信号
       });
@@ -126,6 +166,38 @@ export const useChat = () => {
       let fullContent = '';
       let fullReasoning = '';
       let isThinkingPhase = true; // 标记是否处于思考阶段
+
+      // 创建安全的更新函数来避免循环中的不安全引用
+      const updateThinkingContent = (currentReasoning: string) => {
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === assistantMessageId
+              ? {
+                  ...msg,
+                  thinkingContent: currentReasoning,
+                  isThinkingExpanded: true,
+                  isWaitingForFirstToken: false,
+                  content: ''
+                }
+              : msg
+          )
+        );
+      };
+
+      const updateContent = (currentContent: string, currentIsThinkingPhase: boolean) => {
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === assistantMessageId
+              ? {
+                  ...msg,
+                  content: currentContent,
+                  isThinkingExpanded: !currentIsThinkingPhase,
+                  isWaitingForFirstToken: false
+                }
+              : msg
+          )
+        );
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -148,19 +220,7 @@ export const useChat = () => {
                 isThinkingPhase = true; // 还在思考阶段
 
                 // 立即更新思考内容，实现逐token打字机效果
-                setMessages(prevMessages =>
-                  prevMessages.map(msg =>
-                    msg.id === assistantMessageId
-                      ? {
-                          ...msg,
-                          thinkingContent: fullReasoning,
-                          isThinkingExpanded: true, // 思考阶段自动展开
-                          isWaitingForFirstToken: false,
-                          content: '' // 思考阶段不显示正文
-                        }
-                      : msg
-                  )
-                );
+                updateThinkingContent(fullReasoning);
               }
 
               // 处理正式回答内容
@@ -173,18 +233,7 @@ export const useChat = () => {
                 fullContent += data.content;
 
                 // 立即更新内容，实现逐token打字机效果
-                setMessages(prevMessages =>
-                  prevMessages.map(msg =>
-                    msg.id === assistantMessageId
-                      ? {
-                          ...msg,
-                          content: fullContent,
-                          isThinkingExpanded: !isThinkingPhase, // 正文阶段折叠思考内容
-                          isWaitingForFirstToken: false
-                        }
-                      : msg
-                  )
-                );
+                updateContent(fullContent, isThinkingPhase);
               }
 
               // 处理消息ID（在流式响应结束时）
@@ -448,6 +497,24 @@ export const useChat = () => {
     }
   };
 
+  // 处理深度思考模式切换
+  const handleDeepThinkingChange = (enabled: boolean): void => {
+    setDeepThinkingEnabled(enabled);
+    console.log('深度思考模式:', enabled ? '开启' : '关闭');
+  };
+
+  // 处理联网搜索切换
+  const handleSearchChange = (enabled: boolean): void => {
+    setSearchEnabled(enabled);
+    console.log('联网搜索:', enabled ? '开启' : '关闭');
+  };
+
+  // 处理模型选择
+  const handleModelChange = (model: string): void => {
+    setSelectedModel(model);
+    console.log('选择模型:', model);
+  };
+
   return {
     messages,
     inputMessage,
@@ -462,6 +529,13 @@ export const useChat = () => {
     handleNewDialogue,
     toggleThinkingExpansion,
     copyMessageToClipboard,
-    handleInterruptResponse
+    handleInterruptResponse,
+    deepThinkingEnabled,
+    searchEnabled,
+    selectedModel,
+    availableModels,
+    handleDeepThinkingChange,
+    handleSearchChange,
+    handleModelChange
   };
 };
