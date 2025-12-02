@@ -32,35 +32,48 @@ class DeepSeekService(BaseModelService):
         """
         return "deepseek"
 
-    async def generate(self, messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, str], None]:
+    async def generate(self, messages: List[Dict[str, str]], deep_thinking: bool = False) -> AsyncGenerator[Dict[str, str], None]:
         """
         调用DeepSeek API生成流式响应
 
         参数:
             messages: 消息历史列表
+            deep_thinking: 是否使用思考模型
 
         返回:
             包含content和reasoning字段的异步生成器
         """
         try:
-            logger.info("Sending request to DeepSeek API")
+            logger.info(f"Sending request to DeepSeek API, deep_thinking: {deep_thinking}")
 
-            # 直接调用同步API
+            # 根据deep_thinking参数选择模型
+            model_name = "deepseek-reasoner" if deep_thinking else "deepseek-chat"
+
             response = self.client.chat.completions.create(
-                model="deepseek-reasoner",
+                model=model_name,
                 messages=messages,
                 stream=True
             )
 
             for chunk in response:
-                reasoning_chunk = chunk.choices[0].delta.reasoning_content or ""
-                content_chunk = chunk.choices[0].delta.content or ""
+                # 非思考模型没有reasoning_content字段，确保兼容性
+                reasoning_chunk = ""
+                content_chunk = ""
+
+                if deep_thinking:
+                    # 思考模型：处理reasoning_content和content
+                    reasoning_chunk = chunk.choices[0].delta.reasoning_content or ""
+                    content_chunk = chunk.choices[0].delta.content or ""
+                else:
+                    # 非思考模型：只处理content，reasoning保持为空
+                    content_chunk = chunk.choices[0].delta.content or ""
+
                 yield {
                     "content": content_chunk,
                     "reasoning": reasoning_chunk
                 }
 
-            logger.info("DeepSeek API调用成功")
+            logger.info(f"DeepSeek API调用成功，模型: {model_name}")
 
         except Exception as e:
             logger.error(f"DeepSeek API调用失败: {str(e)}")

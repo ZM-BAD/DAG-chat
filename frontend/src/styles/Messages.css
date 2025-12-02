@@ -103,6 +103,17 @@
   display: flex;
   gap: 12px;
   margin-left: 8px;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  max-height: 2000px; /* 足够大的值来容纳内容 */
+  opacity: 1;
+}
+
+/* 当思考内容被折叠时的状态 */
+.thinking-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
 }
 
 .thinking-border {

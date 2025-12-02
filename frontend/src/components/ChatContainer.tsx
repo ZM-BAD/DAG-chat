@@ -22,11 +22,14 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const previousMessagesLength = useRef(0);
 
   // 滚动到底部
-  const scrollToBottom = () => {
+  const scrollToBottom = (instant = false) => {
     if (messagesEndRef.current && shouldAutoScroll) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({
+        behavior: instant ? 'auto' : 'smooth'
+      });
     }
   };
 
@@ -60,7 +63,33 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
   // 当消息更新时，滚动到底部
   useEffect(() => {
-    scrollToBottom();
+    const currentLength = messages.length;
+    const previousLength = previousMessagesLength.current;
+
+    if (currentLength === 0) {
+      // 没有消息时不滚动
+      previousMessagesLength.current = 0;
+      return;
+    }
+
+    // 判断是否是历史对话加载（从无消息到有多条消息，或者消息数量大幅增加）
+    const isHistoryLoad = (
+      (previousLength === 0 && currentLength > 1) || // 从无消息到多条消息
+      (currentLength > previousLength + 2) // 消息数量突然增加很多
+    );
+
+    // 历史对话加载时直接跳转，新消息时平滑滚动
+    if (isHistoryLoad || isLoading) {
+      // 延迟一帧确保DOM更新完成
+      requestAnimationFrame(() => {
+        scrollToBottom(true);
+      });
+    } else if (currentLength > previousLength) {
+      // 新增消息时平滑滚动
+      scrollToBottom(false);
+    }
+
+    previousMessagesLength.current = currentLength;
   }, [messages, isLoading]);
 
   return (

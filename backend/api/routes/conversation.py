@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import datetime
 from typing import Optional, List
 
@@ -22,7 +23,6 @@ def create_conversation(request: CreateConversationRequest):
     """
     创建新的对话
     """
-    import uuid
     
     conversation_id = str(uuid.uuid4())
     mysql_db = MySQLConnection()
@@ -333,13 +333,22 @@ def get_dialogue_history(
             # 转换为前端需要的消息格式
             message_list = []
             for msg in messages:
-                message_list.append({
+                message_dict = {
                     "id": str(msg['_id']),
                     "content": msg['content'],
                     "role": msg['role'],
                     "parent_ids": msg.get('parent_ids', None),
                     "children": msg.get('children', None)
-                })
+                }
+
+                # 添加reasoning字段（如果存在）
+                if msg.get('reasoning'):
+                    message_dict["thinkingContent"] = msg['reasoning']
+                    # 对于历史对话，默认展开思考内容
+                    message_dict["isThinkingExpanded"] = True
+                    message_dict["isWaitingForFirstToken"] = False
+
+                message_list.append(message_dict)
             
             return {
                 "code": 0,

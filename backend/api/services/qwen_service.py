@@ -30,13 +30,14 @@ class QwenService(BaseModelService):
         """
         return "qwen"
     
-    async def generate(self, messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, str], None]:
+    async def generate(self, messages: List[Dict[str, str]], deep_thinking: bool = False) -> AsyncGenerator[Dict[str, str], None]:
         """
         调用Qwen API生成流式响应
-        
+
         参数:
             messages: 消息历史列表
-        
+            deep_thinking: 是否使用思考模型（Qwen暂不支持，保留参数兼容性）
+
         返回:
             包含content和reasoning字段的异步生成器
         """

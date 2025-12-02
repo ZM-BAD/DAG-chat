@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
 
@@ -13,8 +13,39 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   toggleThinkingExpansion,
   copyMessageToClipboard
 }) => {
+  const messageRef = useRef<HTMLDivElement>(null);
+  const isTogglingRef = useRef(false);
+
+  // 处理思考内容的展开/收起，保持滚动位置
+  const handleToggleThinking = () => {
+    if (isTogglingRef.current) return; // 防止重复点击
+
+    // 保存当前滚动位置
+    const scrollContainer = document.querySelector('.chat-container');
+    let scrollPosition = 0;
+
+    if (scrollContainer) {
+      scrollPosition = scrollContainer.scrollTop;
+    }
+
+    isTogglingRef.current = true;
+
+    // 执行展开/收起操作
+    toggleThinkingExpansion(message.id);
+
+    // 在下一个动画帧中恢复滚动位置
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollPosition;
+        }
+        isTogglingRef.current = false;
+      });
+    });
+  };
+
   return (
-    <div className={`message-wrapper ${message.role}`}>
+    <div ref={messageRef} className={`message-wrapper ${message.role}`}>
       <div className={`message ${message.role}`}>
         <div className="message-content">
           {message.role === 'assistant' ? (
@@ -25,7 +56,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                   <div className="thinking-header">
                     <button
                       className="thinking-toggle"
-                      onClick={() => toggleThinkingExpansion(message.id)}
+                      onClick={handleToggleThinking}
                       aria-label={message.isThinkingExpanded ? "折叠思考内容" : "展开思考内容"}
                     >
                       <span className="thinking-icon">
@@ -34,8 +65,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                       <span className="thinking-label">思考过程</span>
                     </button>
                   </div>
-                  {(message.isThinkingExpanded || message.isWaitingForFirstToken) && (
-                    <div className="thinking-content">
+                  <div className={`thinking-content ${!message.isThinkingExpanded && !message.isWaitingForFirstToken ? 'collapsed' : ''}`}>
                       <div className="thinking-border"></div>
                       <div className="thinking-text">
                         {message.isWaitingForFirstToken && !message.thinkingContent ? (
@@ -49,7 +79,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                         )}
                       </div>
                     </div>
-                  )}
                 </div>
               )}
 

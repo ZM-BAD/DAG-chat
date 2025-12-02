@@ -12,7 +12,7 @@ class ChatRequest(BaseModel):
     message: str
     user_id: str = "zm-bad"
     conversation_id: Optional[str] = None
-    model: str = "deepseek-r1"
+    model: str = "deepseek"
     parent_ids: list[str] | None = None
     deep_thinking: bool = False
     search_enabled: bool = False
@@ -20,4 +20,6 @@ class ChatRequest(BaseModel):
 
 class CreateConversationRequest(BaseModel):
     user_id: str = "zm-bad"
-    model: str = "deepseek-r1"
+    model: str = "deepseek"
+    deep_thinking: bool = False
+    search_enabled: bool = False

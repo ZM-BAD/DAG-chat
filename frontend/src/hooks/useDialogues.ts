@@ -93,7 +93,7 @@ export const useDialogues = () => {
         id: conversationId,
         user_id: 'zm-bad',
         title: title,
-        model: 'deepseek-r1',
+        model: 'deepseek',
         create_time: new Date().toISOString(),
         update_time: new Date().toISOString()
       };

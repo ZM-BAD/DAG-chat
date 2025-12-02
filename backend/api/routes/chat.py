@@ -81,11 +81,11 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
             return
 
         # 流式处理每个数据块
-        async for chunk in model_service.generate(chat_messages):
+        async for chunk in model_service.generate(chat_messages, request.deep_thinking):
             if chunk.get('error'):
                 yield f"data: {json.dumps(chunk)}\n\n"
                 return
-            
+
             content = chunk.get('content', '')
             reasoning = chunk.get('reasoning', '')
             full_content += content
