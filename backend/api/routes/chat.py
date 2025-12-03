@@ -22,6 +22,123 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def build_history_from_parent_ids(mongo_db: MongoDBConnection, parent_ids: list[str]) -> list[dict]:
+    """
+    根据parent_ids构建历史消息，通过向上溯源构建完整的对话路径
+
+    Args:
+        mongo_db: MongoDB连接实例
+        parent_ids: 起始父节点ID列表 (MongoDB ObjectId的hex字符串)
+
+    Returns:
+        按对话顺序排列的历史消息列表 [{"role": str, "content": str}, ...]
+    """
+    if not parent_ids:
+        return []
+
+    # 验证和转换ObjectId
+    try:
+        start_ids = [ObjectId(pid) for pid in parent_ids if pid]
+    except Exception as e:
+        logger.error(f"Invalid parent_ids: {parent_ids}, error: {e}")
+        return []
+
+    # 初始化数据结构
+    queue = start_ids.copy()
+    visited = set()
+    node_map = {}
+    max_depth = 2000  # 防止无限循环，支持超长对话历史（2000轮对话）
+    current_depth = 0
+
+    # BFS遍历父链
+    while queue and current_depth < max_depth:
+        batch_size = min(len(queue), 100)  # 批量查询优化
+        current_batch = queue[:batch_size]
+        queue = queue[batch_size:]
+
+        # 批量查询当前层级的节点
+        nodes = mongo_db.find('message_node', {'_id': {'$in': current_batch}})
+
+        for node in nodes:
+            node_id = str(node['_id'])
+            if node_id not in visited:
+                visited.add(node_id)
+                node_map[node_id] = node
+
+                # 将父节点加入队列
+                for parent_id in node.get('parent_ids', []):
+                    if parent_id and parent_id not in visited:
+                        try:
+                            queue.append(ObjectId(parent_id))
+                        except Exception:
+                            continue
+
+        current_depth += 1
+
+    # 检查是否因深度限制而停止遍历
+    if current_depth >= max_depth and queue:
+        logger.warning(f"Parent traversal stopped due to max_depth limit ({max_depth}). "
+                      f"This suggests an extremely long conversation or potential cycle. "
+                      f"Remaining {len(queue)} nodes unprocessed for parent_ids: {parent_ids}")
+
+    if not node_map:
+        logger.warning(f"No valid message nodes found for parent_ids: {parent_ids}")
+        return []
+
+    logger.info(f"Parent traversal completed: found {len(node_map)} messages with depth {current_depth}")
+
+    # 构建从根到叶的正确顺序 - 使用拓扑排序
+    def topological_sort():
+        in_degree = {}
+        graph = {}
+
+        # 构建图和计算入度
+        for msg_id, node in node_map.items():
+            parents = node.get('parent_ids', [])
+            # 只考虑在我们找到的节点中的父节点
+            valid_parents = [p for p in parents if p in node_map]
+            in_degree[msg_id] = len(valid_parents)
+            graph[msg_id] = valid_parents
+
+        # Kahn算法进行拓扑排序
+        queue = [msg_id for msg_id, degree in in_degree.items() if degree == 0]
+        result = []
+
+        while queue:
+            current = queue.pop(0)
+            result.append(current)
+
+            # 更新依赖当前节点的其他节点的入度
+            for msg_id, parents in graph.items():
+                if current in parents:
+                    in_degree[msg_id] -= 1
+                    if in_degree[msg_id] == 0:
+                        queue.append(msg_id)
+
+        # 如果还有节点没有被排序（存在循环），按时间排序添加
+        remaining = [msg_id for msg_id in node_map.keys() if msg_id not in result]
+        if remaining:
+            # 按创建时间排序剩余节点
+            remaining_sorted = sorted(remaining, key=lambda x: node_map[x].get('create_time', datetime.min))
+            result.extend(remaining_sorted)
+
+        return result
+
+    # 获取正确排序的消息ID
+    sorted_message_ids = topological_sort()
+
+    # 转换为标准格式
+    ordered_messages = []
+    for msg_id in sorted_message_ids:
+        node = node_map[msg_id]
+        ordered_messages.append({
+            "role": node['role'],
+            "content": node['content']
+        })
+
+    return ordered_messages
+
+
 @router.post("/chat")
 async def chat(request: ChatRequest):
     logger.info(f"Chat endpoint accessed with user_id: {request.user_id}, parent_ids: {request.parent_ids}, model: {request.model}")
@@ -33,15 +150,30 @@ async def chat(request: ChatRequest):
         chat_messages = []
         first_ask = True
 
-        # 如果是已有对话，从MongoDB查询历史
+        # 连接MongoDB
         if mongo_db.connect():
-            history = mongo_db.find('message_node', {'conversation_id': request.conversation_id},
-                                    sort=[('create_time', pymongo.ASCENDING)])
-            
-            # 如果history不为空，那么说明不是第一次问，需要将历史消息添加到chat_messages中
-            if history and len(history) > 0:
-                first_ask = False
-                chat_messages = [{"role": msg['role'], "content": msg['content']} for msg in history]
+            if request.parent_ids:
+                # 使用父链遍历构建历史
+                logger.info(f"Building history from parent_ids: {request.parent_ids}")
+                history_messages = build_history_from_parent_ids(mongo_db, request.parent_ids)
+                if history_messages:
+                    first_ask = False
+                    chat_messages = history_messages
+                    logger.info(f"Built history with {len(history_messages)} messages from parent chain")
+                else:
+                    logger.warning(f"No history found for parent_ids: {request.parent_ids}")
+            elif request.conversation_id:
+                # 回退到现有线性逻辑
+                history = mongo_db.find('message_node', {'conversation_id': request.conversation_id},
+                                        sort=[('create_time', pymongo.ASCENDING)])
+
+                # 如果history不为空，那么说明不是第一次问，需要将历史消息添加到chat_messages中
+                if history and len(history) > 0:
+                    first_ask = False
+                    chat_messages = [{"role": msg['role'], "content": msg['content']} for msg in history]
+                    logger.info(f"Built linear history with {len(history)} messages for conversation_id: {request.conversation_id}")
+            else:
+                logger.info("No parent_ids or conversation_id provided, starting new conversation")
 
         # 将当前用户消息添加到历史消息中
         chat_messages.append({"role": "user", "content": request.message})

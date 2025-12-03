@@ -131,9 +131,11 @@ export const useChat = () => {
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
 
-      // 获取上一条已保存的助手消息的_id作为parent_ids
-      const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && msg._id).pop();
-      const parentIds = lastAssistantMessage?._id ? [lastAssistantMessage._id] : [];
+      // 获取上一条已保存的助手消息的MongoDB ID作为parent_ids
+      // 优先使用_id字段（新对话完成后设置），其次使用id字段（历史对话）
+      const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && (msg._id || msg.id)).pop();
+      const mongoId = lastAssistantMessage?._id || lastAssistantMessage?.id;
+      const parentIds = mongoId ? [mongoId] : [];
 
       // 发送聊天请求并处理流式响应
       const response = await fetch('http://localhost:8000/api/v1/chat', {
