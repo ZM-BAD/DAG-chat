@@ -30,3 +30,4 @@ class MessageNode(BaseModel):
     reasoning: Optional[str] = None
     parent_ids: List[str] = []
     children: List[str] = []
+    model: Optional[str] = None  # 记录消息使用的模型

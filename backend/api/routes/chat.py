@@ -244,6 +244,64 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         yield f"data: {json.dumps({'error': '流式响应失败'})}\n\n"
 
 
+def update_conversation_models(mysql_db: MySQLConnection, conversation_id: str, new_model: str):
+    """
+    更新对话中使用的模型列表，避免重复
+
+    Args:
+        mysql_db: MySQL数据库连接对象
+        conversation_id: 对话ID
+        new_model: 新使用的模型名
+
+    Returns:
+        bool: 更新是否成功
+    """
+    try:
+        # 查询当前model字段
+        query = "SELECT model FROM t_conversations WHERE id = %s"
+        result = mysql_db.fetch_data(query, (conversation_id,))
+
+        if not result:
+            logger.error(f"Conversation {conversation_id} not found")
+            return False
+
+        # 安全地提取model字段
+        first_row = result[0] if len(result) > 0 else None
+        current_model = first_row[0] if first_row and len(first_row) > 0 else ""
+
+        # 如果当前model为空，直接设置为new_model
+        if not current_model:
+            updated_model = new_model
+        else:
+            # 确保current_model是字符串类型
+            current_model_str = str(current_model) if current_model else ""
+
+            # 将当前模型字符串按逗号分割成列表，去除空格
+            current_models = [model.strip() for model in current_model_str.split(',') if model.strip()]
+
+            # 如果新模型不在当前模型列表中，添加进去
+            if new_model not in current_models:
+                current_models.append(new_model)
+
+            # 重新组合成逗号分隔的字符串
+            updated_model = ','.join(current_models)
+
+        # 更新数据库
+        update_query = "UPDATE t_conversations SET model = %s, update_time = %s WHERE id = %s"
+        success = mysql_db.execute_query(update_query, (updated_model, datetime.now(), conversation_id))
+
+        if success:
+            logger.info(f"Updated conversation {conversation_id} models to: {updated_model}")
+        else:
+            logger.error(f"Failed to update conversation {conversation_id} models")
+
+        return success
+
+    except Exception as e:
+        logger.error(f"Error updating conversation models: {str(e)}", exc_info=True)
+        return False
+
+
 async def save_conversation_to_database(request: ChatRequest, full_content: str, full_reasoning: str, mysql_db,
                                         mongo_db, first_ask: bool):
     """
@@ -300,6 +358,11 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
                     logger.info("MySQL conversation update successful")
                 else:
                     logger.error("MySQL conversation update failed")
+
+            # 无论是对话还是新对话，都需要更新模型记录
+            if request.conversation_id:
+                update_conversation_models(mysql_db, request.conversation_id, request.model)
+
         except Exception as e:
             logger.error(f"MySQL operation failed: {str(e)}", exc_info=True)
 

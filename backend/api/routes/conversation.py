@@ -338,7 +338,8 @@ def get_dialogue_history(
                     "content": msg['content'],
                     "role": msg['role'],
                     "parent_ids": msg.get('parent_ids', None),
-                    "children": msg.get('children', None)
+                    "children": msg.get('children', None),
+                    "model": msg.get('model', None)
                 }
 
                 # 添加reasoning字段（如果存在）
