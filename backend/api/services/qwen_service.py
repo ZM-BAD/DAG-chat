@@ -1,13 +1,17 @@
-import asyncio
 import logging
-import json
-import requests
-from typing import List, Dict, Any, AsyncGenerator
+from typing import List, Dict, AsyncGenerator
+
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from config import QWEN_API_KEY, QWEN_API_BASE_URL
+
+from openai import OpenAI
+from openai.types.chat import ChatCompletionUserMessageParam
 
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
-
-from config import QWEN_API_KEY, QWEN_API_BASE_URL
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -18,10 +22,13 @@ class QwenService(BaseModelService):
     """
     Qwen模型服务实现
     """
-    
+
     def __init__(self):
-        self.api_key = QWEN_API_KEY
-        self.base_url = QWEN_API_BASE_URL
+        # 初始化OpenAI客户端
+        self.client = OpenAI(
+            api_key=QWEN_API_KEY,
+            base_url=QWEN_API_BASE_URL
+        )
     
     @classmethod
     def get_service_name(cls) -> str:
@@ -36,65 +43,56 @@ class QwenService(BaseModelService):
 
         参数:
             messages: 消息历史列表
-            deep_thinking: 是否使用思考模型（Qwen暂不支持，保留参数兼容性）
+            deep_thinking: 是否使用思考模型
 
         返回:
             包含content和reasoning字段的异步生成器
         """
         try:
-            logger.info("Sending request to Qwen API")
-            
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-            
-            data = {
-                "model": "qwen-plus",  # 使用Qwen的默认模型
+            logger.info(f"Sending request to Qwen API, deep_thinking: {deep_thinking}")
+
+            # 根据deep_thinking参数选择模型
+            if deep_thinking:
+                model_name = "qwen-plus"  # 深度思考模型
+                logger.info("使用深度思考模型: qwen-plus")
+            else:
+                model_name = "qwen3-max"  # 非深度思考模型
+                logger.info("使用非深度思考模型: qwen3-max")
+
+            # 构建请求参数
+            request_params = {
+                "model": model_name,
                 "messages": messages,
                 "stream": True
             }
-            
-            # 使用requests库发起请求，并设置stream=True
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None, 
-                lambda: requests.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=headers,
-                    json=data,
-                    stream=True
-                )
-            )
-            
-            # 处理流式响应
-            for chunk in response.iter_lines():
-                if chunk:
-                    # 去除data:前缀和可能的换行符
-                    chunk_str = chunk.decode('utf-8').strip()
-                    if chunk_str.startswith('data: '):
-                        chunk_str = chunk_str[6:]
-                    
-                    # 检查是否是结束标记
-                    if chunk_str == '[DONE]':
-                        break
-                    
-                    try:
-                        chunk_data = json.loads(chunk_str)
-                        # 提取内容
-                        content = ""
-                        if chunk_data.get('choices') and chunk_data['choices'][0].get('delta'):
-                            content = chunk_data['choices'][0]['delta'].get('content', '')
-                        
-                        yield {
-                            "content": content,
-                            "reasoning": ""  # Qwen可能不直接提供reasoning字段
-                        }
-                    except json.JSONDecodeError:
-                        logger.warning(f"Failed to parse chunk: {chunk_str}")
-            
-            logger.info("Qwen API调用成功")
-            
+
+            # 对于深度思考模型，添加thinking参数
+            if deep_thinking:
+                request_params["extra_body"] = {"enable_thinking": True}
+
+            response = self.client.chat.completions.create(**request_params)
+
+            for chunk in response:
+                # 非思考模型没有reasoning_content字段，确保兼容性
+                reasoning_chunk = ""
+                content_chunk = ""
+
+                if deep_thinking:
+                    # 思考模型：处理reasoning_content和content
+                    delta = chunk.choices[0].delta
+                    reasoning_chunk = getattr(delta, "reasoning_content", "") or ""
+                    content_chunk = delta.content or ""
+                else:
+                    # 非思考模型：只处理content，reasoning保持为空
+                    content_chunk = chunk.choices[0].delta.content or ""
+
+                yield {
+                    "content": content_chunk,
+                    "reasoning": reasoning_chunk
+                }
+
+            logger.info(f"Qwen API调用成功，模型: {model_name}")
+
         except Exception as e:
             logger.error(f"Qwen API调用失败: {str(e)}")
             yield {
@@ -105,40 +103,30 @@ class QwenService(BaseModelService):
     def generate_title(self, user_input: str, full_response: str) -> str:
         """
         根据用户输入和完整响应生成对话标题
+
+        使用qwen3-max模型生成不超过20个字的简洁标题
         """
         try:
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-            
             messages = [
-                {
-                    "role": "user",
-                    "content": f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}"
-                }
+                ChatCompletionUserMessageParam(
+                    role="user",
+                    content=f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}"
+                )
             ]
-            
-            data = {
-                "model": "qwen-plus",
-                "messages": messages,
-                "max_tokens": 20,
-                "temperature": 0.3
-            }
-            
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=data
+            response = self.client.chat.completions.create(
+                model="qwen3-max",
+                messages=messages,
+                temperature=0.3,
+                max_tokens=20,
             )
-            
-            response_data = response.json()
-            if response_data.get('choices') and response_data['choices'][0].get('message'):
-                title = response_data['choices'][0]['message'].get('content', '').strip("。\n")
+
+            # 清理响应中的多余符号和空格
+            content = response.choices[0].message.content
+            if content:
+                title = content.strip("。\n")
                 return title[:20]
-            
-            # 如果API返回异常，使用默认方式生成标题
-            return full_response[:20]
+            else:
+                return full_response[:20]
         except Exception as e:
             logger.error(f"标题生成失败: {str(e)}")
             return full_response[:20]
