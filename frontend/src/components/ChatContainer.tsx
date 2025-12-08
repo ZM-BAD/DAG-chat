@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Message } from '../types';
 import ChatMessage from './ChatMessage';
 
@@ -25,13 +25,13 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   const previousMessagesLength = useRef(0);
 
   // 滚动到底部
-  const scrollToBottom = (instant = false) => {
+  const scrollToBottom = useCallback((instant = false) => {
     if (messagesEndRef.current && shouldAutoScroll) {
       messagesEndRef.current.scrollIntoView({
         behavior: instant ? 'auto' : 'smooth'
       });
     }
-  };
+  }, [shouldAutoScroll]);
 
   // 监听滚动事件，判断用户是否手动滚动
   useEffect(() => {
@@ -90,7 +90,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     }
 
     previousMessagesLength.current = currentLength;
-  }, [messages, isLoading]);
+  }, [messages, isLoading, scrollToBottom]);
 
   return (
     <main className={`chat-container ${shouldShowWelcome ? 'welcome-mode' : ''}`}>

@@ -97,9 +97,9 @@ export const useChat = () => {
     setInputMessage('');
     setIsLoading(true);
 
-    try {
-      let conversationId = currentDialogueId;
+    let conversationId = currentDialogueId;
 
+    try {
       // 如果是新对话，先创建对话获取conversation_id
       if (!conversationId) {
         const createResponse = await axios.post('http://localhost:8000/api/v1/create-conversation', {
@@ -127,6 +127,7 @@ export const useChat = () => {
         id: assistantMessageId,
         content: '',
         role: 'assistant',
+        model: selectedModel, // 添加模型信息
         isWaitingForFirstToken: true // 设置等待首token状态
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
@@ -338,6 +339,16 @@ export const useChat = () => {
         abortControllerRef.current = null; // 清理AbortController
         // 发送消息后重置输入框高度
         resetTextareaHeight();
+
+        // 触发侧边栏刷新，更新对话的模型信息
+        if (conversationId) {
+          window.dispatchEvent(new CustomEvent('dialogueUpdated', {
+            detail: {
+              conversationId,
+              model: selectedModel
+            }
+          }));
+        }
       }
   };
 
@@ -373,6 +384,10 @@ export const useChat = () => {
     const maxRetries = 3;
     let retryCount = 0;
 
+    const waitForRetry = (delay: number): Promise<void> => {
+      return new Promise(resolve => setTimeout(resolve, delay));
+    };
+
     while (retryCount < maxRetries) {
       try {
         const response = await axios.get<DialogueHistoryResponse>('http://localhost:8000/api/v1/dialogue/history', {
@@ -393,7 +408,7 @@ export const useChat = () => {
 
         if (retryCount < maxRetries) {
           // 等待一段时间后重试
-          await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+          await waitForRetry(500 * retryCount);
         }
       }
     }

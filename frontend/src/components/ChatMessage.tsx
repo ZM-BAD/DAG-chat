@@ -1,6 +1,36 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
+
+// 模型Logo映射组件
+const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 32 }) => {
+  const getLogoPath = (modelName: string): string => {
+    const modelMap: { [key: string]: string } = {
+      'deepseek': 'deepseek',
+      'kimi': 'kimi',
+      'qwen': 'qwen',
+      'glm': 'zai'  // GLM模型对应zai.svg
+    };
+
+    const normalizedModel = modelName.toLowerCase();
+    const logoName = modelMap[normalizedModel] || 'deepseek'; // 默认使用deepseek logo
+
+    return `/assets/logo/${logoName}.svg`;
+  };
+
+  return (
+    <img
+      src={getLogoPath(model)}
+      alt={model}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain'
+      }}
+      className="message-avatar"
+    />
+  );
+};
 
 interface ChatMessageProps {
   message: Message;
@@ -16,6 +46,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   const messageRef = useRef<HTMLDivElement>(null);
   const isTogglingRef = useRef(false);
 
+  
   // 处理思考内容的展开/收起，保持滚动位置
   const handleToggleThinking = () => {
     if (isTogglingRef.current) return; // 防止重复点击
@@ -46,6 +77,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
   return (
     <div ref={messageRef} className={`message-wrapper ${message.role}`}>
+      {message.role === 'assistant' && message.model && (
+        <div className="message-avatar-wrapper">
+          <ModelLogo model={message.model} size={32} />
+        </div>
+      )}
       <div className={`message ${message.role}`}>
         <div className="message-content">
           {message.role === 'assistant' ? (

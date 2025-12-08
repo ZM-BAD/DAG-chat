@@ -2,6 +2,42 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import './styles/Sidebar.css';
 
+// 模型Logo映射组件
+const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 14 }) => {
+  const getLogoPath = (modelName: string): string => {
+    const modelMap: { [key: string]: string } = {
+      'deepseek': 'deepseek',
+      'kimi': 'kimi',
+      'qwen': 'qwen',
+      'glm': 'zai'  // GLM模型对应zai.svg
+    };
+
+    const normalizedModel = modelName.toLowerCase();
+    const logoName = modelMap[normalizedModel] || 'deepseek'; // 默认使用deepseek logo
+
+    return `/assets/logo/${logoName}.svg`;
+  };
+
+  return (
+    <img
+      src={getLogoPath(model)}
+      alt={model}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain'
+      }}
+      className="dialogue-model-logo"
+    />
+  );
+};
+
+// 解析多模型字符串并返回模型数组
+const parseMultipleModels = (modelString: string): string[] => {
+  if (!modelString) return [];
+  return modelString.split(',').map(m => m.trim()).filter(m => m);
+};
+
 // 常量定义
 const CURRENT_USER_ID = 'zm-bad';
 const MAX_TITLE_LENGTH = 64;
@@ -68,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onDialogueDeleted,
   onDialogueRenamed
 }) => {
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -174,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       console.error('删除对话失败:', error);
       alert('删除失败，请稍后重试');
     }
-  }, [selectedDialogueId]);
+  }, [onDialogueDeleted]);
 
   // 重命名对话
   const handleRenameDialogue = useCallback(async (dialogueId: string, newTitle: string) => {
@@ -212,7 +248,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       console.error('重命名对话失败:', error);
       alert('重命名失败，请稍后重试');
     }
-  }, []);
+  }, [onDialogueRenamed]);
 
   // 开始编辑标题
   const startEditing = useCallback((dialogue: Dialogue) => {
@@ -305,7 +341,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <span className="dialogue-time">
                           {new Date(dialogue.update_time).toLocaleDateString()}
                         </span>
-                        <span className="dialogue-model">{dialogue.model}</span>
+                        <div className="dialogue-model">
+                          {(() => {
+                            const models = parseMultipleModels(dialogue.model);
+                            return models.length > 0 ? (
+                              <div className="dialogue-model-logos">
+                                {models.map((model, index) => (
+                                  <ModelLogo
+                                    key={`${model}-${index}`}
+                                    model={model}
+                                    size={12}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="dialogue-model-text">{dialogue.model}</span>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </>
                   )}

@@ -227,9 +227,28 @@
 }
 
 .dialogue-model {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.1);
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 12px;
+  font-size: 11px;
+  min-width: 20px;
+}
+
+.dialogue-model-logos {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dialogue-model-logo {
+  /* 移除了滤镜和透明度设置，让logo保持原始颜色 */
+}
+
+.dialogue-model-text {
+  white-space: nowrap;
   font-size: 11px;
 }
 

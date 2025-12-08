@@ -14,6 +14,10 @@ export const useDialogues = () => {
       const maxRetries = 5;
       let retryCount = 0;
 
+      const waitForRetry = (delay: number): Promise<void> => {
+        return new Promise(resolve => setTimeout(resolve, delay));
+      };
+
       while (retryCount < maxRetries) {
         try {
           const response = await axios.get('/api/v1/dialogue/list', {
@@ -34,7 +38,7 @@ export const useDialogues = () => {
 
           if (retryCount < maxRetries) {
             // 等待一段时间后重试，使用指数退避
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            await waitForRetry(1000 * retryCount);
           } else {
             console.error('获取对话列表失败，使用模拟数据');
             // 如果所有重试都失败，使用模拟数据
@@ -129,6 +133,43 @@ export const useDialogues = () => {
     // 清理事件监听器
     return () => {
       window.removeEventListener('titleUpdated', handleTitleUpdated as EventListener);
+    };
+  }, []);
+
+  // 监听对话更新事件（模型变更）
+  useEffect(() => {
+    const handleDialogueUpdated = (event: CustomEvent) => {
+      const { conversationId, model } = event.detail;
+
+      // 更新对话列表中的模型信息，支持增量添加
+      setDialogues(prev => prev.map(dialogue => {
+        if (dialogue.id === conversationId) {
+          // 解析现有的模型列表
+          const existingModels = dialogue.model ? dialogue.model.split(',').map(m => m.trim()).filter(m => m) : [];
+
+          // 如果新模型不在列表中，则添加
+          if (!existingModels.includes(model)) {
+            const updatedModels = [...existingModels, model].join(', ');
+            return {
+              ...dialogue,
+              model: updatedModels,
+              update_time: new Date().toISOString()
+            };
+          }
+
+          // 如果模型已存在，则不更新
+          return dialogue;
+        }
+        return dialogue;
+      }));
+    };
+
+    // 添加事件监听器
+    window.addEventListener('dialogueUpdated', handleDialogueUpdated as EventListener);
+
+    // 清理事件监听器
+    return () => {
+      window.removeEventListener('dialogueUpdated', handleDialogueUpdated as EventListener);
     };
   }, []);
 

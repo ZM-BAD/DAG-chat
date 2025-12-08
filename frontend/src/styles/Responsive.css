@@ -52,6 +52,27 @@
   .message {
     max-width: 90%;
   }
+
+  /* 头像响应式样式 */
+  .message-avatar-wrapper {
+    width: 28px;
+    height: 28px;
+  }
+
+  .message-avatar-wrapper .message-avatar {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* 侧边栏模型logo响应式样式 */
+  .dialogue-model-logo {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .dialogue-model {
+    padding: 2px 4px;
+  }
   
   .header h1 {
     font-size: 20px;
@@ -74,5 +95,56 @@
   
   .welcome-container .chat-input-wrapper {
     max-width: 100%;
+  }
+}
+
+/* 更小屏幕的响应式设计 */
+@media (max-width: 480px) {
+  /* 更小的头像 */
+  .message-avatar-wrapper {
+    width: 24px;
+    height: 24px;
+  }
+
+  .message-avatar-wrapper .message-avatar {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* 更小的侧边栏logo */
+  .dialogue-model-logo {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .dialogue-model {
+    padding: 1px 3px;
+    min-width: 16px;
+  }
+
+  /* 模型选择器响应式调整 */
+  .custom-model-select {
+    min-width: 100px;
+  }
+
+  .custom-select-trigger {
+    padding: 4px 20px 4px 8px;
+    font-size: 10px;
+    min-height: 24px;
+  }
+
+  .selected-model-display .model-label {
+    font-size: 10px;
+  }
+
+  .custom-select-option {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .selected-model-display .model-logo,
+  .custom-select-option .model-logo {
+    width: 12px !important;
+    height: 12px !important;
   }
 }

@@ -192,6 +192,125 @@
   position: relative;
 }
 
+/* 自定义模型选择器样式 */
+.custom-model-select {
+  position: relative;
+  min-width: 140px;
+  user-select: none;
+}
+
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 28px 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  white-space: nowrap;
+  min-height: 28px;
+  position: relative;
+}
+
+.custom-select-trigger:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.custom-select-trigger:focus,
+.custom-select-trigger.active {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.selected-model-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.selected-model-display .model-label {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  color: #64748b;
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.select-arrow.open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.custom-select-dropdown.drop-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.custom-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.custom-select-option:last-child {
+  border-bottom: none;
+}
+
+.custom-select-option:hover {
+  background: #f8f9fa;
+  color: #475569;
+}
+
+.custom-select-option.selected {
+  background: #667eea;
+  color: white;
+}
+
+.custom-select-option.selected:hover {
+  background: #5a67d8;
+}
+
+.custom-select-option .model-logo {
+  flex-shrink: 0;
+}
+
 .model-dropdown {
   appearance: none;
   padding: 6px 28px 6px 12px;
@@ -244,6 +363,25 @@
 
   .model-dropdown {
     min-width: 100px;
+    font-size: 11px;
+  }
+
+  .custom-model-select {
+    min-width: 120px;
+  }
+
+  .custom-select-trigger {
+    padding: 5px 24px 5px 10px;
+    font-size: 11px;
+    min-height: 26px;
+  }
+
+  .selected-model-display .model-label {
+    font-size: 11px;
+  }
+
+  .custom-select-option {
+    padding: 6px 10px;
     font-size: 11px;
   }
 }

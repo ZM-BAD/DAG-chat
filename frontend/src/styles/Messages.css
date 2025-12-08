@@ -206,6 +206,33 @@
 
 .message-wrapper.assistant {
   align-items: flex-start;
+  flex-direction: row;
+  gap: 8px;
+}
+
+/* 头像包装器样式 */
+.message-avatar-wrapper {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 8px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.message-avatar-wrapper .message-avatar {
+  border-radius: 6px;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+/* 为有头像的assistant消息调整样式 */
+.message-wrapper.assistant .message {
+  flex: 1;
 }
 
 /* 消息操作区域样式 */
