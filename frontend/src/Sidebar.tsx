@@ -354,9 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                   />
                                 ))}
                               </div>
-                            ) : (
-                              <span className="dialogue-model-text">{dialogue.model}</span>
-                            );
+                            ) : null;
                           })()}
                         </div>
                       </div>

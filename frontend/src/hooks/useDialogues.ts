@@ -93,11 +93,12 @@ export const useDialogues = () => {
       const { conversationId, title } = event.detail;
 
       // 立即在对话列表中添加新对话
+      // 初始时不设置模型，只有当模型实际回答后才显示logo
       const newDialogue: Dialogue = {
         id: conversationId,
         user_id: 'zm-bad',
         title: title,
-        model: 'deepseek',
+        model: '', // 空字符串表示还没有模型回答
         create_time: new Date().toISOString(),
         update_time: new Date().toISOString()
       };

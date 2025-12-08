@@ -114,7 +114,11 @@ class GLMService(BaseModelService):
             ]
 
             response = self.client.chat.completions.create(
-                model="glm-4.6", messages=messages, max_tokens=20, temperature=0.3
+                model="glm-4.6",
+                messages=messages,
+                max_tokens=20,
+                temperature=0.3,
+                thinking={"type": "disabled"}  # 明确设置为非思考模式
             )
 
             if (
