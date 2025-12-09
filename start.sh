@@ -128,10 +128,15 @@ start_backend() {
     echo "正在启动后端服务..."
     cd backend
     echo "安装Python依赖..."
+    # 检查是否在虚拟环境中，如果没有则激活
+    if [ -z "$VIRTUAL_ENV" ] && [ -d "../.venv" ]; then
+        echo "激活虚拟环境..."
+        source ../.venv/bin/activate
+    fi
     pip install -r requirements.txt
     echo "启动后端服务器..."
     echo "后端将在 http://localhost:8000 上运行"
-    python run_api.py &
+    python3 run_api.py &
     BACKEND_PID=$!
     cd ..
     
