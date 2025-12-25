@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import './styles/Sidebar.css';
 
 // 模型Logo映射组件
@@ -41,7 +42,6 @@ const parseMultipleModels = (modelString: string): string[] => {
 // 常量定义
 const CURRENT_USER_ID = 'zm-bad';
 const MAX_TITLE_LENGTH = 64;
-const DEFAULT_TITLE = '未命名对话';
 
 // 定义对话接口
 interface Dialogue {
@@ -104,11 +104,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   onDialogueDeleted,
   onDialogueRenamed
 }) => {
+  const { t } = useTranslation();
   const [loading] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<'bottom' | 'top'>('bottom');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -187,7 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // 删除对话
   const handleDeleteDialogue = useCallback(async (dialogueId: string) => {
-    if (!window.confirm('确定要删除这个对话吗？此操作不可撤销。')) {
+    if (!window.confirm(t('dialogue.deleteConfirm'))) {
       return;
     }
 
@@ -204,11 +206,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         setOpenMenuId(null);
         onDialogueDeleted?.();
       } else {
-        alert('删除失败：' + response.data.message);
+        alert(t('dialogue.deleteFailed') + response.data.message);
       }
     } catch (error) {
       console.error('删除对话失败:', error);
-      alert('删除失败，请稍后重试');
+      alert(t('dialogue.deleteFailedRetry'));
     }
   }, [onDialogueDeleted]);
 
@@ -217,12 +219,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     const trimmedTitle = newTitle.trim();
 
     if (!trimmedTitle) {
-      alert('标题不能为空');
+      alert(t('dialogue.titleCannotBeEmpty'));
       return;
     }
 
     if (trimmedTitle.length > MAX_TITLE_LENGTH) {
-      alert(`标题长度不能超过${MAX_TITLE_LENGTH}个字符`);
+      alert(t('dialogue.titleTooLong', { maxLength: MAX_TITLE_LENGTH }));
       return;
     }
 
@@ -242,11 +244,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         setOpenMenuId(null);
         onDialogueRenamed?.();
       } else {
-        alert('重命名失败：' + response.data.message);
+        alert(t('dialogue.renameFailed') + response.data.message);
       }
     } catch (error) {
       console.error('重命名对话失败:', error);
-      alert('重命名失败，请稍后重试');
+      alert(t('dialogue.renameFailedRetry'));
     }
   }, [onDialogueRenamed]);
 
@@ -285,14 +287,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className="sidebar">
       <div className="sidebar-branding">
         <h3>UniformLLM</h3>
-        <p>一个统一的大语言模型交互平台</p>
+        <p>{t('sidebar.description')}</p>
       </div>
       <div className="sidebar-header">
-        <h2>我的对话</h2>
+        <h2>{t('sidebar.title')}</h2>
         <button 
           className="new-dialogue-button" 
           onClick={handleNewDialogue}
-          title="新建对话"
+          title={t('chat.newChat')}
         >
           +
         </button>
@@ -300,9 +302,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       <div className="dialogue-list" ref={listRef}>
         {loading ? (
-          <div className="loading">加载中...</div>
+          <div className="loading">{t('sidebar.loading')}</div>
         ) : dialogues.length === 0 ? (
-          <div className="empty-state">暂无对话</div>
+          <div className="empty-state">{t('sidebar.empty')}</div>
         ) : (
           [
             ...dialogues.map(dialogue => (
@@ -336,7 +338,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     />
                   ) : (
                     <>
-                      <div className="dialogue-title">{dialogue.title || DEFAULT_TITLE}</div>
+                      <div className="dialogue-title">{dialogue.title || t('dialogue.defaultTitle')}</div>
                       <div className="dialogue-meta">
                         <span className="dialogue-time">
                           {new Date(dialogue.update_time).toLocaleDateString()}
@@ -362,45 +364,62 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </div>
                 <div className="dialogue-actions">
-                  <button
-                    className="dialogue-more-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(openMenuId === dialogue.id ? null : dialogue.id);
-                    }}
-                    title="更多操作"
-                  >
-                    <MoreIcon />
-                  </button>
-                  {openMenuId === dialogue.id && (
-                    <div className="dialogue-menu">
                       <button
-                        className="dialogue-menu-item"
+                        className="dialogue-more-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          startEditing(dialogue);
+                          
+                          // 计算菜单位置
+                          const buttonElement = e.currentTarget;
+                          const dialogueItemElement = buttonElement.closest('.dialogue-item');
+                          if (dialogueItemElement) {
+                            const rect = dialogueItemElement.getBoundingClientRect();
+                            const viewportHeight = window.innerHeight;
+                            const menuHeight = 80; // 预估菜单高度
+                            
+                            // 判断显示在底部是否会溢出屏幕
+                            if (rect.bottom + menuHeight > viewportHeight) {
+                              setMenuPosition('top');
+                            } else {
+                              setMenuPosition('bottom');
+                            }
+                          }
+                          
+                          setOpenMenuId(openMenuId === dialogue.id ? null : dialogue.id);
                         }}
+                        title={t('sidebar.moreActions')}
                       >
-                        <EditIcon />
-                        重命名
+                        <MoreIcon />
                       </button>
-                      <button
-                        className="dialogue-menu-item delete"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteDialogue(dialogue.id);
-                        }}
-                      >
-                        <TrashIcon />
-                        删除
-                      </button>
-                    </div>
-                  )}
+                      {openMenuId === dialogue.id && (
+                        <div className={`dialogue-menu ${menuPosition === 'top' ? 'dialogue-menu-top' : ''}`}>
+                          <button
+                            className="dialogue-menu-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditing(dialogue);
+                            }}
+                          >
+                            <EditIcon />
+                            {t('dialogue.rename')}
+                          </button>
+                          <button
+                            className="dialogue-menu-item delete"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDialogue(dialogue.id);
+                            }}
+                          >
+                            <TrashIcon />
+                            {t('dialogue.delete')}
+                          </button>
+                        </div>
+                      )}
                 </div>
               </div>
             )),
             // 显示加载更多的状态
-            loadingMore && <div className="loading-more">加载更多...</div>
+            loadingMore && <div className="loading-more">{t('sidebar.loadingMore')}</div>
           ]
         )}
       </div>

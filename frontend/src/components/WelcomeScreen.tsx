@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
 const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 16 }) => {
@@ -160,6 +161,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   initialModel = 'deepseek',
   availableModels = []
 }) => {
+  const { t } = useTranslation();
   const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(initialDeepThinking);
   const [searchEnabled, setSearchEnabled] = useState(initialSearch);
   const [selectedModel, setSelectedModel] = useState(initialModel);
@@ -189,19 +191,19 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   };
   return (
     <div className="welcome-container">
-      <div className="welcome-content">
-        <h2 className="welcome-title">今天有什么可以帮到你？</h2>
-        <div className="chat-input-wrapper">
-          <textarea
-            ref={textareaRef}
-            value={inputMessage}
-            onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
-            placeholder="输入您的消息..."
-            disabled={isLoading}
-            className="message-input"
-            rows={1}
-          />
+        <div className="welcome-content">
+          <h2 className="welcome-title">{t('welcome.title')}</h2>
+          <div className="chat-input-wrapper">
+            <textarea
+              ref={textareaRef}
+              value={inputMessage}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              placeholder={t('chat.placeholder')}
+              disabled={isLoading}
+              className="message-input"
+              rows={1}
+            />
           <button
             onClick={handleSendMessage}
             disabled={isLoading}
@@ -216,17 +218,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <button
               className={`control-button deep-thinking ${deepThinkingEnabled ? 'active' : ''}`}
               onClick={handleDeepThinkingToggle}
-              title="深度思考模式"
+              title={t('chat.deepThinkingTitle')}
             >
-              🧠 深度思考
+              🧠 {t('chat.deepThinking')}
             </button>
 
             <button
               className={`control-button search ${searchEnabled ? 'active' : ''}`}
               onClick={handleSearchToggle}
-              title="联网搜索"
+              title={t('chat.searchTitle')}
             >
-              🔍 联网搜索
+              🔍 {t('chat.search')}
             </button>
 
             <div className="model-selector">

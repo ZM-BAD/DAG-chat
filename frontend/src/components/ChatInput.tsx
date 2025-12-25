@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
 const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 16 }) => {
@@ -160,6 +161,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   initialModel = 'deepseek',
   availableModels = []
 }) => {
+  const { t } = useTranslation();
   const isInputEmpty = inputMessage.trim() === '';
   const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(initialDeepThinking);
   const [searchEnabled, setSearchEnabled] = useState(initialSearch);
@@ -206,7 +208,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         value={inputMessage}
         onChange={handleInputChange}
         onKeyPress={handleKeyPress}
-        placeholder="输入您的消息..."
+        placeholder={t('chat.placeholder')}
         disabled={isLoading}
         className="message-input"
         rows={1}
@@ -225,17 +227,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <button
           className={`control-button deep-thinking ${deepThinkingEnabled ? 'active' : ''}`}
           onClick={handleDeepThinkingToggle}
-          title="深度思考模式"
+          title={t('chat.deepThinkingTitle')}
         >
-          🧠 深度思考
+          🧠 {t('chat.deepThinking')}
         </button>
 
         <button
           className={`control-button search ${searchEnabled ? 'active' : ''}`}
           onClick={handleSearchToggle}
-          title="联网搜索"
+          title={t('chat.searchTitle')}
         >
-          🔍 联网搜索
+          🔍 {t('chat.search')}
         </button>
 
         <div className="model-selector">

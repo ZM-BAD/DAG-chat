@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
+import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
 const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 32 }) => {
@@ -43,6 +44,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   toggleThinkingExpansion,
   copyMessageToClipboard
 }) => {
+  const { t } = useTranslation();
   const messageRef = useRef<HTMLDivElement>(null);
   const isTogglingRef = useRef(false);
 
@@ -93,12 +95,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                     <button
                       className="thinking-toggle"
                       onClick={handleToggleThinking}
-                      aria-label={message.isThinkingExpanded ? "折叠思考内容" : "展开思考内容"}
+                      aria-label={message.isThinkingExpanded ? t('chat.collapseThinking') : t('chat.expandThinking')}
                     >
                       <span className="thinking-icon">
                         {message.isThinkingExpanded ? '▼' : '▶'}
                       </span>
-                      <span className="thinking-label">思考过程</span>
+                      <span className="thinking-label">{t('chat.thinkingProcess')}</span>
                     </button>
                   </div>
                   <div className={`thinking-content ${!message.isThinkingExpanded && !message.isWaitingForFirstToken ? 'collapsed' : ''}`}>

@@ -1,0 +1,42 @@
+{
+  "welcome": {
+    "title": "How can I help you today?",
+    "subtitle": "Your unified interface for multiple AI models",
+    "description": "Select a model and start chatting with AI!"
+  },
+  "chat": {
+    "placeholder": "Type your message...",
+    "send": "Send",
+    "clear": "Clear",
+    "newChat": "New Chat",
+    "model": "Model: {{model}}",
+    "deepThinking": "Deep Thinking",
+    "search": "Web Search",
+    "deepThinkingTitle": "Deep Thinking Mode",
+    "searchTitle": "Web Search",
+    "thinkingProcess": "Thinking Process",
+    "collapseThinking": "Collapse Thinking",
+    "expandThinking": "Expand Thinking"
+  },
+  "dialogue": {
+    "defaultTitle": "Untitled Dialogue",
+    "newDialogue": "New Dialogue",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this conversation? This action cannot be undone.",
+    "deleteFailed": "Delete failed: ",
+    "deleteFailedRetry": "Delete failed, please try again later",
+    "renameFailed": "Rename failed: ",
+    "renameFailedRetry": "Rename failed, please try again later",
+    "titleCannotBeEmpty": "Title cannot be empty",
+    "titleTooLong": "Title cannot exceed {{maxLength}} characters"
+  },
+  "sidebar": {
+    "title": "My Conversations",
+    "description": "A unified large language model interaction platform",
+    "empty": "No conversations yet",
+    "loading": "Loading...",
+    "moreActions": "More Actions",
+    "loadingMore": "Loading more..."
+  }
+}

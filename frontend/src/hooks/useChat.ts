@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { Message, DialogueHistoryResponse } from '../types';
 
 export const useChat = () => {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -116,7 +118,7 @@ export const useChat = () => {
           window.dispatchEvent(new CustomEvent('dialogueCreated', {
             detail: {
               conversationId,
-              title: '未命名对话'
+              title: t('dialogue.defaultTitle')
             }
           }));
         }, 100);
@@ -285,7 +287,7 @@ export const useChat = () => {
                 (dialogue: any) => dialogue.id === conversationId
               );
 
-              if (updatedDialogue && updatedDialogue.title && updatedDialogue.title !== '未命名对话') {
+              if (updatedDialogue && updatedDialogue.title && updatedDialogue.title !== t('dialogue.defaultTitle')) {
                 // 触发标题更新事件
                 window.dispatchEvent(new CustomEvent('titleUpdated', {
                   detail: {

@@ -1,0 +1,42 @@
+{
+  "welcome": {
+    "title": "今天有什么可以帮到你？",
+    "subtitle": "您的多 AI 模型统一界面",
+    "description": "选择一个模型并开始与 AI 聊天！"
+  },
+  "chat": {
+    "placeholder": "输入您的消息...",
+    "send": "发送",
+    "clear": "清除",
+    "newChat": "新建聊天",
+    "model": "模型: {{model}}",
+    "deepThinking": "深度思考",
+    "search": "联网搜索",
+    "deepThinkingTitle": "深度思考模式",
+    "searchTitle": "联网搜索",
+    "thinkingProcess": "思考过程",
+    "collapseThinking": "折叠思考",
+    "expandThinking": "展开思考"
+  },
+  "dialogue": {
+    "defaultTitle": "未命名对话",
+    "newDialogue": "新对话",
+    "rename": "重命名",
+    "delete": "删除",
+    "deleteConfirm": "确定要删除这个对话吗？此操作不可撤销。",
+    "deleteFailed": "删除失败：",
+    "deleteFailedRetry": "删除失败，请稍后重试",
+    "renameFailed": "重命名失败：",
+    "renameFailedRetry": "重命名失败，请稍后重试",
+    "titleCannotBeEmpty": "标题不能为空",
+    "titleTooLong": "标题长度不能超过{{maxLength}}个字符"
+  },
+  "sidebar": {
+    "title": "我的对话",
+    "description": "一个统一的大语言模型交互平台",
+    "empty": "暂无对话",
+    "loading": "加载中...",
+    "moreActions": "更多操作",
+    "loadingMore": "加载更多..."
+  }
+}

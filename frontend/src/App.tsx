@@ -6,6 +6,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ChatContainer from './components/ChatContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatInput from './components/ChatInput';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import './App.css';
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
         onDialogueRenamed={handleDialogueRenamed}
       />
       <div className="main-content">
+        <LanguageSwitcher className="language-switcher-top" />
         {!shouldShowWelcome && (
           <ChatHeader title={currentTitle} />
         )}

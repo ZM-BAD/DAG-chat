@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { Dialogue, DialogueListResponse } from '../types';
 
-// 默认标题常量
-const DEFAULT_TITLE = '未命名对话';
-
 export const useDialogues = () => {
+  const { t } = useTranslation();
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
 
   // 获取对话列表
@@ -78,13 +77,13 @@ export const useDialogues = () => {
   // 获取当前对话的标题
   const getCurrentDialogueTitle = (currentDialogueId: string | null) => {
     if (!currentDialogueId) {
-      return '新对话';
+      return t('dialogue.newDialogue');
     }
 
     const currentDialogue = dialogues.find(dialogue => dialogue.id === currentDialogueId);
     // 如果标题为空，使用默认标题
     const title = currentDialogue ? currentDialogue.title : '';
-    return title || DEFAULT_TITLE;
+    return title || t('dialogue.defaultTitle');
   };
 
   // 监听对话创建事件

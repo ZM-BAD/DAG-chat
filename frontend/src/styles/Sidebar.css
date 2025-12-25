@@ -155,7 +155,6 @@
 /* 操作菜单 */
 .dialogue-menu {
   position: absolute;
-  top: 100%;
   right: 0;
   background: white;
   border: 1px solid #e0e0e0;
@@ -164,6 +163,19 @@
   z-index: 1000;
   min-width: 120px;
   overflow: hidden;
+}
+
+/* 菜单默认显示在下方 */
+.dialogue-menu {
+  top: 100%;
+  margin-top: 4px;
+}
+
+/* 菜单显示在上方 */
+.dialogue-menu-top {
+  bottom: 100%;
+  margin-bottom: 4px;
+  top: auto;
 }
 
 .dialogue-menu-item {
