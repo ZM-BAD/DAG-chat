@@ -15,6 +15,55 @@
   z-index: 90;
 }
 
+/* 分支问引用样式 */
+.branch-citation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f4ff;
+  border: 1px solid #667eea;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #4a5568;
+}
+
+.branch-citation-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.branch-citation-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branch-citation-close {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.branch-citation-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #667eea;
+}
+
 .message-input {
   width: 100%;
   height: auto;

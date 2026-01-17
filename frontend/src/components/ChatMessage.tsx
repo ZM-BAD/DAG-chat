@@ -37,12 +37,16 @@ interface ChatMessageProps {
   message: Message;
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => void;
+  onBranchClick?: (parentId: string, parentContent: string) => void;
+  parentMessage?: Message | null;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
   toggleThinkingExpansion,
-  copyMessageToClipboard
+  copyMessageToClipboard,
+  onBranchClick,
+  parentMessage
 }) => {
   const { t } = useTranslation();
   const messageRef = useRef<HTMLDivElement>(null);
@@ -77,6 +81,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     });
   };
 
+  // 处理分支问按钮点击
+  const handleBranchClick = () => {
+    if (onBranchClick && parentMessage) {
+      const parentId = parentMessage._id || parentMessage.id;
+      const parentContent = parentMessage.content.substring(0, 10);
+      onBranchClick(parentId, parentContent);
+    }
+  };
+
   return (
     <div ref={messageRef} className={`message-wrapper ${message.role}`}>
       {message.role === 'assistant' && message.model && (
@@ -85,11 +98,21 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         </div>
       )}
       <div className={`message ${message.role}`}>
+        {message.role === 'user' && onBranchClick && parentMessage && (
+          <button
+            className="branch-button"
+            onClick={handleBranchClick}
+            title="创建分支问"
+            aria-label="创建分支问"
+          >
+            <img src="/assets/branch.svg" alt="分支" className="branch-icon" />
+          </button>
+        )}
         <div className="message-content">
           {message.role === 'assistant' ? (
             <div className="assistant-content">
-              {/* 思考内容区域 */}
-              {(message.thinkingContent || message.isWaitingForFirstToken) && (
+              {/* 思考内容区域 - 只有在启用了深度思考且有思考内容或等待首token时才显示 */}
+              {message.deepThinkingEnabled && (message.thinkingContent || message.isWaitingForFirstToken) && (
                 <div className="thinking-section">
                   <div className="thinking-header">
                     <button

@@ -11,6 +11,7 @@
   align-self: flex-end;
   background: #edf3fe;
   color: black;
+  position: relative;
 }
 
 .message.assistant {
@@ -198,10 +199,47 @@
   flex-direction: column;
   gap: 4px;
   margin-bottom: 8px;
+  position: relative;
 }
 
 .message-wrapper.user {
   align-items: flex-end;
+}
+
+/* 分支按钮样式 */
+.branch-button {
+  position: absolute;
+  right: 100%;
+  top: 8px;
+  margin-right: 4px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.branch-button:hover {
+  background: #f5f5f5;
+  border-color: #667eea;
+  transform: scale(1.05);
+}
+
+.message.user:hover .branch-button {
+  opacity: 1;
+}
+
+.branch-button .branch-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .message-wrapper.assistant {
@@ -249,6 +287,19 @@
   opacity: 1;
 }
 
+/* 为assistant消息重新定位复制按钮到底部左侧 */
+.message-wrapper.assistant .message-actions {
+  position: absolute;
+  bottom: 4px;
+  left: 8px;
+  justify-content: flex-start;
+}
+
+/* 为assistant消息wrapper添加相对定位 */
+.message-wrapper.assistant {
+  position: relative;
+}
+
 /* 复制按钮样式 */
 .copy-button {
   background: transparent;
@@ -279,4 +330,112 @@
 .copy-button svg {
   width: 14px;
   height: 14px;
+}
+
+/* 对话分支标签页样式 */
+.conversation-branch-tabs {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.tabs-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 2px;
+  max-width: 100%;
+  align-items: flex-start;
+}
+
+.branch-tab {
+  flex: 0 1 auto;
+  min-width: 120px; /* 确保至少能显示6个字符 */
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  color: #666;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  height: auto;
+  min-height: 32px; /* 确保一行文字的高度 */
+  display: flex;
+  align-items: center;
+}
+
+.branch-tab:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: #333;
+}
+
+.branch-tab.active {
+  background: white;
+  color: #333;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.branch-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.branch-tab.active .branch-icon {
+  opacity: 1;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .branch-tab {
+    font-size: 11px;
+    padding: 6px 10px;
+    min-width: 100px;
+    min-height: 28px;
+  }
+
+  .branch-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .tab-label {
+    gap: 4px;
+  }
+
+  .tabs-container {
+    gap: 1px;
+    padding: 1px;
+  }
+}
+
+/* 当标签数量很多时的布局调整 */
+.branch-tab:nth-child(n+7) {
+  min-width: 100px; /* 第7个以后的标签可以稍微窄一点 */
+}
+
+/* 滚动锚点样式 */
+.scroll-anchor {
+  height: 1px;
+  width: 100%;
+  flex-shrink: 0;
 }

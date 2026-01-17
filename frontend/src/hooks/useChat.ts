@@ -16,6 +16,10 @@ export const useChat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // 分支问状态
+  const [branchParentId, setBranchParentId] = useState<string | null>(null);
+  const [branchParentContent, setBranchParentContent] = useState<string>('');
+
   // 获取可用模型列表
   const fetchAvailableModels = useCallback(async (): Promise<void> => {
     try {
@@ -77,6 +81,23 @@ export const useChat = () => {
     }
   };
 
+  // 处理分支问按钮点击
+  const handleBranchClick = (parentId: string, parentContent: string): void => {
+    // 分支问只能有一个parent_id，覆盖之前的值
+    setBranchParentId(parentId);
+    setBranchParentContent(parentContent);
+    // 聚焦到输入框
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  // 清除分支问状态
+  const clearBranchState = (): void => {
+    setBranchParentId(null);
+    setBranchParentContent('');
+  };
+
   const handleSendMessage = async (): Promise<void> => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -89,7 +110,8 @@ export const useChat = () => {
     const newUserMessage: Message = {
       id: `msg-${Date.now()}`,
       content: inputMessage,
-      role: 'user'
+      role: 'user',
+      parent_ids: branchParentId ? [branchParentId] : []
     };
 
     // 创建助手的消息ID，在更大作用域中使用
@@ -125,20 +147,28 @@ export const useChat = () => {
       }
 
       // 创建助手的消息占位符
-      const assistantMessage: Message = {
-        id: assistantMessageId,
-        content: '',
-        role: 'assistant',
-        model: selectedModel, // 添加模型信息
-        isWaitingForFirstToken: true // 设置等待首token状态
-      };
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      content: '',
+      role: 'assistant',
+      model: selectedModel, // 添加模型信息
+      isWaitingForFirstToken: true, // 设置等待首token状态
+      deepThinkingEnabled: deepThinkingEnabled, // 记录是否启用了深度思考
+      parent_ids: branchParentId ? [branchParentId] : []
+    };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
 
       // 获取上一条已保存的助手消息的MongoDB ID作为parent_ids
-      // 优先使用_id字段（新对话完成后设置），其次使用id字段（历史对话）
-      const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && (msg._id || msg.id)).pop();
-      const mongoId = lastAssistantMessage?._id || lastAssistantMessage?.id;
-      const parentIds = mongoId ? [mongoId] : [];
+      // 如果有分支问状态，使用分支的parent_id，否则使用默认逻辑
+      let parentIds: string[] = [];
+      if (branchParentId) {
+        parentIds = [branchParentId];
+      } else {
+        // 优先使用_id字段（新对话完成后设置），其次使用id字段（历史对话）
+        const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && (msg._id || msg.id)).pop();
+        const mongoId = lastAssistantMessage?._id || lastAssistantMessage?.id;
+        parentIds = mongoId ? [mongoId] : [];
+      }
 
       // 发送聊天请求并处理流式响应
       const response = await fetch('http://localhost:8000/api/v1/chat', {
@@ -341,6 +371,8 @@ export const useChat = () => {
         abortControllerRef.current = null; // 清理AbortController
         // 发送消息后重置输入框高度
         resetTextareaHeight();
+        // 清除分支问状态
+        clearBranchState();
 
         // 触发侧边栏刷新，更新对话的模型信息
         if (conversationId) {
@@ -555,6 +587,10 @@ export const useChat = () => {
     availableModels,
     handleDeepThinkingChange,
     handleSearchChange,
-    handleModelChange
+    handleModelChange,
+    branchParentId,
+    branchParentContent,
+    handleBranchClick,
+    clearBranchState
   };
 };

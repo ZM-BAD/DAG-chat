@@ -31,7 +31,11 @@ function App() {
     availableModels,
     handleDeepThinkingChange,
     handleSearchChange,
-    handleModelChange
+    handleModelChange,
+    branchParentId,
+    branchParentContent,
+    handleBranchClick,
+    clearBranchState
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } = useDialogues();
@@ -77,6 +81,7 @@ function App() {
           toggleThinkingExpansion={toggleThinkingExpansion}
           copyMessageToClipboard={copyMessageToClipboard}
           shouldShowWelcome={shouldShowWelcome}
+          onBranchClick={handleBranchClick}
           welcomeScreen={
             <WelcomeScreen
               inputMessage={inputMessage}
@@ -111,6 +116,9 @@ function App() {
             initialSearch={searchEnabled}
             initialModel={selectedModel}
             availableModels={availableModels}
+            branchParentId={branchParentId}
+            branchParentContent={branchParentContent}
+            onClearBranch={clearBranchState}
           />
         )}
         <footer className="footer">

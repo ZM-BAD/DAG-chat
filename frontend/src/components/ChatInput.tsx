@@ -143,6 +143,9 @@ interface ChatInputProps {
   initialSearch?: boolean;
   initialModel?: string;
   availableModels?: {value: string; label: string}[];
+  branchParentId?: string | null;
+  branchParentContent?: string;
+  onClearBranch?: () => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -159,7 +162,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   initialDeepThinking = false,
   initialSearch = false,
   initialModel = 'deepseek',
-  availableModels = []
+  availableModels = [],
+  branchParentId = null,
+  branchParentContent = '',
+  onClearBranch
 }) => {
   const { t } = useTranslation();
   const isInputEmpty = inputMessage.trim() === '';
@@ -203,6 +209,20 @@ const ChatInput: React.FC<ChatInputProps> = ({
   
   return (
     <div className="chat-input-wrapper">
+      {/* 分支问引用效果 */}
+      {branchParentId && (
+        <div className="branch-citation">
+          <img src="/assets/branch.svg" alt="分支" className="branch-citation-icon" />
+          <span className="branch-citation-text">{branchParentContent}...</span>
+          <button
+            className="branch-citation-close"
+            onClick={onClearBranch}
+            aria-label="清除分支"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <textarea
         ref={textareaRef}
         value={inputMessage}

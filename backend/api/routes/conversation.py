@@ -1,5 +1,7 @@
 import logging
 import uuid
+import pymongo
+from backend.database.mongodb_connection import MongoDBConnection
 from datetime import datetime
 from typing import Optional, List
 
@@ -318,9 +320,6 @@ def get_dialogue_history(
         对话历史消息列表
     """
     logger.info(f"获取对话历史, dialogue_id: {dialogue_id}")
-    
-    import pymongo
-    from backend.database.mongodb_connection import MongoDBConnection
     
     mongo_db = MongoDBConnection()
     try:

@@ -19,6 +19,7 @@ export interface Message {
   isWaitingForFirstToken?: boolean; // 是否正在等待首token（仅assistant角色使用）
   parent_ids?: string[]; // 父消息ID列表
   model?: string; // 模型名称（仅assistant角色使用）
+  deepThinkingEnabled?: boolean; // 是否启用了深度思考模式（仅assistant角色使用）
 }
 
 // 定义API响应接口

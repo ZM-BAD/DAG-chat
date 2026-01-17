@@ -101,7 +101,7 @@ start_frontend() {
     echo "正在启动前端服务..."
     cd frontend
     echo "安装前端依赖..."
-    npm install
+    npm install --legacy-peer-deps
     echo "启动前端开发服务器..."
     echo "前端将在 http://localhost:3000 上运行"
     npm start &
