@@ -16,7 +16,12 @@
     "searchTitle": "联网搜索",
     "thinkingProcess": "思考过程",
     "collapseThinking": "折叠思考",
-    "expandThinking": "展开思考"
+    "expandThinking": "展开思考",
+    "copySuccess": "消息已复制到剪贴板",
+    "copyFailed": "复制消息失败",
+    "networkError": "网络连接失败，请检查网络后重试",
+    "sendFailed": "发送消息失败，请稍后重试",
+    "abortMessage": "消息发送已中止"
   },
   "dialogue": {
     "defaultTitle": "未命名对话",

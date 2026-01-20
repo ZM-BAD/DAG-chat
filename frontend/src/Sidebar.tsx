@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
+import { API_CONFIG } from './config/api';
 import './styles/Sidebar.css';
 
 // 模型Logo映射组件
@@ -40,7 +41,6 @@ const parseMultipleModels = (modelString: string): string[] => {
 };
 
 // 常量定义
-const CURRENT_USER_ID = 'zm-bad';
 const MAX_TITLE_LENGTH = 64;
 
 // 定义对话接口
@@ -127,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     try {
       const response = await axios.get<DialogueListResponse>('/api/v1/dialogue/list', {
         params: {
-          user_id: CURRENT_USER_ID,
+          user_id: API_CONFIG.defaultUserId,
           page: page,
           page_size: 20
         }
@@ -197,7 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       const response = await axios.delete('/api/v1/dialogue/delete', {
         params: {
           conversation_id: dialogueId,
-          user_id: CURRENT_USER_ID
+          user_id: API_CONFIG.defaultUserId
         }
       });
 
@@ -232,7 +232,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       const response = await axios.put('/api/v1/dialogue/rename', null, {
         params: {
           conversation_id: dialogueId,
-          user_id: CURRENT_USER_ID,
+          user_id: API_CONFIG.defaultUserId,
           new_title: trimmedTitle
         }
       });

@@ -7,9 +7,11 @@ import ChatContainer from './components/ChatContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatInput from './components/ChatInput';
 import LanguageSwitcher from './components/LanguageSwitcher';
+import { ToastProvider } from './contexts/ToastContext';
 import './App.css';
 
-function App() {
+// 内部组件，在 ToastProvider 内部调用 hooks
+function AppContent() {
   const {
     messages,
     inputMessage,
@@ -126,6 +128,15 @@ function App() {
         </footer>
       </div>
     </div>
+  );
+}
+
+// 主 App 组件，提供 ToastProvider
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 

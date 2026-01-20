@@ -204,14 +204,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               className="message-input"
               rows={1}
             />
-          <button
-            onClick={handleSendMessage}
-            disabled={isLoading}
-            className="send-button"
-            aria-label={isLoading ? '发送中' : '发送'}
-          >
-            {/* 按钮内容由CSS伪元素控制 */}
-          </button>
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading}
+              className="send-button"
+              aria-label={isLoading ? '发送中' : '发送'}
+            >
+              {/* 按钮内容由CSS伪元素控制 */}
+            </button>
+          </div>
 
           {/* 功能按钮区域 */}
           <div className="input-controls">
@@ -240,7 +241,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

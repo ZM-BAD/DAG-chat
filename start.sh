@@ -60,8 +60,8 @@ stop_services() {
     # 额外检查：查找可能的相关Node.js和Python进程
     echo "检查其他可能的UniformLLM进程..."
 
-    # 查找可能的npm start进程
-    NPM_PIDS=$(pgrep -f "npm.*start" 2>/dev/null)
+    # 查找可能的npm dev或start进程
+    NPM_PIDS=$(pgrep -f "npm.*(dev|start)" 2>/dev/null)
     if [ ! -z "$NPM_PIDS" ]; then
         echo "发现npm进程: $NPM_PIDS"
         echo "$NPM_PIDS" | xargs kill -TERM 2>/dev/null
@@ -104,21 +104,33 @@ start_frontend() {
     npm install --legacy-peer-deps
     echo "启动前端开发服务器..."
     echo "前端将在 http://localhost:3000 上运行"
-    npm start &
+    npm run dev &
     FRONTEND_PID=$!
     cd ..
-    
+
     # 等待前端服务启动
     echo "等待前端服务启动..."
     for i in {1..60}; do
         if curl -s -f http://localhost:3000 > /dev/null 2>&1; then
             echo "前端服务已启动！"
+            # 检查是否已经有浏览器打开了这个端口
+            if ! lsof -ti:3000 -c chrome -c safari -c firefox > /dev/null 2>&1; then
+                # 如果没有浏览器打开，则自动打开浏览器
+                echo "正在打开浏览器..."
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS
+                    open http://localhost:3000
+                elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                    # Linux
+                    xdg-open http://localhost:3000 > /dev/null 2>&1
+                fi
+            fi
             return 0
         fi
         echo -n "."
         sleep 1
     done
-    
+
     echo "前端服务启动超时！"
     return 1
 }

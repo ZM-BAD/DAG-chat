@@ -16,7 +16,12 @@
     "searchTitle": "Web Search",
     "thinkingProcess": "Thinking Process",
     "collapseThinking": "Collapse Thinking",
-    "expandThinking": "Expand Thinking"
+    "expandThinking": "Expand Thinking",
+    "copySuccess": "Message copied to clipboard",
+    "copyFailed": "Failed to copy message",
+    "networkError": "Network connection failed, please check your network and try again",
+    "sendFailed": "Failed to send message, please try again later",
+    "abortMessage": "Message sending aborted"
   },
   "dialogue": {
     "defaultTitle": "Untitled Dialogue",

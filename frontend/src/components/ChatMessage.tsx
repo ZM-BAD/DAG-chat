@@ -170,4 +170,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   );
 };
 
-export default ChatMessage;
+// 使用React.memo优化组件渲染，避免不必要的重渲染
+export default React.memo(ChatMessage, (prevProps, nextProps) => {
+  // 只有当message或相关props发生变化时，才重新渲染
+  return (
+    prevProps.message === nextProps.message &&
+    prevProps.parentMessage === nextProps.parentMessage
+  );
+});

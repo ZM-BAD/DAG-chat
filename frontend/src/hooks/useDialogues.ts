@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { Dialogue, DialogueListResponse } from '../types';
+import { API_ENDPOINTS, API_CONFIG, buildApiUrl } from '../config/api';
 
 export const useDialogues = () => {
   const { t } = useTranslation();
@@ -19,9 +20,9 @@ export const useDialogues = () => {
 
       while (retryCount < maxRetries) {
         try {
-          const response = await axios.get('/api/v1/dialogue/list', {
+          const response = await axios.get(buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST), {
             params: {
-              user_id: 'zm-bad',
+              user_id: API_CONFIG.defaultUserId,
               page: 1,
               page_size: 100 // 获取足够多的对话
             }
@@ -58,9 +59,9 @@ export const useDialogues = () => {
   // 更新对话列表
   const refreshDialogues = async () => {
     try {
-      const response = await axios.get<DialogueListResponse>('/api/v1/dialogue/list', {
+      const response = await axios.get<DialogueListResponse>(buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST), {
         params: {
-          user_id: 'zm-bad',
+          user_id: API_CONFIG.defaultUserId,
           page: 1,
           page_size: 100 // 获取足够多的对话
         }
@@ -95,7 +96,7 @@ export const useDialogues = () => {
       // 初始时不设置模型，只有当模型实际回答后才显示logo
       const newDialogue: Dialogue = {
         id: conversationId,
-        user_id: 'zm-bad',
+        user_id: API_CONFIG.defaultUserId,
         title: title,
         model: '', // 空字符串表示还没有模型回答
         create_time: new Date().toISOString(),
