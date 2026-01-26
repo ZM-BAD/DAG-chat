@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Message } from '../../types';
 
 interface UseDialogueManagementReturn {
@@ -19,6 +19,25 @@ export const useDialogueManagement = (): UseDialogueManagementReturn => {
   const handleNewDialogue = () => {
     setCurrentDialogueId(null);
   };
+
+  // 监听新对话创建事件，自动切换到新创建的对话
+  useEffect(() => {
+    const handleDialogueCreated = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { conversationId } = customEvent.detail;
+
+      // 更新当前对话ID为新创建的对话ID
+      setCurrentDialogueId(conversationId);
+    };
+
+    // 添加事件监听器
+    window.addEventListener('dialogueCreated', handleDialogueCreated as EventListener);
+
+    // 清理事件监听器
+    return () => {
+      window.removeEventListener('dialogueCreated', handleDialogueCreated as EventListener);
+    };
+  }, []);
 
   return {
     currentDialogueId,

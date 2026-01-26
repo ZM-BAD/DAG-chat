@@ -107,7 +107,18 @@ export const useChatMessages = ({
         });
 
         if (response.data.code === 0) {
-          return response.data.data;
+          // 处理返回的消息，确保 deepThinkingEnabled 和 isThinkingExpanded 属性正确设置
+          const processedMessages = response.data.data.map(message => {
+            if (message.role === 'assistant' && message.thinkingContent) {
+              return {
+                ...message,
+                deepThinkingEnabled: true,
+                isThinkingExpanded: true
+              };
+            }
+            return message;
+          });
+          return processedMessages;
         }
       } catch (error) {
         retryCount++;
