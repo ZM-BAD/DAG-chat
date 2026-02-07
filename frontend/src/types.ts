@@ -10,14 +10,14 @@ export interface Dialogue {
 
 // 定义消息接口
 export interface Message {
-  id: string;
-  _id?: string; // MongoDB的_id，用于parent_ids
+  id: string; // 消息唯一ID（新消息为前端临时生成，历史消息为MongoDB _id）
   content: string;
   role: 'user' | 'assistant';
   thinkingContent?: string; // 思考内容（仅assistant角色使用）
   isThinkingExpanded?: boolean; // 思考内容是否展开（仅assistant角色使用）
   isWaitingForFirstToken?: boolean; // 是否正在等待首token（仅assistant角色使用）
-  parent_ids?: string[]; // 父消息ID列表
+  parent_ids?: string[]; // 父消息ID列表（MongoDB _id）
+  children?: string[]; // 子消息ID列表（MongoDB _id），仅历史消息有此字段
   model?: string; // 模型名称（仅assistant角色使用）
   deepThinkingEnabled?: boolean; // 是否启用了深度思考模式（仅assistant角色使用）
 }

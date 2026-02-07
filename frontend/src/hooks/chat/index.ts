@@ -44,7 +44,8 @@ export const useChat = () => {
     handleInputChange,
     toggleThinkingExpansion,
     copyMessageToClipboard,
-    handleInterruptResponse
+    handleInterruptResponse,
+    branchQuestionInfo
   } = useChatMessages({
     currentDialogueId,
     selectedModel,
@@ -86,6 +87,7 @@ export const useChat = () => {
     branchParentId,
     branchParentContent,
     handleBranchClick,
-    clearBranchState
+    clearBranchState,
+    branchQuestionInfo
   };
 };

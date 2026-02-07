@@ -5,12 +5,14 @@ interface ConversationBranchTabsProps {
   branches: Message[];
   onBranchSelect: (branchId: string) => void;
   selectedBranchId: string;
+  isLoading?: boolean;
 }
 
 const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
   branches,
   onBranchSelect,
-  selectedBranchId
+  selectedBranchId,
+  isLoading = false
 }) => {
   // 生成标签显示文本，最少显示6个字符，如果超长则截断并添加...
   const getTabLabel = (content: string, index: number) => {
@@ -27,16 +29,21 @@ const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
 
   return (
     <div className="conversation-branch-tabs">
-      <div className="tabs-container">
+      <div className={`tabs-container ${isLoading ? 'disabled' : ''}`}>
         {branches.map((branch, index) => (
           <button
             key={branch.id}
             className={`branch-tab ${selectedBranchId === branch.id ? 'active' : ''}`}
             onClick={() => {
+              if (isLoading) {
+                console.log('SSE 流式输出期间，禁止切换分支');
+                return;
+              }
               console.log('Branch tab clicked:', branch.id, branch.content);
               onBranchSelect(branch.id);
             }}
-            title={branch.content}
+            title={isLoading ? 'AI 正在回答中，请稍后再切换分支' : branch.content}
+            disabled={isLoading}
           >
             <span className="tab-label">
               <img

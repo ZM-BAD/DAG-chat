@@ -37,7 +37,8 @@ function AppContent() {
     branchParentId,
     branchParentContent,
     handleBranchClick,
-    clearBranchState
+    clearBranchState,
+    branchQuestionInfo
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } = useDialogues();
@@ -84,6 +85,7 @@ function AppContent() {
           copyMessageToClipboard={copyMessageToClipboard}
           shouldShowWelcome={shouldShowWelcome}
           onBranchClick={handleBranchClick}
+          branchQuestionInfo={branchQuestionInfo}
           welcomeScreen={
             <WelcomeScreen
               inputMessage={inputMessage}

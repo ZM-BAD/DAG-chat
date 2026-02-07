@@ -84,7 +84,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   // 处理分支问按钮点击
   const handleBranchClick = () => {
     if (onBranchClick && parentMessage) {
-      const parentId = parentMessage._id || parentMessage.id;
+      const parentId = parentMessage.id;
       const parentContent = parentMessage.content.substring(0, 10);
       onBranchClick(parentId, parentContent);
     }

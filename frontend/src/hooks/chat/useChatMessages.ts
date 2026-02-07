@@ -14,6 +14,13 @@ interface UseChatMessagesProps {
   clearBranchState: () => void;
 }
 
+// 分支提问信息接口
+export interface BranchQuestionInfo {
+  isPending: boolean;
+  parentId: string | null;
+  originalMessageId: string | null;  // 被分支的原始消息ID
+}
+
 interface UseChatMessagesReturn {
   messages: Message[];
   inputMessage: string;
@@ -26,6 +33,7 @@ interface UseChatMessagesReturn {
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => Promise<void>;
   handleInterruptResponse: () => void;
+  branchQuestionInfo: BranchQuestionInfo;
 }
 
 export const useChatMessages = ({
@@ -43,6 +51,17 @@ export const useChatMessages = ({
   const [isLoading, setIsLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const branchStateClearedRef = useRef(false);
+  
+  // 用于记录分支提问的完整信息
+  const [branchQuestionInfo, setBranchQuestionInfo] = useState<BranchQuestionInfo>({
+    isPending: false,
+    parentId: null,
+    originalMessageId: null
+  });
+
+  // 用于追踪消息ID变化，更新 branchQuestionInfo 中的 originalMessageId
+  const previousMessagesRef = useRef<Message[]>([]);
 
   // 中断大模型回答
   const handleInterruptResponse = (): void => {
@@ -169,6 +188,36 @@ export const useChatMessages = ({
     );
   };
 
+  // 监听消息ID变化，同步更新 branchQuestionInfo 中的 originalMessageId
+  useEffect(() => {
+    const prevMessages = previousMessagesRef.current;
+
+    // 如果 branchQuestionInfo 中有 originalMessageId，检查是否需要更新
+    if (branchQuestionInfo.originalMessageId) {
+      // 查找具有相同内容但ID不同的消息（认为是同一条消息）
+      const matchingNewMsg = messages.find(currentMsg => {
+        const matchingOldMsg = prevMessages.find(oldMsg =>
+          oldMsg.id === branchQuestionInfo.originalMessageId
+        );
+        return matchingOldMsg &&
+          currentMsg.role === matchingOldMsg.role &&
+          currentMsg.content === matchingOldMsg.content &&
+          currentMsg.id !== matchingOldMsg.id &&
+          JSON.stringify(currentMsg.parent_ids) === JSON.stringify(matchingOldMsg.parent_ids);
+      });
+
+      if (matchingNewMsg) {
+        setBranchQuestionInfo(prev => ({
+          ...prev,
+          originalMessageId: matchingNewMsg.id
+        }));
+      }
+    }
+
+    // 更新 ref
+    previousMessagesRef.current = messages;
+  }, [messages, branchQuestionInfo.originalMessageId]);
+
   // 复制消息内容到剪贴板
   const copyMessageToClipboard = async (content: string): Promise<void> => {
     try {
@@ -212,23 +261,76 @@ export const useChatMessages = ({
   const handleSendMessage = async (): Promise<void> => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // 判断是否是分支提问（基于 branchParentId 是否存在）
+    const isBranchQuestion = branchParentId !== null;
+    const currentBranchParentId = branchParentId;
+    
+    // 重置分支状态清除标记
+    branchStateClearedRef.current = false;
+    
+    // 查找原始消息（被分支的消息）
+    let originalMessageId: string | null = null;
+    if (isBranchQuestion && currentBranchParentId) {
+      // 通过消息顺序查找：找到 parent 消息之后的第一个 user 消息
+      const parentIndex = messages.findIndex(m => m.id === currentBranchParentId);
+      if (parentIndex >= 0) {
+        const originalMsg = messages.slice(parentIndex + 1).find(m => m.role === 'user');
+        originalMessageId = originalMsg?.id || null;
+      }
+
+      // 立即清除 branch citation，并设置分支提问信息
+      setBranchQuestionInfo({
+        isPending: true,
+        parentId: currentBranchParentId,
+        originalMessageId
+      });
+      clearBranchState();
+    } else {
+      // 如果不是分支提问，清除旧的分支信息（防止旧的分支状态影响新对话）
+      setBranchQuestionInfo({
+        isPending: false,
+        parentId: null,
+        originalMessageId: null
+      });
+    }
+
     // 如果有未完成的请求，先清理
     cleanupInterruptedState();
 
     // 创建新的AbortController用于这次请求
     abortControllerRef.current = new AbortController();
 
+    const newUserMessageId = `msg-${Date.now()}`;
     const newUserMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: newUserMessageId,
       content: inputMessage,
       role: 'user',
-      parent_ids: branchParentId ? [branchParentId] : []
+      parent_ids: currentBranchParentId ? [currentBranchParentId] : [],
+      children: [] // 初始化 children，用于后续添加 assistant 的 ID
     };
 
     // 创建助手的消息ID，在更大作用域中使用
     const assistantMessageId = `msg-${Date.now() + 1}`;
 
-    setMessages([...messages, newUserMessage]);
+    // 更新消息列表，如果是分支提问，同时更新父消息的 children
+    setMessages(prevMessages => {
+      let updatedMessages = [...prevMessages, newUserMessage];
+      
+      // 如果是分支提问，更新父消息的 children
+      if (currentBranchParentId) {
+        updatedMessages = updatedMessages.map(msg => {
+          if (msg.id === currentBranchParentId) {
+            return {
+              ...msg,
+              children: [...(msg.children || []), newUserMessageId]
+            };
+          }
+          return msg;
+        });
+      }
+      
+      return updatedMessages;
+    });
     setInputMessage('');
     setIsLoading(true);
 
@@ -257,6 +359,7 @@ export const useChatMessages = ({
       }
 
       // 创建助手的消息占位符
+      // 注意：assistant 消息的 parent 应该是 user 消息，而不是分支的 parent
       const assistantMessage: Message = {
         id: assistantMessageId,
         content: '',
@@ -264,19 +367,19 @@ export const useChatMessages = ({
         model: selectedModel, // 添加模型信息
         isWaitingForFirstToken: true, // 设置等待首token状态
         deepThinkingEnabled: deepThinkingEnabled, // 记录是否启用了深度思考
-        parent_ids: branchParentId ? [branchParentId] : []
+        parent_ids: [newUserMessageId]  // assistant 回复的是 user 消息
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
 
       // 获取上一条已保存的助手消息的MongoDB ID作为parent_ids
       // 如果有分支问状态，使用分支的parent_id，否则使用默认逻辑
       let parentIds: string[] = [];
-      if (branchParentId) {
-        parentIds = [branchParentId];
+      if (currentBranchParentId) {
+        parentIds = [currentBranchParentId];
       } else {
-        // 优先使用_id字段（新对话完成后设置），其次使用id字段（历史对话）
-        const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && (msg._id || msg.id)).pop();
-        const mongoId = lastAssistantMessage?._id || lastAssistantMessage?.id;
+        // 使用最后一条助手消息的id作为parent_ids
+        const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && msg.id).pop();
+        const mongoId = lastAssistantMessage?.id;
         parentIds = mongoId ? [mongoId] : [];
       }
 
@@ -381,16 +484,124 @@ export const useChatMessages = ({
                 updateContent(fullContent, isThinkingPhase);
               }
 
-              // 处理消息ID（在流式响应结束时）
-              if (data.message_id && data.complete) {
-                // 保存助手消息的MongoDB ID
+              // 处理用户消息ID（在流式响应过程中返回）
+              if (data.user_message_id) {
+                // 将临时ID替换为MongoDB返回的真实ID
+                // 同时更新：
+                // 1. 消息自身的ID
+                // 2. 其他消息parent_ids中引用的临时ID
+                // 3. 父消息的children（添加真实ID）
                 setMessages(prevMessages =>
-                  prevMessages.map(msg =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, _id: data.message_id }
-                      : msg
-                  )
+                  prevMessages.map(msg => {
+                    // 更新消息自身的ID
+                    if (msg.id === newUserMessageId) {
+                      return { ...msg, id: data.user_message_id };
+                    }
+                    // 更新其他消息parent_ids中引用的临时ID
+                    if (msg.parent_ids?.includes(newUserMessageId)) {
+                      return {
+                        ...msg,
+                        parent_ids: msg.parent_ids.map(pid => 
+                          pid === newUserMessageId ? data.user_message_id : pid
+                        )
+                      };
+                    }
+                    // 更新父消息的children（如果包含临时ID）
+                    if (msg.children?.includes(newUserMessageId)) {
+                      return {
+                        ...msg,
+                        children: msg.children.map(cid => 
+                          cid === newUserMessageId ? data.user_message_id : cid
+                        )
+                      };
+                    }
+                    return msg;
+                  })
                 );
+                
+                // 同步更新 branchQuestionInfo 中的 originalMessageId（如果是分支提问）
+                if (isBranchQuestion && currentBranchParentId) {
+                  setBranchQuestionInfo(prev => {
+                    if (prev.originalMessageId === newUserMessageId) {
+                      return { ...prev, originalMessageId: data.user_message_id };
+                    }
+                    return prev;
+                  });
+                }
+              }
+
+                      // 处理助手消息ID（在流式响应结束时）
+              if (data.message_id && data.complete) {
+                // 将临时ID替换为MongoDB返回的真实ID
+                // 同时更新：
+                // 1. 助手消息自身的ID
+                // 2. 父消息（user消息）的children（添加助手真实ID）
+                // 3. 助手消息的parent_ids（更新为user真实ID）
+                setMessages(prevMessages => {
+                  // 获取user消息的真实ID（可能已经被更新过）
+                  // 优先使用 data.user_message_id（后端返回的真实ID），如果找不到则回退到 newUserMessageId
+                  let realUserMessageId = data.user_message_id || newUserMessageId;
+
+                  // 额外验证：确保找到的user消息确实是当前assistant的父消息
+                  // 通过检查该assistant消息的原始parent_ids是否包含此user消息的临时ID或真实ID
+                  const assistantMessage = prevMessages.find(m => m.id === assistantMessageId);
+                  if (assistantMessage && assistantMessage.parent_ids) {
+                    const tempParentId = assistantMessage.parent_ids[0];
+                    // 查找与assistant原始parent_id匹配的user消息
+                    const matchedUserMsg = prevMessages.find(m =>
+                      m.role === 'user' &&
+                      (m.id === tempParentId ||
+                        (data.user_message_id && m.id === data.user_message_id) ||
+                        m.id === newUserMessageId)
+                    );
+                    if (matchedUserMsg) {
+                      realUserMessageId = matchedUserMsg.id;
+                    }
+                  }
+
+                  return prevMessages.map(msg => {
+                    // 更新助手消息自身的ID
+                    if (msg.id === assistantMessageId) {
+                      return {
+                        ...msg,
+                        id: data.message_id,
+                        // 更新parent_ids为user消息的真实ID
+                        parent_ids: [realUserMessageId]
+                      };
+                    }
+                    // 更新user消息的children（添加助手真实ID）
+                    if (msg.id === realUserMessageId && msg.children) {
+                      return {
+                        ...msg,
+                        children: [...msg.children, data.message_id]
+                      };
+                    }
+                    // 如果user消息还没有children字段，添加它
+                    if (msg.id === realUserMessageId && !msg.children) {
+                      return {
+                        ...msg,
+                        children: [data.message_id]
+                      };
+                    }
+                    return msg;
+                  });
+                });
+              }
+              
+              // 流式输出完成，准备重置分支状态
+              if (data.complete) {
+                // 延迟清除分支 pending 状态，确保 ID 更新已经生效
+                // 注意：只设置 isPending 为 false，保留 parentId 和 originalMessageId
+                // 这样可以保持 tabs-container 的显示，并维持分支选择状态
+                if (isBranchQuestion && currentBranchParentId && !branchStateClearedRef.current) {
+                  branchStateClearedRef.current = true;
+                  setTimeout(() => {
+                    setBranchQuestionInfo(prev => ({
+                      ...prev,
+                      isPending: false
+                    }));
+                  }, 100);
+                }
               }
 
               // 处理错误响应
@@ -487,8 +698,17 @@ export const useChatMessages = ({
         abortControllerRef.current = null; // 清理AbortController
         // 发送消息后重置输入框高度
         resetTextareaHeight();
-        // 清除分支问状态
-        clearBranchState();
+        
+        // 分支提问处理完成，清除 pending 状态（如果还没清除）
+        // 注意：只设置 isPending 为 false，保留 parentId 和 originalMessageId
+        // 这样可以保持 tabs-container 的显示，并维持分支选择状态
+        if (isBranchQuestion && currentBranchParentId && !branchStateClearedRef.current) {
+          branchStateClearedRef.current = true;
+          setBranchQuestionInfo(prev => ({
+            ...prev,
+            isPending: false
+          }));
+        }
 
         // 触发侧边栏刷新，更新对话的模型信息
         if (conversationId) {
@@ -516,6 +736,7 @@ export const useChatMessages = ({
     handleInputChange,
     toggleThinkingExpansion,
     copyMessageToClipboard,
-    handleInterruptResponse
+    handleInterruptResponse,
+    branchQuestionInfo
   };
 };

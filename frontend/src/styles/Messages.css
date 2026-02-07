@@ -439,3 +439,43 @@
   width: 100%;
   flex-shrink: 0;
 }
+
+/* SSE 流式输出期间禁用 tab 切换的样式 */
+.tabs-container.disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.tabs-container.disabled .branch-tab {
+  cursor: not-allowed;
+}
+
+.tabs-container.disabled .branch-tab:not(.active) {
+  opacity: 0.5;
+}
+
+.tabs-container.disabled .branch-tab.active {
+  position: relative;
+}
+
+.tabs-container.disabled .branch-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 2px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 1px;
+  animation: loading-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
