@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from collections import defaultdict
 from datetime import datetime
 
 import pymongo
@@ -22,126 +23,239 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def build_history_from_parent_ids(mongo_db: MongoDBConnection, parent_ids: list[str]) -> list[dict]:
+def build_dag_from_parents(mongo_db: MongoDBConnection, parent_ids: list[str]) -> tuple[dict, dict]:
     """
-    根据parent_ids构建历史消息，通过向上溯源构建完整的对话路径
-
+    从parent_ids开始向上追溯，构建SubDAG（子图）
+    
+    该函数只包含从 parent_ids 向上追溯能到达的节点，不包含对话中的所有历史。
+    例如：如果对话有分支，只追溯当前选择分支的祖先，不追溯其他分支。
+    
     Args:
         mongo_db: MongoDB连接实例
-        parent_ids: 起始父节点ID列表 (MongoDB ObjectId的hex字符串)
-
+        parent_ids: 起始父节点ID列表
+    
     Returns:
-        按对话顺序排列的历史消息列表 [{"role": str, "content": str}, ...]
+        node_map: 节点ID到节点数据的映射（即SubDAG）
+        edges: 边关系 {parent_id: [child_id, ...]}
     """
     if not parent_ids:
-        return []
-
+        return {}, {}
+    
     # 验证和转换ObjectId
     try:
         start_ids = [ObjectId(pid) for pid in parent_ids if pid]
     except Exception as e:
-        logger.error(f"Invalid parent_ids: {parent_ids}, error: {e}")
-        return []
-
-    # 初始化数据结构
-    queue = start_ids.copy()
+        # 区分ObjectId格式错误和其他异常
+        from bson.errors import InvalidId
+        if isinstance(e, InvalidId):
+            logger.error(f"Invalid parent_ids format: {parent_ids}, error: {e}")
+        else:
+            logger.error(f"Unexpected error when parsing parent_ids: {parent_ids}, error: {e}")
+        return {}, {}
+    
+    # BFS遍历收集所有相关节点（向上追溯父节点）
+    queue = list(start_ids)
     visited = set()
     node_map = {}
-    max_depth = 2000  # 防止无限循环，支持超长对话历史（2000轮对话）
+    max_depth = 2000  # 防止无限循环
     current_depth = 0
-
-    # BFS遍历父链
+    
     while queue and current_depth < max_depth:
-        batch_size = min(len(queue), 100)  # 批量查询优化
+        batch_size = min(len(queue), 100)
         current_batch = queue[:batch_size]
         queue = queue[batch_size:]
-
-        # 批量查询当前层级的节点
+        
+        # 批量查询
         nodes = mongo_db.find('message_node', {'_id': {'$in': current_batch}})
-
+        
         for node in nodes:
             node_id = str(node['_id'])
             if node_id not in visited:
                 visited.add(node_id)
                 node_map[node_id] = node
-
-                # 将父节点加入队列
+                
+                # 向上追溯父节点
                 for parent_id in node.get('parent_ids', []):
                     if parent_id and parent_id not in visited:
                         try:
                             queue.append(ObjectId(parent_id))
                         except Exception:
                             continue
-
+        
         current_depth += 1
-
-    # 检查是否因深度限制而停止遍历
+    
     if current_depth >= max_depth and queue:
-        logger.warning(f"Parent traversal stopped due to max_depth limit ({max_depth}). "
-                      f"This suggests an extremely long conversation or potential cycle. "
-                      f"Remaining {len(queue)} nodes unprocessed for parent_ids: {parent_ids}")
+        logger.warning(f"DAG traversal stopped due to max_depth limit ({max_depth})")
+    
+    # 构建边关系（从父节点指向子节点，只包含SubDAG内的边）
+    edges = defaultdict(list)
+    for node_id, node in node_map.items():
+        for parent_id in node.get('parent_ids', []):
+            if parent_id in node_map:
+                edges[parent_id].append(node_id)
+    
+    logger.info(f"SubDAG构建完成: {len(node_map)} 个节点, {sum(len(v) for v in edges.values())} 条边")
+    
+    # 检测合并点（多父节点）
+    merge_points = [nid for nid, node in node_map.items() 
+                   if len(node.get('parent_ids', [])) > 1]
+    if merge_points:
+        logger.info(f"检测到 {len(merge_points)} 个合并点: {merge_points[:5]}{'...' if len(merge_points) > 5 else ''}")
+    
+    return node_map, dict(edges)
 
+
+def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
+    """
+    对SubDAG进行拓扑排序，保持链不切割
+    
+    注意：node_map 本身已经是 build_dag_from_parents 构建的 SubDAG
+    
+    算法步骤：
+    1. 计算 SubDAG 内每个节点的入度和出度
+    2. 使用改进的 Kahn 算法进行拓扑排序
+    3. 链不切割策略：如果连续节点能形成链（出度为1且入度为1），则保持连续
+    
+    Args:
+        node_map: 节点ID到节点数据的映射（已经是SubDAG）
+        edges: 边关系 {parent_id: [child_id, ...]}
+    
+    Returns:
+        拓扑排序后的节点ID列表
+    """
     if not node_map:
-        logger.warning(f"No valid message nodes found for parent_ids: {parent_ids}")
         return []
+    
+    # node_map 本身已经是 SubDAG，直接使用
+    subdag_nodes = set(node_map.keys())
+    logger.info(f"SubDAG包含 {len(subdag_nodes)} 个节点: {sorted(subdag_nodes)}")
+    
+    # 计算 SubDAG 内每个节点的入度和出度
+    in_degree = defaultdict(int)
+    out_degree = defaultdict(int)
+    
+    for node_id in subdag_nodes:
+        # 入度：来自 SubDAG 内的父节点
+        for parent_id in node_map.get(node_id, {}).get('parent_ids', []):
+            if parent_id in subdag_nodes:
+                in_degree[node_id] += 1
+        # 出度：指向 SubDAG 内的子节点
+        for child_id in edges.get(node_id, []):
+            if child_id in subdag_nodes:
+                out_degree[node_id] += 1
+    
+    # 调试日志
+    logger.debug(f"节点入度: {dict(in_degree)}")
+    logger.debug(f"节点出度: {dict(out_degree)}")
+    
+    # 拓扑排序，保持链不切割
+    result = []
+    available = set([n for n in subdag_nodes if in_degree[n] == 0])
+    in_degree_copy = defaultdict(int, in_degree)
+    
+    while available:
+        selected = None
+        
+        if result:
+            last_node = result[-1]
+            # 策略1：优先选择last_node的子节点（延续链）
+            # 子节点此时入度应该为0（因为已经加入available）
+            # 同时子节点的原始入度必须为1（确保是单一路径）
+            for child_id in edges.get(last_node, []):
+                if child_id in available and in_degree[child_id] == 1:
+                    selected = child_id
+                    break
+            
+            # 策略2：如果没有可延续的链，选择能开始新链的节点（原始入度为1且出度为1）
+            if selected is None:
+                for node_id in sorted(available):
+                    if in_degree[node_id] == 1 and out_degree.get(node_id, 0) == 1:
+                        selected = node_id
+                        break
+                
+                # 策略3：选择任意可用节点（按ID排序保证确定性）
+                if selected is None:
+                    selected = sorted(available)[0]
+        else:
+            # 第一个节点：选择入度为0的节点（根节点）
+            selected = sorted(available)[0]
+        
+        result.append(selected)
+        available.remove(selected)
+        
+        # 更新子节点的入度
+        for child_id in edges.get(selected, []):
+            if child_id in subdag_nodes:
+                in_degree_copy[child_id] -= 1
+                if in_degree_copy[child_id] == 0:
+                    available.add(child_id)
+    
+    return result
 
-    logger.info(f"Parent traversal completed: found {len(node_map)} messages with depth {current_depth}")
 
-    # 构建从根到叶的正确顺序 - 使用拓扑排序
-    def topological_sort():
-        in_degree = {}
-        graph = {}
-
-        # 构建图和计算入度
-        for msg_id, node in node_map.items():
-            parents = node.get('parent_ids', [])
-            # 只考虑在我们找到的节点中的父节点
-            valid_parents = [p for p in parents if p in node_map]
-            in_degree[msg_id] = len(valid_parents)
-            graph[msg_id] = valid_parents
-
-        # Kahn算法进行拓扑排序
-        queue = [msg_id for msg_id, degree in in_degree.items() if degree == 0]
-        result = []
-
-        while queue:
-            current = queue.pop(0)
-            result.append(current)
-
-            # 更新依赖当前节点的其他节点的入度
-            for msg_id, parents in graph.items():
-                if current in parents:
-                    in_degree[msg_id] -= 1
-                    if in_degree[msg_id] == 0:
-                        queue.append(msg_id)
-
-        # 如果还有节点没有被排序（存在循环），按时间排序添加
-        remaining = [msg_id for msg_id in node_map.keys() if msg_id not in result]
-        if remaining:
-            # 按创建时间排序剩余节点
-            remaining_sorted = sorted(remaining, key=lambda x: node_map[x].get('create_time', datetime.min))
-            result.extend(remaining_sorted)
-
-        return result
-
-    # 获取正确排序的消息ID
-    sorted_message_ids = topological_sort()
-
-    # 转换为标准格式
+def build_history_from_parent_ids(mongo_db: MongoDBConnection, parent_ids: list[str]) -> list[dict]:
+    """
+    根据parent_ids构建历史消息
+    
+    算法流程：
+    1. 从parent_ids开始，构建SubDAG（只包含相关分支的历史）
+    2. 对SubDAG进行拓扑排序
+    3. 将拓扑排序后的消息转换为标准格式
+    
+    Args:
+        mongo_db: MongoDB连接实例
+        parent_ids: 起始父节点ID列表 (MongoDB ObjectId的hex字符串)
+    
+    Returns:
+        按对话顺序排列的历史消息列表 [{"role": str, "content": str}, ...]
+    """
+    if not parent_ids:
+        return []
+    
+    logger.info(f"开始构建SubDAG历史，parent_ids: {parent_ids}")
+    
+    # 步骤1：构建SubDAG
+    node_map, edges = build_dag_from_parents(mongo_db, parent_ids)
+    
+    if not node_map:
+        logger.warning(f"未找到有效的消息节点: {parent_ids}")
+        return []
+    
+    # 步骤2：对SubDAG进行拓扑排序
+    sorted_node_ids = topological_sort_subdag(node_map, edges)
+    
+    logger.info(f"拓扑排序完成，共 {len(sorted_node_ids)} 个消息")
+    
+    # 步骤3：转换为标准格式
     ordered_messages = []
-    for msg_id in sorted_message_ids:
-        node = node_map[msg_id]
+    for node_id in sorted_node_ids:
+        node = node_map[node_id]
         ordered_messages.append({
             "role": node['role'],
             "content": node['content']
         })
-
+    
     return ordered_messages
 
 
 @router.post("/chat")
 async def chat(request: ChatRequest):
-    logger.info(f"Chat endpoint accessed with user_id: {request.user_id}, parent_ids: {request.parent_ids}, model: {request.model}")
+    """
+    对话接口
+    
+    必需参数:
+        conversation_id: 对话ID，必须在调用前通过 /create-conversation 创建
+        message: 用户消息内容
+    
+    可选参数:
+        parent_ids: 父消息ID列表，用于支持分支提问和合并提问
+        model: 使用的模型，默认 deepseek
+        deep_thinking: 是否开启深度思考
+        search_enabled: 是否开启搜索
+    """
+    logger.info(f"Chat endpoint accessed with user_id: {request.user_id}, "
+                f"conversation_id: {request.conversation_id}, "
+                f"parent_ids: {request.parent_ids}, model: {request.model}")
 
     mysql_db = MySQLConnection()
     mongo_db = MongoDBConnection()
@@ -153,27 +267,19 @@ async def chat(request: ChatRequest):
         # 连接MongoDB
         if mongo_db.connect():
             if request.parent_ids:
-                # 使用父链遍历构建历史
-                logger.info(f"Building history from parent_ids: {request.parent_ids}")
+                # 使用SubDAG拓扑排序构建历史（支持分支提问和合并提问）
+                logger.info(f"Building history from parent_ids using SubDAG topology sort: {request.parent_ids}")
                 history_messages = build_history_from_parent_ids(mongo_db, request.parent_ids)
                 if history_messages:
                     first_ask = False
                     chat_messages = history_messages
-                    logger.info(f"Built history with {len(history_messages)} messages from parent chain")
+                    logger.info(f"Built history with {len(history_messages)} messages from SubDAG")
                 else:
-                    logger.warning(f"No history found for parent_ids: {request.parent_ids}")
-            elif request.conversation_id:
-                # 回退到现有线性逻辑
-                history = mongo_db.find('message_node', {'conversation_id': request.conversation_id},
-                                        sort=[('create_time', pymongo.ASCENDING)])
-
-                # 如果history不为空，那么说明不是第一次问，需要将历史消息添加到chat_messages中
-                if history and len(history) > 0:
-                    first_ask = False
-                    chat_messages = [{"role": msg['role'], "content": msg['content']} for msg in history]
-                    logger.info(f"Built linear history with {len(history)} messages for conversation_id: {request.conversation_id}")
+                    logger.warning(f"No history found for parent_ids: {request.parent_ids}, "
+                                   f"this might be the first message in conversation")
             else:
-                logger.info("No parent_ids or conversation_id provided, starting new conversation")
+                # 首次提问，没有parent_ids，不需要构建历史
+                logger.info(f"No parent_ids provided, this is the first message in conversation: {request.conversation_id}")
 
         # 将当前用户消息添加到历史消息中
         chat_messages.append({"role": "user", "content": request.message})
@@ -211,6 +317,20 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         if not model_service:
             yield f"data: {json.dumps({'error': f'不支持的模型: {request.model}'})}\n\n"
             return
+
+        # 打印传给大模型的messages信息
+        logger.info("=" * 80)
+        logger.info(f"调用大模型API - 模型: {request.model}")
+        logger.info(f"消息总数: {len(chat_messages)}")
+        logger.info(f"深度思考模式: {request.deep_thinking}")
+        logger.info("-" * 80)
+        for i, msg in enumerate(chat_messages, 1):
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            # 截断过长的内容，避免日志过长
+            display_content = content[:200] + "..." if len(content) > 200 else content
+            logger.info(f"消息 {i}/{len(chat_messages)} [{role}]: {display_content}")
+        logger.info("=" * 80)
 
         # 流式处理每个数据块
         async for chunk in model_service.generate(chat_messages, request.deep_thinking):
@@ -386,8 +506,11 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
             parent_ids_object_ids = [ObjectId(parent_id) for parent_id in request.parent_ids]
             parent_message_nodes = mongo_db.find('message_node', {'_id': {'$in': parent_ids_object_ids}})
             for parent_message_node in parent_message_nodes:
-                parent_message_node['children'].append(str(user_message_id))
-                mongo_db.update('message_node', {'_id': parent_message_node['_id']}, parent_message_node)
+                # 避免重复添加children
+                child_id_str = str(user_message_id)
+                if child_id_str not in parent_message_node.get('children', []):
+                    parent_message_node['children'].append(child_id_str)
+                    mongo_db.update('message_node', {'_id': parent_message_node['_id']}, parent_message_node)
 
         # 保存大模型回答
         ai_message_kwargs = {
@@ -405,11 +528,15 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         # 直接使用插入时返回的ObjectId进行关联
         # 用户提问的children添加大模型回答的ObjectId
         user_message_dict = user_message.model_dump(exclude_none=True)
-        user_message_dict['children'].append(str(ai_message_id))
+        ai_message_id_str = str(ai_message_id)
+        if ai_message_id_str not in user_message_dict.get('children', []):
+            user_message_dict['children'].append(ai_message_id_str)
 
         # 大模型回答的parent_ids添加用户提问的ObjectId
         ai_message_dict = ai_message.model_dump(exclude_none=True)
-        ai_message_dict['parent_ids'].append(str(user_message_id))
+        user_message_id_str = str(user_message_id)
+        if user_message_id_str not in ai_message_dict.get('parent_ids', []):
+            ai_message_dict['parent_ids'].append(user_message_id_str)
 
         # 更新数据库中的文档
         mongo_db.update('message_node', {'_id': user_message_id}, user_message_dict)

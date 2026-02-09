@@ -11,7 +11,7 @@ logger.debug("Initializing requests models")
 class ChatRequest(BaseModel):
     message: str
     user_id: str = "zm-bad"
-    conversation_id: Optional[str] = None
+    conversation_id: str  # 必填字段，没有则请求不合法
     model: str = "deepseek"
     parent_ids: list[str] | None = None
     deep_thinking: bool = False

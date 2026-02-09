@@ -40,7 +40,7 @@ const Toast: React.FC<ToastProps> = ({ message, type = 'success', duration = 300
   return (
     <div
       className={`fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 transform ${getTypeClasses()}
-      ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[-100%] opacity-0'}`}
+      ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}
     >
       {message}
     </div>
