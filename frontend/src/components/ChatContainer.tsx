@@ -211,7 +211,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             }
 
             // 获取父消息（对于用户消息，获取上一个AI消息）
-            let parentMessage: Message | null = null;
+            let parentMessage: TreeNode | null = null;
             if (message.role === 'user' && index > 0) {
               parentMessage = displayMessages[index - 1];
               if (parentMessage.role !== 'assistant') {

@@ -218,15 +218,29 @@ export const useChatMessages = ({
     // 创建新的AbortController用于这次请求
     abortControllerRef.current = new AbortController();
 
+    // 生成临时ID，用于前端临时标识消息
+    const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const userMessageTempId = generateTempId();
+    const assistantMessageTempId = generateTempId();
+
+    // 获取上一条已保存的助手消息的ID作为parent_ids
+    // 如果有分支问状态，使用分支的parent_id，否则使用默认逻辑
+    let parentIds: string[] = [];
+    if (branchParentId) {
+      parentIds = [branchParentId];
+    } else {
+      // 使用历史对话中最后一条assistant消息的id
+      const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && msg.id).pop();
+      const mongoId = lastAssistantMessage?.id;
+      parentIds = mongoId ? [mongoId] : [];
+    }
+
     const newUserMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: userMessageTempId,
       content: inputMessage,
       role: 'user',
-      parent_ids: branchParentId ? [branchParentId] : []
+      parent_ids: parentIds
     };
-
-    // 创建助手的消息ID，在更大作用域中使用
-    const assistantMessageId = `msg-${Date.now() + 1}`;
 
     setMessages([...messages, newUserMessage]);
     setInputMessage('');
@@ -258,27 +272,15 @@ export const useChatMessages = ({
 
       // 创建助手的消息占位符
       const assistantMessage: Message = {
-        id: assistantMessageId,
+        id: assistantMessageTempId,
         content: '',
         role: 'assistant',
         model: selectedModel, // 添加模型信息
         isWaitingForFirstToken: true, // 设置等待首token状态
         deepThinkingEnabled: deepThinkingEnabled, // 记录是否启用了深度思考
-        parent_ids: branchParentId ? [branchParentId] : []
+        parent_ids: [userMessageTempId] // 临时设置为user消息的临时ID
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
-
-      // 获取上一条已保存的助手消息的MongoDB ID作为parent_ids
-      // 如果有分支问状态，使用分支的parent_id，否则使用默认逻辑
-      let parentIds: string[] = [];
-      if (branchParentId) {
-        parentIds = [branchParentId];
-      } else {
-        // 优先使用_id字段（新对话完成后设置），其次使用id字段（历史对话）
-        const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && (msg._id || msg.id)).pop();
-        const mongoId = lastAssistantMessage?._id || lastAssistantMessage?.id;
-        parentIds = mongoId ? [mongoId] : [];
-      }
 
       // 发送聊天请求并处理流式响应
       const response = await fetch(buildApiUrl(API_ENDPOINTS.CHAT), {
@@ -316,7 +318,7 @@ export const useChatMessages = ({
       const updateThinkingContent = (currentReasoning: string) => {
         setMessages(prevMessages =>
           prevMessages.map(msg =>
-            msg.id === assistantMessageId
+            msg.id === assistantMessageTempId
               ? {
                   ...msg,
                   thinkingContent: currentReasoning,
@@ -332,7 +334,7 @@ export const useChatMessages = ({
       const updateContent = (currentContent: string, currentIsThinkingPhase: boolean) => {
         setMessages(prevMessages =>
           prevMessages.map(msg =>
-            msg.id === assistantMessageId
+            msg.id === assistantMessageTempId
               ? {
                   ...msg,
                   content: currentContent,
@@ -382,15 +384,44 @@ export const useChatMessages = ({
               }
 
               // 处理消息ID（在流式响应结束时）
-              if (data.message_id && data.complete) {
-                // 保存助手消息的MongoDB ID
-                setMessages(prevMessages =>
-                  prevMessages.map(msg =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, _id: data.message_id }
-                      : msg
-                  )
-                );
+              if (data.user_message_id && data.assistant_message_id && data.complete) {
+                const userMessageRealId = data.user_message_id;
+                const assistantMessageRealId = data.assistant_message_id;
+
+                // 更新消息：
+                // 1. 更新user.message.id为真实ID
+                // 2. 更新user.message.children为assistant.message.id
+                // 3. 更新assistant.message.id为真实ID
+                // 4. 更新assistant.message.parent_ids为user.message.id
+                // 5. 根据请求入参的parent_ids，将parent的children加上本次user.message.id
+                setMessages(prevMessages => {
+                  return prevMessages.map(msg => {
+                    // 更新用户消息：替换临时ID为真实ID，并设置children
+                    if (msg.id === userMessageTempId) {
+                      return {
+                        ...msg,
+                        id: userMessageRealId,
+                        children: msg.children ? [...msg.children, assistantMessageRealId] : [assistantMessageRealId]
+                      };
+                    }
+                    // 更新助手消息：替换临时ID为真实ID，并更新parent_ids
+                    if (msg.id === assistantMessageTempId) {
+                      return {
+                        ...msg,
+                        id: assistantMessageRealId,
+                        parent_ids: [userMessageRealId]
+                      };
+                    }
+                    // 更新父消息的children：如果当前消息是parent_ids中的某一个，添加user消息ID到其children
+                    if (parentIds.includes(msg.id)) {
+                      return {
+                        ...msg,
+                        children: [...(msg.children || []), userMessageRealId]
+                      };
+                    }
+                    return msg;
+                  });
+                });
               }
 
               // 处理错误响应
@@ -398,10 +429,8 @@ export const useChatMessages = ({
                 throw new Error(data.error);
               }
             } catch (parseError) {
-              // 只在开发环境显示详细的解析错误
-              if (process.env.NODE_ENV === 'development') {
-                console.warn('解析SSE数据失败:', parseError, '原始数据:', line);
-              }
+              // 记录解析错误，生产环境也需要知道发生了错误
+              console.warn('解析SSE数据失败:', parseError, '原始数据:', line);
               // 继续处理下一行，不中断整个流
             }
           }
@@ -449,7 +478,7 @@ export const useChatMessages = ({
           console.log('聊天请求被中止');
           // 移除未完成的助手消息，并显示中止提示
           setMessages(prevMessages =>
-            prevMessages.filter(msg => msg.id !== assistantMessageId)
+            prevMessages.filter(msg => msg.id !== assistantMessageTempId)
           );
           const abortMessage: Message = {
             id: `msg-${Date.now() + 2}`,
@@ -461,7 +490,7 @@ export const useChatMessages = ({
           // 网络连接错误，可能是网络问题
           console.error('网络连接错误:', error);
           setMessages(prevMessages =>
-            prevMessages.filter(msg => msg.id !== assistantMessageId)
+            prevMessages.filter(msg => msg.id !== assistantMessageTempId)
           );
           const errorMessage: Message = {
             id: `msg-${Date.now() + 2}`,
@@ -473,7 +502,7 @@ export const useChatMessages = ({
           console.error('发送消息时发生未知错误:', error);
           // 移除助手消息并显示错误
           setMessages(prevMessages =>
-            prevMessages.filter(msg => msg.id !== assistantMessageId)
+            prevMessages.filter(msg => msg.id !== assistantMessageTempId)
           );
           const errorMessage: Message = {
             id: `msg-${Date.now() + 2}`,

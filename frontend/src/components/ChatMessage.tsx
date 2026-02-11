@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
+import { TreeNode } from '../utils/conversationTree';
 import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
@@ -34,11 +35,11 @@ const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 3
 };
 
 interface ChatMessageProps {
-  message: Message;
+  message: Message | TreeNode;
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => void;
   onBranchClick?: (parentId: string, parentContent: string) => void;
-  parentMessage?: Message | null;
+  parentMessage?: Message | TreeNode | null;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -84,7 +85,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   // 处理分支问按钮点击
   const handleBranchClick = () => {
     if (onBranchClick && parentMessage) {
-      const parentId = parentMessage._id || parentMessage.id;
+      const parentId = parentMessage.id;
       const parentContent = parentMessage.content.substring(0, 10);
       onBranchClick(parentId, parentContent);
     }

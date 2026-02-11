@@ -1,8 +1,9 @@
 import React from 'react';
 import { Message } from '../types';
+import { TreeNode } from '../utils/conversationTree';
 
 interface ConversationBranchTabsProps {
-  branches: Message[];
+  branches: (Message | TreeNode)[];
   onBranchSelect: (branchId: string) => void;
   selectedBranchId: string;
 }

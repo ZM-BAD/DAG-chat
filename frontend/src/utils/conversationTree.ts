@@ -1,7 +1,7 @@
 import { Message } from '../types';
 
 // 扩展Message接口，添加children字段用于树形结构
-export interface TreeNode extends Message {
+export interface TreeNode extends Omit<Message, 'children'> {
   children: TreeNode[];
 }
 

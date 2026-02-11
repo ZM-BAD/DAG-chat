@@ -336,8 +336,8 @@ def get_dialogue_history(
                     "id": str(msg['_id']),
                     "content": msg['content'],
                     "role": msg['role'],
-                    "parent_ids": msg.get('parent_ids', None),
-                    "children": msg.get('children', None),
+                    "parent_ids": msg.get('parent_ids', []),
+                    "children": msg.get('children', []),
                     "model": msg.get('model', None)
                 }
 

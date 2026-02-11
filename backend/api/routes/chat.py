@@ -346,12 +346,17 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
             # 实时返回内容
             yield f"data: {json.dumps({'content': content, 'reasoning': reasoning}, ensure_ascii=False)}\n\n"
 
-        # 最终保存完整响应并获取助手消息的MongoDB ID
-        ai_message_id = await save_conversation_to_database(request, full_content, full_reasoning, mysql_db, mongo_db, first_ask)
+        # 最终保存完整响应并获取用户消息和助手消息的MongoDB ID
+        user_message_id, ai_message_id = await save_conversation_to_database(request, full_content, full_reasoning, mysql_db, mongo_db, first_ask)
 
-        # 返回助手消息的MongoDB ID给前端
-        if ai_message_id:
-            yield f"data: {json.dumps({'message_id': str(ai_message_id), 'complete': True}, ensure_ascii=False)}\n\n"
+        # 返回用户消息和助手消息的MongoDB ID给前端
+        if user_message_id and ai_message_id:
+            final_data = {
+                'user_message_id': str(user_message_id),
+                'assistant_message_id': str(ai_message_id),
+                'complete': True
+            }
+            yield f"data: {json.dumps(final_data, ensure_ascii=False)}\n\n"
 
     except (ConnectionError, asyncio.CancelledError, BrokenPipeError, OSError) as e:
         # 客户端正常中断连接，不记录为错误
@@ -436,7 +441,7 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         first_ask: 是否是第一次问
 
     返回:
-        助手消息的MongoDB ID
+        tuple: (用户消息的MongoDB ID, 助手消息的MongoDB ID)
     """
     if mysql_db.connect():
         try:
@@ -542,5 +547,5 @@ async def save_conversation_to_database(request: ChatRequest, full_content: str,
         mongo_db.update('message_node', {'_id': user_message_id}, user_message_dict)
         mongo_db.update('message_node', {'_id': ai_message_id}, ai_message_dict)
 
-        # 返回助手消息的MongoDB ID
-        return ai_message_id
+        # 返回用户消息和助手消息的MongoDB ID
+        return user_message_id, ai_message_id
