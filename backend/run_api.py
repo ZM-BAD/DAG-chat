@@ -16,5 +16,5 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    logger.info("Starting UniformLLM API server")
+    logger.info("Starting DAG-chat API server")
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

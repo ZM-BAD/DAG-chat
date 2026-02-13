@@ -124,7 +124,7 @@ function AppContent() {
           />
         )}
         <footer className="footer">
-          <p>© {new Date().getFullYear()} UniformLLM Platform. All Rights Reserved.</p>
+          <p>© {new Date().getFullYear()} DAG-chat. All Rights Reserved.</p>
         </footer>
       </div>
     </div>

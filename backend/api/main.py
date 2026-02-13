@@ -9,11 +9,11 @@ from backend.logging_config import LOGGING_CONFIG
 logging.config.dictConfig(LOGGING_CONFIG)
 
 description = """
-UniformLLM API 为您的应用提供统一的大型语言模型接口。
+DAG-chat API 为您的应用提供统一的大型语言模型接口。
 """
 
 app = FastAPI(
-    title="UniformLLM API",
+    title="DAG-chat API",
     description=description,
     version="1.0.0"
 )
@@ -30,7 +30,7 @@ app.add_middleware(
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
-logger.info("Starting UniformLLM API")
+logger.info("Starting DAG-chat API")
 
 # 包含API路由
 app.include_router(api_router, prefix="/api/v1")
@@ -38,7 +38,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to UniformLLM API!"}
+    return {"message": "Welcome to DAG-chat API!"}
 
 
 @app.get("/health")

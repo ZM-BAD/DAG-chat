@@ -286,7 +286,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="sidebar">
       <div className="sidebar-branding">
-        <h3>UniformLLM</h3>
+        <h3>DAG-chat</h3>
         <p>{t('sidebar.description')}</p>
       </div>
       <div className="sidebar-header">

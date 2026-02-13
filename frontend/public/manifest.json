@@ -1,6 +1,6 @@
 {
-  "short_name": "UniformLLM",
-  "name": "UniformLLM 前端应用",
+  "short_name": "DAG-chat",
+  "name": "DAG-chat 前端应用",
   "icons": [
     {
       "src": "favicon.ico",

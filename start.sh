@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 启动脚本 - 用于启动UniformLLM项目的前端和后端
+# 启动脚本 - 用于启动DAG-chat项目的前端和后端
 
 # 清理函数
 cleanup() {
@@ -21,7 +21,7 @@ trap cleanup SIGINT SIGTERM
 
 # 函数：停止所有服务
 stop_services() {
-    echo "正在查找并停止UniformLLM相关服务..."
+    echo "正在查找并停止DAG-chat相关服务..."
 
     # 查找并停止前端服务 (端口3000)
     FRONTEND_PID=$(lsof -ti:3000 2>/dev/null)
@@ -58,7 +58,7 @@ stop_services() {
     fi
 
     # 额外检查：查找可能的相关Node.js和Python进程
-    echo "检查其他可能的UniformLLM进程..."
+    echo "检查其他可能的DAG-chat进程..."
 
     # 查找可能的npm dev或start进程
     NPM_PIDS=$(pgrep -f "npm.*(dev|start)" 2>/dev/null)
@@ -76,7 +76,7 @@ stop_services() {
         sleep 1
     fi
 
-    echo "所有UniformLLM服务已停止！"
+    echo "所有DAG-chat服务已停止！"
 }
 
 # 函数：显示帮助信息
@@ -86,7 +86,7 @@ display_help() {
     echo "  --frontend     仅启动前端"
     echo "  --backend      仅启动后端"
     echo "  --all          同时启动前端和后端"
-    echo "  --stop         停止所有UniformLLM服务"
+    echo "  --stop         停止所有DAG-chat服务"
     echo "  --help         显示帮助信息"
     echo ""
     echo "示例:"

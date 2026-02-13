@@ -15,14 +15,14 @@ router = APIRouter()
 @router.get("/hello")
 def read_hello():
     logger.info("Hello endpoint accessed")
-    return {"message": "Hello World from UniformLLM!"}
+    return {"message": "Hello World from DAG-chat!"}
 
 
 @router.get("/info")
 def get_info():
     logger.info("Info endpoint accessed")
     return {
-        "app": "UniformLLM",
+        "app": "DAG-chat",
         "version": "1.0.0",
         "framework": "FastAPI"
     }
@@ -35,7 +35,7 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "service": "UniformLLM"
+        "service": "DAG-chat"
     }
 
 

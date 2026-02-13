@@ -1,5 +1,5 @@
 """
-UniformLLM Database Package
+DAG-chat Database Package
 
-This package contains database connection classes for MySQL and MongoDB used in the UniformLLM project.
+This package contains database connection classes for MySQL and MongoDB used in the DAG-chat project.
 """
