@@ -1,0 +1,26 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install pip-audit
+      - name: Run pip-audit
+        run: |
+          pip-audit -r backend/requirements.txt
