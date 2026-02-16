@@ -336,18 +336,100 @@
 .conversation-branch-tabs {
   margin-top: 4px;
   margin-bottom: 4px;
+  width: max-content;
 }
 
-.tabs-container {
+/* 分支单元样式 */
+.branch-unit {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+}
+
+/* 合并单元样式 */
+.merge-unit {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+}
+
+/* children-tabs-container: 在 user message 上方，控制展示哪个 children
+ * 让 tabs 右侧和下方的 user message 右侧对齐
+ */
+.conversation-branch-tabs.children-tabs-container {
+  width: 100%;
+  margin-top: 4px;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.conversation-branch-tabs.children-tabs-container .tabs-list {
+  justify-content: flex-end;
+}
+
+/* parent-tabs-container: 在 assistant message 下方，控制展示哪个 parent
+ * 上沿紧贴 assistant message 下边缘，让 tabs 左侧和 assistant 消息内容左边缘对齐
+ */
+.conversation-branch-tabs.parent-tabs-container {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+  padding-top: 0;
+  padding-left: 40px;  /* 头像32px + gap 8px = 40px */
+  display: flex;
+  justify-content: flex-start;
+}
+
+.conversation-branch-tabs.parent-tabs-container .tabs-list {
+  background: #e8f4f8;
+  justify-content: flex-start;
+}
+
+/* children-tabs-container: 在 user message 上方，控制展示哪个 children
+ * 让 tabs 右侧和下方的 user message 右侧对齐
+ */
+.conversation-branch-tabs.children-tabs-container {
+  width: 100%;
+  margin-top: 4px;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.conversation-branch-tabs.children-tabs-container .tabs-list {
+  justify-content: flex-end;  /* tabs内容向右对齐 */
+}
+
+/* parent-tabs-container: 在 assistant message 下方，控制展示哪个 parent
+ * 上沿紧贴 assistant message 下边缘，tabs向左紧靠
+ */
+.conversation-branch-tabs.parent-tabs-container {
+  margin-top: 0;     /* 紧贴上方 assistant message 下边缘 */
+  margin-bottom: 8px;  /* 与下方 user 保持距离 */
+  display: flex;
+  justify-content: flex-start;  /* tabs向左对齐，与assistant消息左边缘对齐 */
+}
+
+.conversation-branch-tabs.parent-tabs-container .tabs-list {
+  background: #e8f4f8;
+  justify-content: flex-start;  /* tabs内容向左对齐 */
+}
+
+.tabs-list {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
   background: #f5f5f5;
   border-radius: 8px;
   padding: 2px;
-  max-width: 100%;
+  width: max-content;
   align-items: flex-start;
 }
+
+
 
 .branch-tab {
   flex: 0 1 auto;
@@ -422,7 +504,7 @@
     gap: 4px;
   }
 
-  .tabs-container {
+  .tabs-list {
     gap: 1px;
     padding: 1px;
   }

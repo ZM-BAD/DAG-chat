@@ -62,6 +62,18 @@ const MoreIcon: React.FC = () => (
   </svg>
 );
 
+const CollapseIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+  </svg>
+);
+
+const ExpandIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+  </svg>
+);
+
 const EditIcon: React.FC = () => (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="#666">
     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
@@ -94,6 +106,8 @@ interface SidebarProps {
   selectedDialogueId: string | null;
   onDialogueDeleted?: () => void;
   onDialogueRenamed?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -102,7 +116,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   dialogues,
   selectedDialogueId,
   onDialogueDeleted,
-  onDialogueRenamed
+  onDialogueRenamed,
+  isCollapsed = false,
+  onToggleCollapse
 }) => {
   const { t } = useTranslation();
   const [loading] = useState<boolean>(false);
@@ -284,145 +300,181 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-branding">
-        <h3>DAG-chat</h3>
-        <p>{t('sidebar.description')}</p>
-      </div>
-      <div className="sidebar-header">
-        <h2>{t('sidebar.title')}</h2>
-        <button 
-          className="new-dialogue-button" 
-          onClick={handleNewDialogue}
-          title={t('chat.newChat')}
-        >
-          +
-        </button>
-      </div>
-      
-      <div className="dialogue-list" ref={listRef}>
-        {loading ? (
-          <div className="loading">{t('sidebar.loading')}</div>
-        ) : dialogues.length === 0 ? (
-          <div className="empty-state">{t('sidebar.empty')}</div>
-        ) : (
-          [
-            ...dialogues.map(dialogue => (
-              <div
-                key={dialogue.id}
-                className={`dialogue-item ${selectedDialogueId === dialogue.id ? 'selected' : ''}`}
-                onClick={(e) => {
-                  const target = e.target as Element;
-                  if (!target.closest('.dialogue-actions') && !target.closest('.dialogue-menu')) {
-                    handleDialogueClick(dialogue.id);
-                  }
-                }}
+    <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      {/* 收起状态下的展开按钮 */}
+      {isCollapsed && (
+        <div className="sidebar-collapsed-controls">
+          <button 
+            className="sidebar-expand-button" 
+            onClick={onToggleCollapse}
+            title={t('sidebar.expand')}
+          >
+            <ExpandIcon />
+          </button>
+          <button 
+            className="sidebar-new-button" 
+            onClick={handleNewDialogue}
+            title={t('chat.newChat')}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* 展开状态下的完整侧边栏 */}
+      {!isCollapsed && (
+        <>
+          <div className="sidebar-branding">
+            <h3>DAG-chat</h3>
+            <p>{t('sidebar.description')}</p>
+          </div>
+          <div className="sidebar-header">
+            <h2>{t('sidebar.title')}</h2>
+            <div className="sidebar-header-buttons">
+              <button 
+                className="sidebar-collapse-button" 
+                onClick={onToggleCollapse}
+                title={t('sidebar.collapse')}
               >
-                <div className="dialogue-content">
-                  {editingId === dialogue.id ? (
-                    <input
-                      type="text"
-                      className="rename-input"
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          finishEditing(dialogue.id);
-                        } else if (e.key === 'Escape') {
-                          cancelEditing();
-                        }
-                      }}
-                      onBlur={() => finishEditing(dialogue.id)}
-                      autoFocus
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <>
-                      <div className="dialogue-title">{dialogue.title || t('dialogue.defaultTitle')}</div>
-                      <div className="dialogue-meta">
-                        <span className="dialogue-time">
-                          {new Date(dialogue.update_time).toLocaleDateString()}
-                        </span>
-                        <div className="dialogue-model">
-                          {(() => {
-                            const models = parseMultipleModels(dialogue.model);
-                            return models.length > 0 ? (
-                              <div className="dialogue-model-logos">
-                                {models.map((model, index) => (
-                                  <ModelLogo
-                                    key={`${model}-${index}`}
-                                    model={model}
-                                    size={12}
-                                  />
-                                ))}
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className="dialogue-actions">
-                      <button
-                        className="dialogue-more-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          
-                          // 计算菜单位置
-                          const buttonElement = e.currentTarget;
-                          const dialogueItemElement = buttonElement.closest('.dialogue-item');
-                          if (dialogueItemElement) {
-                            const rect = dialogueItemElement.getBoundingClientRect();
-                            const viewportHeight = window.innerHeight;
-                            const menuHeight = 80; // 预估菜单高度
-                            
-                            // 判断显示在底部是否会溢出屏幕
-                            if (rect.bottom + menuHeight > viewportHeight) {
-                              setMenuPosition('top');
-                            } else {
-                              setMenuPosition('bottom');
+                <CollapseIcon />
+              </button>
+              <button 
+                className="new-dialogue-button" 
+                onClick={handleNewDialogue}
+                title={t('chat.newChat')}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          
+          <div className="dialogue-list" ref={listRef}>
+            {loading ? (
+              <div className="loading">{t('sidebar.loading')}</div>
+            ) : dialogues.length === 0 ? (
+              <div className="empty-state">{t('sidebar.empty')}</div>
+            ) : (
+              [
+                ...dialogues.map(dialogue => (
+                  <div
+                    key={dialogue.id}
+                    className={`dialogue-item ${selectedDialogueId === dialogue.id ? 'selected' : ''}`}
+                    onClick={(e) => {
+                      const target = e.target as Element;
+                      if (!target.closest('.dialogue-actions') && !target.closest('.dialogue-menu')) {
+                        handleDialogueClick(dialogue.id);
+                      }
+                    }}
+                  >
+                    <div className="dialogue-content">
+                      {editingId === dialogue.id ? (
+                        <input
+                          type="text"
+                          className="rename-input"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              finishEditing(dialogue.id);
+                            } else if (e.key === 'Escape') {
+                              cancelEditing();
                             }
-                          }
-                          
-                          setOpenMenuId(openMenuId === dialogue.id ? null : dialogue.id);
-                        }}
-                        title={t('sidebar.moreActions')}
-                      >
-                        <MoreIcon />
-                      </button>
-                      {openMenuId === dialogue.id && (
-                        <div className={`dialogue-menu ${menuPosition === 'top' ? 'dialogue-menu-top' : ''}`}>
-                          <button
-                            className="dialogue-menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditing(dialogue);
-                            }}
-                          >
-                            <EditIcon />
-                            {t('dialogue.rename')}
-                          </button>
-                          <button
-                            className="dialogue-menu-item delete"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteDialogue(dialogue.id);
-                            }}
-                          >
-                            <TrashIcon />
-                            {t('dialogue.delete')}
-                          </button>
-                        </div>
+                          }}
+                          onBlur={() => finishEditing(dialogue.id)}
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <>
+                          <div className="dialogue-title">{dialogue.title || t('dialogue.defaultTitle')}</div>
+                          <div className="dialogue-meta">
+                            <span className="dialogue-time">
+                              {new Date(dialogue.update_time).toLocaleDateString()}
+                            </span>
+                            <div className="dialogue-model">
+                              {(() => {
+                                const models = parseMultipleModels(dialogue.model);
+                                return models.length > 0 ? (
+                                  <div className="dialogue-model-logos">
+                                    {models.map((model, index) => (
+                                      <ModelLogo
+                                        key={`${model}-${index}`}
+                                        model={model}
+                                        size={12}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : null;
+                              })()}
+                            </div>
+                          </div>
+                        </>
                       )}
-                </div>
-              </div>
-            )),
-            // 显示加载更多的状态
-            loadingMore && <div className="loading-more">{t('sidebar.loadingMore')}</div>
-          ]
-        )}
-      </div>
+                    </div>
+                    <div className="dialogue-actions">
+                          <button
+                            className="dialogue-more-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              
+                              // 计算菜单位置
+                              const buttonElement = e.currentTarget;
+                              const dialogueItemElement = buttonElement.closest('.dialogue-item');
+                              if (dialogueItemElement) {
+                                const rect = dialogueItemElement.getBoundingClientRect();
+                                const viewportHeight = window.innerHeight;
+                                const menuHeight = 80; // 预估菜单高度
+                                
+                                // 判断显示在底部是否会溢出屏幕
+                                if (rect.bottom + menuHeight > viewportHeight) {
+                                  setMenuPosition('top');
+                                } else {
+                                  setMenuPosition('bottom');
+                                }
+                              }
+                              
+                              setOpenMenuId(openMenuId === dialogue.id ? null : dialogue.id);
+                            }}
+                            title={t('sidebar.moreActions')}
+                          >
+                            <MoreIcon />
+                          </button>
+                          {openMenuId === dialogue.id && (
+                            <div className={`dialogue-menu ${menuPosition === 'top' ? 'dialogue-menu-top' : ''}`}>
+                              <button
+                                className="dialogue-menu-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(dialogue);
+                                }}
+                              >
+                                <EditIcon />
+                                {t('dialogue.rename')}
+                              </button>
+                              <button
+                                className="dialogue-menu-item delete"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDialogue(dialogue.id);
+                                }}
+                              >
+                                <TrashIcon />
+                                {t('dialogue.delete')}
+                              </button>
+                            </div>
+                          )}
+                    </div>
+                  </div>
+                )),
+                // 显示加载更多的状态
+                loadingMore && <div className="loading-more">{t('sidebar.loadingMore')}</div>
+              ]
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

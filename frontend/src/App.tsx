@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import { useChat } from './hooks/useChat';
 import { useDialogues } from './hooks/useDialogues';
@@ -41,6 +41,9 @@ function AppContent() {
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } = useDialogues();
+  
+  // 侧边栏展开/收起状态
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 处理对话选择，包含刷新对话列表的逻辑
   const handleDialogueSelectWithRefresh = async (dialogueId: string) => {
@@ -71,11 +74,15 @@ function AppContent() {
         selectedDialogueId={currentDialogueId}
         onDialogueDeleted={handleDialogueDeleted}
         onDialogueRenamed={handleDialogueRenamed}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <div className="main-content">
+      <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <LanguageSwitcher className="language-switcher-top" />
         {!shouldShowWelcome && (
-          <ChatHeader title={currentTitle} />
+          <div className={`chat-header-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <ChatHeader title={currentTitle} />
+          </div>
         )}
         <ChatContainer
           messages={messages}
@@ -103,27 +110,29 @@ function AppContent() {
           }
         />
         {!shouldShowWelcome && (
-          <ChatInput
-            inputMessage={inputMessage}
-            isLoading={isLoading}
-            textareaRef={textareaRef}
-            handleInputChange={handleInputChange}
-            handleKeyPress={handleKeyPress}
-            handleSendMessage={handleSendMessage}
-            handleInterruptResponse={handleInterruptResponse}
-            onDeepThinkingChange={handleDeepThinkingChange}
-            onSearchChange={handleSearchChange}
-            onModelChange={handleModelChange}
-            initialDeepThinking={deepThinkingEnabled}
-            initialSearch={searchEnabled}
-            initialModel={selectedModel}
-            availableModels={availableModels}
-            branchParentId={branchParentId}
-            branchParentContent={branchParentContent}
-            onClearBranch={clearBranchState}
-          />
+          <div className={`chat-input-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <ChatInput
+              inputMessage={inputMessage}
+              isLoading={isLoading}
+              textareaRef={textareaRef}
+              handleInputChange={handleInputChange}
+              handleKeyPress={handleKeyPress}
+              handleSendMessage={handleSendMessage}
+              handleInterruptResponse={handleInterruptResponse}
+              onDeepThinkingChange={handleDeepThinkingChange}
+              onSearchChange={handleSearchChange}
+              onModelChange={handleModelChange}
+              initialDeepThinking={deepThinkingEnabled}
+              initialSearch={searchEnabled}
+              initialModel={selectedModel}
+              availableModels={availableModels}
+              branchParentId={branchParentId}
+              branchParentContent={branchParentContent}
+              onClearBranch={clearBranchState}
+            />
+          </div>
         )}
-        <footer className="footer">
+        <footer className={`footer-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
           <p>© {new Date().getFullYear()} DAG-chat. All Rights Reserved.</p>
         </footer>
       </div>

@@ -1,6 +1,6 @@
 // 从环境变量获取配置，添加默认值防止未定义
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const DEFAULT_USER_ID = import.meta.env.VITE_DEFAULT_USER_ID || 'test-user';
+const DEFAULT_USER_ID = import.meta.env.VITE_DEFAULT_USER_ID || 'zm-bad';
 
 // API路径配置
 export const API_ENDPOINTS = {
