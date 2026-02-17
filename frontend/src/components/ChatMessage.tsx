@@ -5,13 +5,16 @@ import { TreeNode } from '../utils/conversationTree';
 import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
-const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 32 }) => {
+const ModelLogo: React.FC<{ model: string; size?: number }> = ({
+  model,
+  size = 32,
+}) => {
   const getLogoPath = (modelName: string): string => {
     const modelMap: { [key: string]: string } = {
-      'deepseek': 'deepseek',
-      'kimi': 'kimi',
-      'qwen': 'qwen',
-      'glm': 'zai'  // GLM模型对应zai.svg
+      deepseek: 'deepseek',
+      kimi: 'kimi',
+      qwen: 'qwen',
+      glm: 'zai', // GLM模型对应zai.svg
     };
 
     const normalizedModel = modelName.toLowerCase();
@@ -27,7 +30,7 @@ const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 3
       style={{
         width: size,
         height: size,
-        objectFit: 'contain'
+        objectFit: 'contain',
       }}
       className="message-avatar"
     />
@@ -47,13 +50,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   toggleThinkingExpansion,
   copyMessageToClipboard,
   onBranchClick,
-  parentMessage
+  parentMessage,
 }) => {
   const { t } = useTranslation();
   const messageRef = useRef<HTMLDivElement>(null);
   const isTogglingRef = useRef(false);
 
-  
   // 处理思考内容的展开/收起，保持滚动位置
   const handleToggleThinking = () => {
     if (isTogglingRef.current) return; // 防止重复点击
@@ -113,36 +115,48 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           {message.role === 'assistant' ? (
             <div className="assistant-content">
               {/* 思考内容区域 - 只有在启用了深度思考且有思考内容或等待首token时才显示 */}
-              {message.deepThinkingEnabled && (message.thinkingContent || message.isWaitingForFirstToken) && (
-                <div className="thinking-section">
-                  <div className="thinking-header">
-                    <button
-                      className="thinking-toggle"
-                      onClick={handleToggleThinking}
-                      aria-label={message.isThinkingExpanded ? t('chat.collapseThinking') : t('chat.expandThinking')}
+              {message.deepThinkingEnabled &&
+                (message.thinkingContent || message.isWaitingForFirstToken) && (
+                  <div className="thinking-section">
+                    <div className="thinking-header">
+                      <button
+                        className="thinking-toggle"
+                        onClick={handleToggleThinking}
+                        aria-label={
+                          message.isThinkingExpanded
+                            ? t('chat.collapseThinking')
+                            : t('chat.expandThinking')
+                        }
+                      >
+                        <span className="thinking-icon">
+                          {message.isThinkingExpanded ? '▼' : '▶'}
+                        </span>
+                        <span className="thinking-label">
+                          {t('chat.thinkingProcess')}
+                        </span>
+                      </button>
+                    </div>
+                    <div
+                      className={`thinking-content ${!message.isThinkingExpanded && !message.isWaitingForFirstToken ? 'collapsed' : ''}`}
                     >
-                      <span className="thinking-icon">
-                        {message.isThinkingExpanded ? '▼' : '▶'}
-                      </span>
-                      <span className="thinking-label">{t('chat.thinkingProcess')}</span>
-                    </button>
-                  </div>
-                  <div className={`thinking-content ${!message.isThinkingExpanded && !message.isWaitingForFirstToken ? 'collapsed' : ''}`}>
                       <div className="thinking-border"></div>
                       <div className="thinking-text">
-                        {message.isWaitingForFirstToken && !message.thinkingContent ? (
+                        {message.isWaitingForFirstToken &&
+                        !message.thinkingContent ? (
                           <div className="waiting-animation">
                             <span className="waiting-dot"></span>
                             <span className="waiting-dot"></span>
                             <span className="waiting-dot"></span>
                           </div>
                         ) : (
-                          <EnhancedMarkdown content={message.thinkingContent || ''} />
+                          <EnhancedMarkdown
+                            content={message.thinkingContent || ''}
+                          />
                         )}
                       </div>
                     </div>
-                </div>
-              )}
+                  </div>
+                )}
 
               {/* 正式回答内容区域 */}
               <div className="answer-content">
@@ -161,7 +175,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           title="复制消息"
           aria-label="复制消息"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>

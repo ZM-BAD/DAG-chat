@@ -50,6 +50,6 @@ export const useChatSettings = (): UseChatSettingsReturn => {
     handleDeepThinkingChange,
     handleSearchChange,
     handleBranchClick,
-    clearBranchState
+    clearBranchState,
   };
 };

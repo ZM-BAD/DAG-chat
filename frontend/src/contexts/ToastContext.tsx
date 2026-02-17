@@ -9,15 +9,25 @@ interface ToastItem {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: 'success' | 'error' | 'info', duration?: number) => void;
+  showToast: (
+    message: string,
+    type?: 'success' | 'error' | 'info',
+    duration?: number,
+  ) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ToastProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', duration = 3000) => {
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' | 'info' = 'success',
+    duration = 3000,
+  ) => {
     const id = Math.random().toString(36).substr(2, 9);
     const newToast: ToastItem = { id, message, type, duration };
     setToasts((prev) => [...prev, newToast]);

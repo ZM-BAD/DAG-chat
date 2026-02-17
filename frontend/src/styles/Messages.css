@@ -57,7 +57,9 @@
 }
 
 @keyframes waiting-pulse {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.5;
   }
@@ -105,7 +107,9 @@
   gap: 12px;
   margin-left: 8px;
   overflow: hidden;
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  transition:
+    max-height 0.3s ease-in-out,
+    opacity 0.3s ease-in-out;
   max-height: 99999px; /* 足够大的值来容纳内容 */
   opacity: 1;
 }
@@ -185,7 +189,9 @@
 }
 
 @keyframes typing {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
   40% {
@@ -429,7 +435,7 @@
 }
 
 /* 当标签数量很多时的布局调整 */
-.branch-tab:nth-child(n+7) {
+.branch-tab:nth-child(n + 7) {
   min-width: 100px; /* 第7个以后的标签可以稍微窄一点 */
 }
 

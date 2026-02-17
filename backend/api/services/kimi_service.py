@@ -6,7 +6,7 @@ from openai import OpenAI
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
 
-from config import KIMI_API_KEY, KIMI_API_BASE_URL
+from backend.config import KIMI_API_KEY, KIMI_API_BASE_URL
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -20,10 +20,7 @@ class KimiService(BaseModelService):
 
     def __init__(self):
         # 初始化OpenAI客户端，使用Moonshot的base_url
-        self.client = OpenAI(
-            api_key=KIMI_API_KEY,
-            base_url=KIMI_API_BASE_URL
-        )
+        self.client = OpenAI(api_key=KIMI_API_KEY, base_url=KIMI_API_BASE_URL)
 
     @classmethod
     def get_service_name(cls) -> str:
@@ -58,9 +55,7 @@ class KimiService(BaseModelService):
 
             # 使用OpenAI SDK调用
             response = self.client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                stream=True
+                model=model_name, messages=messages, stream=True
             )
 
             # 处理流式响应
@@ -70,7 +65,11 @@ class KimiService(BaseModelService):
 
                     # 处理思考内容（仅在思考模式下返回）
                     reasoning_content = ""
-                    if deep_thinking and hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                    if (
+                        deep_thinking
+                        and hasattr(delta, "reasoning_content")
+                        and delta.reasoning_content
+                    ):
                         reasoning_content = delta.reasoning_content
                         yield {"content": "", "reasoning": reasoning_content}
                         continue

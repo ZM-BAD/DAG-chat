@@ -6,7 +6,7 @@ from openai import OpenAI
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
 
-from config import GLM_API_KEY, GLM_API_BASE_URL
+from backend.config import GLM_API_KEY, GLM_API_BASE_URL
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -20,10 +20,7 @@ class GLMService(BaseModelService):
 
     def __init__(self):
         # 初始化OpenAI客户端，使用智谱AI的base_url
-        self.client = OpenAI(
-            api_key=GLM_API_KEY,
-            base_url=GLM_API_BASE_URL
-        )
+        self.client = OpenAI(api_key=GLM_API_KEY, base_url=GLM_API_BASE_URL)
 
     @classmethod
     def get_service_name(cls) -> str:
@@ -75,7 +72,11 @@ class GLMService(BaseModelService):
 
                     # 处理思考内容（仅在思考模式下返回）
                     reasoning_content = ""
-                    if deep_thinking and hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                    if (
+                        deep_thinking
+                        and hasattr(delta, "reasoning_content")
+                        and delta.reasoning_content
+                    ):
                         reasoning_content = delta.reasoning_content
                         yield {"content": "", "reasoning": reasoning_content}
                         continue
@@ -113,7 +114,7 @@ class GLMService(BaseModelService):
                 model="glm-5",
                 messages=messages,
                 max_tokens=20,
-                extra_body={"thinking": {"type": "disabled"}}
+                extra_body={"thinking": {"type": "disabled"}},
             )
 
             if (

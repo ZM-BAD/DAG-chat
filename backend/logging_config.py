@@ -23,19 +23,19 @@ LOGGING_CONFIG = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "default",
-            "level": "INFO"
+            "level": "INFO",
         },
         "file": {
             "class": "logging.FileHandler",
             "filename": os.path.join(log_dir, "app.log"),
             "formatter": "default",
-            "level": "DEBUG"
-        }
+            "level": "DEBUG",
+        },
     },
     "root": {
         "handlers": ["console", "file"],
         "level": "INFO",
-    }
+    },
 }
 
 

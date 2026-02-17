@@ -2,13 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
-const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 16 }) => {
+const ModelLogo: React.FC<{ model: string; size?: number }> = ({
+  model,
+  size = 16,
+}) => {
   const getLogoPath = (modelName: string): string => {
     const modelMap: { [key: string]: string } = {
-      'deepseek': 'deepseek',
-      'kimi': 'kimi',
-      'qwen': 'qwen',
-      'glm': 'zai'  // GLM模型对应zai.svg
+      deepseek: 'deepseek',
+      kimi: 'kimi',
+      qwen: 'qwen',
+      glm: 'zai', // GLM模型对应zai.svg
     };
 
     const normalizedModel = modelName.toLowerCase();
@@ -24,7 +27,7 @@ const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 1
       style={{
         width: size,
         height: size,
-        objectFit: 'contain'
+        objectFit: 'contain',
       }}
       className="model-logo"
     />
@@ -34,14 +37,14 @@ const ModelLogo: React.FC<{ model: string; size?: number }> = ({ model, size = 1
 // 自定义模型选择器组件
 interface CustomModelSelectProps {
   selectedModel: string;
-  availableModels: {value: string; label: string}[];
+  availableModels: { value: string; label: string }[];
   onModelChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
   selectedModel,
   availableModels,
-  onModelChange
+  onModelChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -67,7 +70,10 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
   // 点击外部关闭下拉菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+      if (
+        selectRef.current &&
+        !selectRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -80,15 +86,17 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
     // 创建一个模拟的select事件
     const mockEvent = {
       target: {
-        value: modelValue
-      }
+        value: modelValue,
+      },
     } as React.ChangeEvent<HTMLSelectElement>;
 
     onModelChange(mockEvent);
     setIsOpen(false);
   };
 
-  const currentModel = availableModels.find(m => m.value === selectedModel) || availableModels[0];
+  const currentModel =
+    availableModels.find((m) => m.value === selectedModel) ||
+    availableModels[0];
 
   const handleTriggerClick = () => {
     if (!isOpen) {
@@ -99,20 +107,19 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
 
   return (
     <div className="custom-model-select" ref={selectRef}>
-      <div
-        className="custom-select-trigger"
-        onClick={handleTriggerClick}
-      >
+      <div className="custom-select-trigger" onClick={handleTriggerClick}>
         <div className="selected-model-display">
           <ModelLogo model={currentModel?.value || 'deepseek'} size={16} />
-          <span className="model-label">{currentModel?.label || '选择模型'}</span>
+          <span className="model-label">
+            {currentModel?.label || '选择模型'}
+          </span>
         </div>
         <div className={`select-arrow ${isOpen ? 'open' : ''}`}>▼</div>
       </div>
 
       {isOpen && (
         <div className={`custom-select-dropdown ${dropUp ? 'drop-up' : ''}`}>
-          {availableModels.map(model => (
+          {availableModels.map((model) => (
             <div
               key={model.value}
               className={`custom-select-option ${model.value === selectedModel ? 'selected' : ''}`}
@@ -142,7 +149,7 @@ interface ChatInputProps {
   initialDeepThinking?: boolean;
   initialSearch?: boolean;
   initialModel?: string;
-  availableModels?: {value: string; label: string}[];
+  availableModels?: { value: string; label: string }[];
   branchParentId?: string | null;
   branchParentContent?: string;
   onClearBranch?: () => void;
@@ -165,14 +172,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
   availableModels = [],
   branchParentId = null,
   branchParentContent = '',
-  onClearBranch
+  onClearBranch,
 }) => {
   const { t } = useTranslation();
   const isInputEmpty = inputMessage.trim() === '';
-  const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(initialDeepThinking);
+  const [deepThinkingEnabled, setDeepThinkingEnabled] =
+    useState(initialDeepThinking);
   const [searchEnabled, setSearchEnabled] = useState(initialSearch);
   const [selectedModel, setSelectedModel] = useState(initialModel);
-  
+
   const handleButtonClick = () => {
     if (isLoading && handleInterruptResponse) {
       handleInterruptResponse();
@@ -206,13 +214,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
       onModelChange(newModel);
     }
   };
-  
+
   return (
     <div className="chat-input-wrapper">
       {/* 分支问引用效果 */}
       {branchParentId && (
         <div className="branch-citation">
-          <img src="/assets/branch.svg" alt="分支" className="branch-citation-icon" />
+          <img
+            src="/assets/branch.svg"
+            alt="分支"
+            className="branch-citation-icon"
+          />
           <span className="branch-citation-text">{branchParentContent}...</span>
           <button
             className="branch-citation-close"

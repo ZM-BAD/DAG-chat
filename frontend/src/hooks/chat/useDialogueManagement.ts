@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Message } from '../../types';
 
 interface UseDialogueManagementReturn {
   currentDialogueId: string | null;
@@ -8,7 +7,9 @@ interface UseDialogueManagementReturn {
 }
 
 export const useDialogueManagement = (): UseDialogueManagementReturn => {
-  const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
+  const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(
+    null,
+  );
 
   // 处理对话选择
   const handleDialogueSelect = useCallback(async (dialogueId: string) => {
@@ -31,17 +32,23 @@ export const useDialogueManagement = (): UseDialogueManagementReturn => {
     };
 
     // 添加事件监听器
-    window.addEventListener('dialogueCreated', handleDialogueCreated as EventListener);
+    window.addEventListener(
+      'dialogueCreated',
+      handleDialogueCreated as EventListener,
+    );
 
     // 清理事件监听器
     return () => {
-      window.removeEventListener('dialogueCreated', handleDialogueCreated as EventListener);
+      window.removeEventListener(
+        'dialogueCreated',
+        handleDialogueCreated as EventListener,
+      );
     };
   }, []);
 
   return {
     currentDialogueId,
     handleDialogueSelect,
-    handleNewDialogue
+    handleNewDialogue,
   };
 };

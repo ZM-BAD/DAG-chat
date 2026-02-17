@@ -37,10 +37,11 @@ function AppContent() {
     branchParentId,
     branchParentContent,
     handleBranchClick,
-    clearBranchState
+    clearBranchState,
   } = useChat();
 
-  const { dialogues, refreshDialogues, getCurrentDialogueTitle } = useDialogues();
+  const { dialogues, refreshDialogues, getCurrentDialogueTitle } =
+    useDialogues();
 
   // 处理对话选择，包含刷新对话列表的逻辑
   const handleDialogueSelectWithRefresh = async (dialogueId: string) => {
@@ -74,9 +75,7 @@ function AppContent() {
       />
       <div className="main-content">
         <LanguageSwitcher className="language-switcher-top" />
-        {!shouldShowWelcome && (
-          <ChatHeader title={currentTitle} />
-        )}
+        {!shouldShowWelcome && <ChatHeader title={currentTitle} />}
         <ChatContainer
           messages={messages}
           isLoading={isLoading}

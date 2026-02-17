@@ -56,11 +56,11 @@
 }
 
 /* 标题样式 */
-.markdown-content h1, 
-.markdown-content h2, 
-.markdown-content h3, 
-.markdown-content h4, 
-.markdown-content h5, 
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
 .markdown-content h6 {
   margin-top: 1.5em;
   margin-bottom: 0.8em;
@@ -88,7 +88,7 @@
   font-size: 1.2em;
 }
 
-.markdown-content h5, 
+.markdown-content h5,
 .markdown-content h6 {
   font-size: 1.1em;
 }
@@ -99,7 +99,7 @@
 }
 
 /* 列表样式 */
-.markdown-content ul, 
+.markdown-content ul,
 .markdown-content ol {
   margin-bottom: 1em;
   padding-left: 1.5em;
@@ -225,7 +225,7 @@
 }
 
 /* 任务列表样式 */
-.markdown-content input[type="checkbox"] {
+.markdown-content input[type='checkbox'] {
   margin-right: 0.5em;
   transform: scale(1.2);
 }

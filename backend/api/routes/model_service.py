@@ -8,6 +8,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get('/models')
+@router.get("/models")
 def get_models():
     pass

@@ -1,0 +1,39 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/.*\.py$
+      - id: ruff-format
+        files: ^backend/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint (backend)
+        entry: bash -c 'python3 -m pylint --fail-under=8 $(git ls-files "*.py")'
+        language: system
+        pass_filenames: false
+        files: \.py$
+
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend && npm run lint -- --fix'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/).*\.(ts|tsx|js|jsx)$
+
+      - id: prettier-frontend
+        name: prettier (frontend)
+        entry: bash -c 'cd frontend && npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css}"'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/).*\.(ts|tsx|js|jsx|json|css)$
+
+      - id: typescript-frontend
+        name: typescript (frontend)
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/).*\.(ts|tsx)$

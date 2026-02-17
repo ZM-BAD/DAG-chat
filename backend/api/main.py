@@ -12,11 +12,7 @@ description = """
 DAG-chat API 为您的应用提供统一的大型语言模型接口。
 """
 
-app = FastAPI(
-    title="DAG-chat API",
-    description=description,
-    version="1.0.0"
-)
+app = FastAPI(title="DAG-chat API", description=description, version="1.0.0")
 
 # 添加CORS中间件以允许跨域请求
 app.add_middleware(

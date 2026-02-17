@@ -5,22 +5,20 @@ import translationZH from './locales/zh.json';
 
 const resources = {
   'en-US': {
-    translation: translationEN
+    translation: translationEN,
   },
   'zh-CN': {
-    translation: translationZH
-  }
+    translation: translationZH,
+  },
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: localStorage.getItem('language') || 'en-US',
-    fallbackLng: 'en-US',
-    interpolation: {
-      escapeValue: false
-    }
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: localStorage.getItem('language') || 'en-US',
+  fallbackLng: 'en-US',
+  interpolation: {
+    escapeValue: false,
+  },
+});
 
 export default i18n;

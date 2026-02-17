@@ -11,10 +11,10 @@ interface ConversationBranchTabsProps {
 const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
   branches,
   onBranchSelect,
-  selectedBranchId
+  selectedBranchId,
 }) => {
   // 生成标签显示文本，最少显示6个字符，如果超长则截断并添加...
-  const getTabLabel = (content: string, index: number) => {
+  const getTabLabel = (content: string, _index: number) => {
     const maxLength = 15;
     if (content.length <= maxLength) {
       return content;

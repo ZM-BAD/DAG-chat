@@ -21,11 +21,7 @@ def read_hello():
 @router.get("/info")
 def get_info():
     logger.info("Info endpoint accessed")
-    return {
-        "app": "DAG-chat",
-        "version": "1.0.0",
-        "framework": "FastAPI"
-    }
+    return {"app": "DAG-chat", "version": "1.0.0", "framework": "FastAPI"}
 
 
 @router.get("/health")
@@ -35,7 +31,7 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "service": "DAG-chat"
+        "service": "DAG-chat",
     }
 
 
@@ -46,10 +42,10 @@ def get_available_models():
     返回当前系统支持的所有大语言模型，以便前端动态加载模型选择列表。
     """
     logger.info("Models endpoint accessed")
-    
+
     # 使用ModelFactory获取所有已注册的服务
     available_models = ModelFactory.get_available_services()
-    
+
     # 构建模型信息列表，包含模型名称和显示名称
     models_info = []
     for model_name in available_models:
@@ -58,16 +54,10 @@ def get_available_models():
             "deepseek": "DeepSeek",
             "qwen": "Qwen",
             "kimi": "Kimi",
-            "glm": "GLM"
+            "glm": "GLM",
         }
-        
+
         display_name = display_name_map.get(model_name.lower(), model_name)
-        models_info.append({
-            "name": model_name,
-            "display_name": display_name
-        })
-    
-    return {
-        "models": models_info,
-        "count": len(models_info)
-    }
+        models_info.append({"name": model_name, "display_name": display_name})
+
+    return {"models": models_info, "count": len(models_info)}

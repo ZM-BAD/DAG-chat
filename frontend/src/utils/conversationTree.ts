@@ -11,19 +11,19 @@ export function buildConversationTree(messages: Message[]): TreeNode[] {
   const messageMap = new Map<string, TreeNode>();
 
   // 首先将所有消息转换为TreeNode并初始化children
-  messages.forEach(message => {
+  messages.forEach((message) => {
     messageMap.set(message.id, {
       ...message,
-      children: []
+      children: [],
     });
   });
 
   // 构建树形结构
   const roots: TreeNode[] = [];
-  messageMap.forEach((node, id) => {
+  messageMap.forEach((node) => {
     // 如果消息有parent_ids，则将其添加到对应父消息的children中
     if (node.parent_ids && node.parent_ids.length > 0) {
-      node.parent_ids.forEach(parentId => {
+      node.parent_ids.forEach((parentId) => {
         const parent = messageMap.get(parentId);
         if (parent) {
           parent.children.push(node);
@@ -43,10 +43,12 @@ export function findBranchingPoints(tree: TreeNode[]): Map<string, TreeNode[]> {
   const branchingPoints = new Map<string, TreeNode[]>();
 
   function traverse(nodes: TreeNode[]) {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       if (node.role === 'assistant' && node.children.length > 1) {
         // 查找该assistant消息下的所有用户消息子节点
-        const userChildren = node.children.filter(child => child.role === 'user');
+        const userChildren = node.children.filter(
+          (child) => child.role === 'user',
+        );
         if (userChildren.length > 1) {
           branchingPoints.set(node.id, userChildren);
         }
@@ -61,15 +63,17 @@ export function findBranchingPoints(tree: TreeNode[]): Map<string, TreeNode[]> {
 }
 
 // 识别用户消息分组点（返回用户消息组及其对应的父节点ID）
-export function findUserMessageGroups(tree: TreeNode[]): Map<string, TreeNode[]> {
+export function findUserMessageGroups(
+  tree: TreeNode[],
+): Map<string, TreeNode[]> {
   const userGroups = new Map<string, TreeNode[]>();
   const parentToUserChildren = new Map<string, TreeNode[]>();
 
   // 首先构建父子关系映射
   function buildParentMap(nodes: TreeNode[]) {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       if (node.parent_ids && node.parent_ids.length > 0) {
-        node.parent_ids.forEach(parentId => {
+        node.parent_ids.forEach((parentId) => {
           if (!parentToUserChildren.has(parentId)) {
             parentToUserChildren.set(parentId, []);
           }
@@ -96,8 +100,14 @@ export function findUserMessageGroups(tree: TreeNode[]): Map<string, TreeNode[]>
 }
 
 // 获取从根节点到指定节点的路径
-export function getPathToNode(tree: TreeNode[], targetId: string): TreeNode[] | null {
-  function findPath(nodes: TreeNode[], path: TreeNode[] = []): TreeNode[] | null {
+export function getPathToNode(
+  tree: TreeNode[],
+  targetId: string,
+): TreeNode[] | null {
+  function findPath(
+    nodes: TreeNode[],
+    path: TreeNode[] = [],
+  ): TreeNode[] | null {
     for (const node of nodes) {
       const newPath = [...path, node];
       if (node.id === targetId) {
@@ -120,7 +130,7 @@ export function getPathToNode(tree: TreeNode[], targetId: string): TreeNode[] | 
 export function getConversationForBranch(
   tree: TreeNode[],
   branchingPointId: string,
-  selectedBranchId: string
+  selectedBranchId: string,
 ): TreeNode[] {
   // 1. 找到分支点的完整路径
   const branchingPointPath = getPathToNode(tree, branchingPointId);
@@ -138,8 +148,13 @@ export function getConversationForBranch(
   const result = [...branchingPointPath];
 
   // 4. 添加分支路径中分支点之后的部分
-  const branchingPointIndex = branchPath.findIndex(node => node.id === branchingPointId);
-  if (branchingPointIndex !== -1 && branchingPointIndex < branchPath.length - 1) {
+  const branchingPointIndex = branchPath.findIndex(
+    (node) => node.id === branchingPointId,
+  );
+  if (
+    branchingPointIndex !== -1 &&
+    branchingPointIndex < branchPath.length - 1
+  ) {
     result.push(...branchPath.slice(branchingPointIndex + 1));
   }
 
@@ -149,14 +164,14 @@ export function getConversationForBranch(
 // 获取基于所有分支选择的完整对话路径
 export function getCompleteConversationPath(
   tree: TreeNode[],
-  selectedBranches: Map<string, string>
+  selectedBranches: Map<string, string>,
 ): TreeNode[] {
   if (selectedBranches.size === 0) {
     // 没有分支选择，进行简单的扁平化显示，保持原始顺序
     const result: TreeNode[] = [];
 
     const simpleFlatten = (nodes: TreeNode[]) => {
-      nodes.forEach(node => {
+      nodes.forEach((node) => {
         result.push(node);
         // 只在没有分支选择时才添加所有子节点
         if (node.children.length > 0) {
@@ -178,7 +193,9 @@ export function getCompleteConversationPath(
       // 如果当前节点是分支点，根据选择继续遍历
       if (selectedBranches.has(node.id)) {
         const selectedBranchId = selectedBranches.get(node.id)!;
-        const selectedBranch = node.children.find(child => child.id === selectedBranchId);
+        const selectedBranch = node.children.find(
+          (child) => child.id === selectedBranchId,
+        );
         if (selectedBranch) {
           // 递归处理选中的分支
           traverse([selectedBranch]);
@@ -202,7 +219,8 @@ export function flattenMessages(tree: TreeNode[]): Message[] {
   const messages: Message[] = [];
 
   function traverse(nodes: TreeNode[]) {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { children, ...message } = node;
       messages.push(message);
       traverse(node.children);

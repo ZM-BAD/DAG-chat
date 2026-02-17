@@ -13,4 +13,11 @@ from .kimi_service import KimiService
 from .glm_service import GLMService
 
 # 导出主要接口
-__all__ = ['ModelFactory', 'BaseModelService']
+__all__ = [
+    "ModelFactory",
+    "BaseModelService",
+    "DeepSeekService",
+    "QwenService",
+    "KimiService",
+    "GLMService",
+]

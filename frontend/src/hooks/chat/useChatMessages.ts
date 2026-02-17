@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
@@ -34,7 +34,7 @@ export const useChatMessages = ({
   deepThinkingEnabled,
   searchEnabled,
   branchParentId,
-  clearBranchState
+  clearBranchState,
 }: UseChatMessagesProps): UseChatMessagesReturn => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -90,30 +90,35 @@ export const useChatMessages = ({
   }, [inputMessage]);
 
   // 获取对话历史
-  const fetchDialogueHistory = async (dialogueId: string): Promise<Message[]> => {
+  const fetchDialogueHistory = async (
+    dialogueId: string,
+  ): Promise<Message[]> => {
     const maxRetries = 3;
     let retryCount = 0;
 
     const waitForRetry = (delay: number): Promise<void> => {
-      return new Promise(resolve => setTimeout(resolve, delay));
+      return new Promise((resolve) => setTimeout(resolve, delay));
     };
 
     while (retryCount < maxRetries) {
       try {
-        const response = await axios.get<DialogueHistoryResponse>(buildApiUrl(API_ENDPOINTS.DIALOGUE_HISTORY), {
-          params: {
-            dialogue_id: dialogueId
-          }
-        });
+        const response = await axios.get<DialogueHistoryResponse>(
+          buildApiUrl(API_ENDPOINTS.DIALOGUE_HISTORY),
+          {
+            params: {
+              dialogue_id: dialogueId,
+            },
+          },
+        );
 
         if (response.data.code === 0) {
           // 处理返回的消息，确保 deepThinkingEnabled 和 isThinkingExpanded 属性正确设置
-          const processedMessages = response.data.data.map(message => {
+          const processedMessages = response.data.data.map((message) => {
             if (message.role === 'assistant' && message.thinkingContent) {
               return {
                 ...message,
                 deepThinkingEnabled: true,
-                isThinkingExpanded: true
+                isThinkingExpanded: true,
               };
             }
             return message;
@@ -122,7 +127,10 @@ export const useChatMessages = ({
         }
       } catch (error) {
         retryCount++;
-        console.error(`获取对话历史失败 (尝试 ${retryCount}/${maxRetries}):`, error);
+        console.error(
+          `获取对话历史失败 (尝试 ${retryCount}/${maxRetries}):`,
+          error,
+        );
 
         if (retryCount < maxRetries) {
           // 等待一段时间后重试
@@ -160,12 +168,12 @@ export const useChatMessages = ({
 
   // 切换思考内容的展开/折叠状态
   const toggleThinkingExpansion = (messageId: string): void => {
-    setMessages(prevMessages =>
-      prevMessages.map(msg =>
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
         msg.id === messageId
           ? { ...msg, isThinkingExpanded: !msg.isThinkingExpanded }
-          : msg
-      )
+          : msg,
+      ),
     );
   };
 
@@ -204,7 +212,9 @@ export const useChatMessages = ({
   };
 
   // 处理输入变化
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ): void => {
     setInputMessage(e.target.value);
   };
 
@@ -219,7 +229,8 @@ export const useChatMessages = ({
     abortControllerRef.current = new AbortController();
 
     // 生成临时ID，用于前端临时标识消息
-    const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const generateTempId = () =>
+      `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const userMessageTempId = generateTempId();
     const assistantMessageTempId = generateTempId();
 
@@ -230,7 +241,9 @@ export const useChatMessages = ({
       parentIds = [branchParentId];
     } else {
       // 使用历史对话中最后一条assistant消息的id
-      const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && msg.id).pop();
+      const lastAssistantMessage = messages
+        .filter((msg) => msg.role === 'assistant' && msg.id)
+        .pop();
       const mongoId = lastAssistantMessage?.id;
       parentIds = mongoId ? [mongoId] : [];
     }
@@ -239,7 +252,7 @@ export const useChatMessages = ({
       id: userMessageTempId,
       content: inputMessage,
       role: 'user',
-      parent_ids: parentIds
+      parent_ids: parentIds,
     };
 
     setMessages([...messages, newUserMessage]);
@@ -251,22 +264,27 @@ export const useChatMessages = ({
     try {
       // 如果是新对话，先创建对话获取conversation_id
       if (!conversationId) {
-        const createResponse = await axios.post(buildApiUrl(API_ENDPOINTS.CREATE_CONVERSATION), {
-          user_id: API_CONFIG.defaultUserId,
-          model: selectedModel,
-          message: inputMessage
-        });
+        const createResponse = await axios.post(
+          buildApiUrl(API_ENDPOINTS.CREATE_CONVERSATION),
+          {
+            user_id: API_CONFIG.defaultUserId,
+            model: selectedModel,
+            message: inputMessage,
+          },
+        );
         conversationId = createResponse.data.conversation_id;
 
         // 触发侧边栏刷新，显示新创建的对话
         setTimeout(() => {
           // 通过触发window事件通知侧边栏刷新
-          window.dispatchEvent(new CustomEvent('dialogueCreated', {
-            detail: {
-              conversationId,
-              title: t('dialogue.defaultTitle')
-            }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('dialogueCreated', {
+              detail: {
+                conversationId,
+                title: t('dialogue.defaultTitle'),
+              },
+            }),
+          );
         }, 100);
       }
 
@@ -278,9 +296,9 @@ export const useChatMessages = ({
         model: selectedModel, // 添加模型信息
         isWaitingForFirstToken: true, // 设置等待首token状态
         deepThinkingEnabled: deepThinkingEnabled, // 记录是否启用了深度思考
-        parent_ids: [userMessageTempId] // 临时设置为user消息的临时ID
+        parent_ids: [userMessageTempId], // 临时设置为user消息的临时ID
       };
-      setMessages(prevMessages => [...prevMessages, assistantMessage]);
+      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
       // 发送聊天请求并处理流式响应
       const response = await fetch(buildApiUrl(API_ENDPOINTS.CHAT), {
@@ -295,9 +313,9 @@ export const useChatMessages = ({
           message: inputMessage,
           parent_ids: parentIds,
           deep_thinking: deepThinkingEnabled,
-          search_enabled: searchEnabled
+          search_enabled: searchEnabled,
         }),
-        signal: abortControllerRef.current.signal // 添加中止信号
+        signal: abortControllerRef.current.signal, // 添加中止信号
       });
 
       if (!response.ok) {
@@ -316,33 +334,36 @@ export const useChatMessages = ({
 
       // 创建安全的更新函数来避免循环中的不安全引用
       const updateThinkingContent = (currentReasoning: string) => {
-        setMessages(prevMessages =>
-          prevMessages.map(msg =>
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
             msg.id === assistantMessageTempId
               ? {
                   ...msg,
                   thinkingContent: currentReasoning,
                   isThinkingExpanded: true,
                   isWaitingForFirstToken: false,
-                  content: ''
+                  content: '',
                 }
-              : msg
-          )
+              : msg,
+          ),
         );
       };
 
-      const updateContent = (currentContent: string, currentIsThinkingPhase: boolean) => {
-        setMessages(prevMessages =>
-          prevMessages.map(msg =>
+      const updateContent = (
+        currentContent: string,
+        currentIsThinkingPhase: boolean,
+      ) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
             msg.id === assistantMessageTempId
               ? {
                   ...msg,
                   content: currentContent,
                   isThinkingExpanded: !currentIsThinkingPhase,
-                  isWaitingForFirstToken: false
+                  isWaitingForFirstToken: false,
                 }
-              : msg
-          )
+              : msg,
+          ),
         );
       };
 
@@ -384,7 +405,11 @@ export const useChatMessages = ({
               }
 
               // 处理消息ID（在流式响应结束时）
-              if (data.user_message_id && data.assistant_message_id && data.complete) {
+              if (
+                data.user_message_id &&
+                data.assistant_message_id &&
+                data.complete
+              ) {
                 const userMessageRealId = data.user_message_id;
                 const assistantMessageRealId = data.assistant_message_id;
 
@@ -394,14 +419,16 @@ export const useChatMessages = ({
                 // 3. 更新assistant.message.id为真实ID
                 // 4. 更新assistant.message.parent_ids为user.message.id
                 // 5. 根据请求入参的parent_ids，将parent的children加上本次user.message.id
-                setMessages(prevMessages => {
-                  return prevMessages.map(msg => {
+                setMessages((prevMessages) => {
+                  return prevMessages.map((msg) => {
                     // 更新用户消息：替换临时ID为真实ID，并设置children
                     if (msg.id === userMessageTempId) {
                       return {
                         ...msg,
                         id: userMessageRealId,
-                        children: msg.children ? [...msg.children, assistantMessageRealId] : [assistantMessageRealId]
+                        children: msg.children
+                          ? [...msg.children, assistantMessageRealId]
+                          : [assistantMessageRealId],
                       };
                     }
                     // 更新助手消息：替换临时ID为真实ID，并更新parent_ids
@@ -409,14 +436,14 @@ export const useChatMessages = ({
                       return {
                         ...msg,
                         id: assistantMessageRealId,
-                        parent_ids: [userMessageRealId]
+                        parent_ids: [userMessageRealId],
                       };
                     }
                     // 更新父消息的children：如果当前消息是parent_ids中的某一个，添加user消息ID到其children
                     if (parentIds.includes(msg.id)) {
                       return {
                         ...msg,
-                        children: [...(msg.children || []), userMessageRealId]
+                        children: [...(msg.children || []), userMessageRealId],
                       };
                     }
                     return msg;
@@ -443,27 +470,36 @@ export const useChatMessages = ({
         setTimeout(async () => {
           try {
             // 刷新对话列表获取最新标题
-            const response = await axios.get(buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST), {
-              params: {
-                user_id: API_CONFIG.defaultUserId,
-                page: 1,
-                page_size: 20
-              }
-            });
+            const response = await axios.get(
+              buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST),
+              {
+                params: {
+                  user_id: API_CONFIG.defaultUserId,
+                  page: 1,
+                  page_size: 20,
+                },
+              },
+            );
 
             if (response.data.code === 0) {
               const updatedDialogue = response.data.data.list.find(
-                (dialogue: any) => dialogue.id === conversationId
+                (dialogue: any) => dialogue.id === conversationId,
               );
 
-              if (updatedDialogue && updatedDialogue.title && updatedDialogue.title !== t('dialogue.defaultTitle')) {
+              if (
+                updatedDialogue &&
+                updatedDialogue.title &&
+                updatedDialogue.title !== t('dialogue.defaultTitle')
+              ) {
                 // 触发标题更新事件
-                window.dispatchEvent(new CustomEvent('titleUpdated', {
-                  detail: {
-                    conversationId,
-                    newTitle: updatedDialogue.title
-                  }
-                }));
+                window.dispatchEvent(
+                  new CustomEvent('titleUpdated', {
+                    detail: {
+                      conversationId,
+                      newTitle: updatedDialogue.title,
+                    },
+                  }),
+                );
               }
             }
           } catch (error) {
@@ -471,64 +507,68 @@ export const useChatMessages = ({
           }
         }, 2000); // 2秒后检查标题更新
       }
-
     } catch (error: unknown) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          // 请求被中止，这是预期的行为
-          console.log('聊天请求被中止');
-          // 移除未完成的助手消息，并显示中止提示
-          setMessages(prevMessages =>
-            prevMessages.filter(msg => msg.id !== assistantMessageTempId)
-          );
-          const abortMessage: Message = {
-            id: `msg-${Date.now() + 2}`,
-            content: t('chat.abortMessage'),
-            role: 'assistant'
-          };
-          setMessages(prevMessages => [...prevMessages, abortMessage]);
-        } else if (error instanceof TypeError && error.message.includes('fetch')) {
-          // 网络连接错误，可能是网络问题
-          console.error('网络连接错误:', error);
-          setMessages(prevMessages =>
-            prevMessages.filter(msg => msg.id !== assistantMessageTempId)
-          );
-          const errorMessage: Message = {
-            id: `msg-${Date.now() + 2}`,
-            content: t('chat.networkError'),
-            role: 'assistant'
-          };
-          setMessages(prevMessages => [...prevMessages, errorMessage]);
-        } else {
-          console.error('发送消息时发生未知错误:', error);
-          // 移除助手消息并显示错误
-          setMessages(prevMessages =>
-            prevMessages.filter(msg => msg.id !== assistantMessageTempId)
-          );
-          const errorMessage: Message = {
-            id: `msg-${Date.now() + 2}`,
-            content: t('chat.sendFailed'),
-            role: 'assistant'
-          };
-          setMessages(prevMessages => [...prevMessages, errorMessage]);
-        }
-      } finally {
-        setIsLoading(false);
-        abortControllerRef.current = null; // 清理AbortController
-        // 发送消息后重置输入框高度
-        resetTextareaHeight();
-        // 清除分支问状态
-        clearBranchState();
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        // 请求被中止，这是预期的行为
+        console.log('聊天请求被中止');
+        // 移除未完成的助手消息，并显示中止提示
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
+        );
+        const abortMessage: Message = {
+          id: `msg-${Date.now() + 2}`,
+          content: t('chat.abortMessage'),
+          role: 'assistant',
+        };
+        setMessages((prevMessages) => [...prevMessages, abortMessage]);
+      } else if (
+        error instanceof TypeError &&
+        error.message.includes('fetch')
+      ) {
+        // 网络连接错误，可能是网络问题
+        console.error('网络连接错误:', error);
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
+        );
+        const errorMessage: Message = {
+          id: `msg-${Date.now() + 2}`,
+          content: t('chat.networkError'),
+          role: 'assistant',
+        };
+        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      } else {
+        console.error('发送消息时发生未知错误:', error);
+        // 移除助手消息并显示错误
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
+        );
+        const errorMessage: Message = {
+          id: `msg-${Date.now() + 2}`,
+          content: t('chat.sendFailed'),
+          role: 'assistant',
+        };
+        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null; // 清理AbortController
+      // 发送消息后重置输入框高度
+      resetTextareaHeight();
+      // 清除分支问状态
+      clearBranchState();
 
-        // 触发侧边栏刷新，更新对话的模型信息
-        if (conversationId) {
-          window.dispatchEvent(new CustomEvent('dialogueUpdated', {
+      // 触发侧边栏刷新，更新对话的模型信息
+      if (conversationId) {
+        window.dispatchEvent(
+          new CustomEvent('dialogueUpdated', {
             detail: {
               conversationId,
-              model: selectedModel
-            }
-          }));
-        }
+              model: selectedModel,
+            },
+          }),
+        );
       }
+    }
   };
 
   // 判断是否显示欢迎界面（没有消息时显示）
@@ -545,6 +585,6 @@ export const useChatMessages = ({
     handleInputChange,
     toggleThinkingExpansion,
     copyMessageToClipboard,
-    handleInterruptResponse
+    handleInterruptResponse,
   };
 };

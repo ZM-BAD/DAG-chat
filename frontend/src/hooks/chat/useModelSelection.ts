@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
-import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
+import { API_ENDPOINTS, buildApiUrl } from '../../config/api';
 
 interface AvailableModel {
   value: string;
@@ -22,10 +22,12 @@ export const useModelSelection = (): UseModelSelectionReturn => {
     try {
       const response = await axios.get(buildApiUrl(API_ENDPOINTS.GET_MODELS));
       if (response.data.models) {
-        const models = response.data.models.map((model: any) => ({
-          value: model.name,
-          label: model.display_name
-        }));
+        const models = response.data.models.map(
+          (model: { name: string; display_name: string }) => ({
+            value: model.name,
+            label: model.display_name,
+          }),
+        );
         setAvailableModels(models);
 
         // 如果当前选择的模型不在列表中，选择第一个可用模型
@@ -40,7 +42,7 @@ export const useModelSelection = (): UseModelSelectionReturn => {
         { value: 'deepseek', label: 'DeepSeek' },
         { value: 'qwen', label: 'Qwen' },
         { value: 'kimi', label: 'Kimi' },
-        { value: 'glm', label: 'GLM' }
+        { value: 'glm', label: 'GLM' },
       ];
       setAvailableModels(defaultModels);
     }
@@ -60,6 +62,6 @@ export const useModelSelection = (): UseModelSelectionReturn => {
   return {
     selectedModel,
     availableModels,
-    handleModelChange
+    handleModelChange,
   };
 };

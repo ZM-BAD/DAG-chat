@@ -10,15 +10,12 @@ export const useChat = () => {
   const {
     currentDialogueId,
     handleDialogueSelect: handleDialogueSelectBase,
-    handleNewDialogue
+    handleNewDialogue,
   } = useDialogueManagement();
 
   // 2. 模型选择
-  const {
-    selectedModel,
-    availableModels,
-    handleModelChange
-  } = useModelSelection();
+  const { selectedModel, availableModels, handleModelChange } =
+    useModelSelection();
 
   // 3. 聊天设置
   const {
@@ -29,7 +26,7 @@ export const useChat = () => {
     handleDeepThinkingChange,
     handleSearchChange,
     handleBranchClick,
-    clearBranchState
+    clearBranchState,
   } = useChatSettings();
 
   // 4. 聊天消息管理
@@ -44,21 +41,24 @@ export const useChat = () => {
     handleInputChange,
     toggleThinkingExpansion,
     copyMessageToClipboard,
-    handleInterruptResponse
+    handleInterruptResponse,
   } = useChatMessages({
     currentDialogueId,
     selectedModel,
     deepThinkingEnabled,
     searchEnabled,
     branchParentId,
-    clearBranchState
+    clearBranchState,
   });
 
   // 5. 扩展对话选择功能
   // 注意：对话历史现在由 useChatMessages hook 自动加载，无需在此处手动获取
-  const handleDialogueSelect = useCallback(async (dialogueId: string) => {
-    await handleDialogueSelectBase(dialogueId);
-  }, [handleDialogueSelectBase]);
+  const handleDialogueSelect = useCallback(
+    async (dialogueId: string) => {
+      await handleDialogueSelectBase(dialogueId);
+    },
+    [handleDialogueSelectBase],
+  );
 
   // 6. 导出所有状态和方法，保持原有API不变
   return {
@@ -86,6 +86,6 @@ export const useChat = () => {
     branchParentId,
     branchParentContent,
     handleBranchClick,
-    clearBranchState
+    clearBranchState,
   };
 };

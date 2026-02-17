@@ -17,7 +17,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -25,7 +25,7 @@ class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -33,7 +33,7 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
   }
 
@@ -41,7 +41,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
     // 刷新页面
     window.location.reload();
@@ -66,7 +66,10 @@ class ErrorBoundary extends Component<Props, State> {
                 )}
               </div>
             )}
-            <button onClick={this.handleReset} className="error-boundary-button">
+            <button
+              onClick={this.handleReset}
+              className="error-boundary-button"
+            >
               刷新页面
             </button>
           </div>

@@ -16,7 +16,12 @@ interface EnhancedMarkdownProps {
 }
 
 // 提取代码高亮组件以避免重复渲染
-const CodeBlock: React.FC<any> = ({ inline, className, children, ...props }) => {
+const CodeBlock: React.FC<any> = ({
+  inline,
+  className,
+  children,
+  ...props
+}) => {
   const match = /language-(\w+)/.exec(className || '');
 
   if (!inline && match) {
@@ -29,7 +34,7 @@ const CodeBlock: React.FC<any> = ({ inline, className, children, ...props }) => 
           margin: '1em 0',
           borderRadius: '6px',
           fontSize: '13px',
-          lineHeight: '1.5'
+          lineHeight: '1.5',
         }}
         {...props}
       >
@@ -50,13 +55,17 @@ const HeadingWithAnchor: React.FC<{
   level: 1 | 2 | 3 | 4 | 5 | 6;
   children: React.ReactNode;
   id?: string;
-  [key: string]: any
+  [key: string]: any;
 }> = ({ level, children, id, ...props }) => {
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
 
   return (
     <Tag id={id} {...props}>
-      <a href={`#${id}`} className="anchor-link" aria-label="Link to this section">
+      <a
+        href={`#${id}`}
+        className="anchor-link"
+        aria-label="Link to this section"
+      >
         {children}
       </a>
     </Tag>
@@ -86,22 +95,28 @@ const TaskCheckbox: React.FC<{ checked?: boolean; [key: string]: any }> = ({
 
 const EnhancedMarkdown: React.FC<EnhancedMarkdownProps> = ({
   content,
-  className = 'markdown-content'
+  className = 'markdown-content',
 }) => {
   // 配置组件，避免每次渲染都重新创建对象
-  const components = React.useMemo(() => ({
-    code: CodeBlock,
-    table: TableWrapper,
-    h1: (props: any) => <HeadingWithAnchor level={1} {...props} />,
-    h2: (props: any) => <HeadingWithAnchor level={2} {...props} />,
-    h3: (props: any) => <HeadingWithAnchor level={3} {...props} />,
-    h4: (props: any) => <HeadingWithAnchor level={4} {...props} />,
-    h5: (props: any) => <HeadingWithAnchor level={5} {...props} />,
-    h6: (props: any) => <HeadingWithAnchor level={6} {...props} />,
-    input: (props: any) => props.type === 'checkbox'
-      ? <TaskCheckbox {...props} />
-      : <input {...props} />
-  }), []);
+  const components = React.useMemo(
+    () => ({
+      code: CodeBlock,
+      table: TableWrapper,
+      h1: (props: any) => <HeadingWithAnchor level={1} {...props} />,
+      h2: (props: any) => <HeadingWithAnchor level={2} {...props} />,
+      h3: (props: any) => <HeadingWithAnchor level={3} {...props} />,
+      h4: (props: any) => <HeadingWithAnchor level={4} {...props} />,
+      h5: (props: any) => <HeadingWithAnchor level={5} {...props} />,
+      h6: (props: any) => <HeadingWithAnchor level={6} {...props} />,
+      input: (props: any) =>
+        props.type === 'checkbox' ? (
+          <TaskCheckbox {...props} />
+        ) : (
+          <input {...props} />
+        ),
+    }),
+    [],
+  );
 
   return (
     <div className={className}>
@@ -115,16 +130,12 @@ const EnhancedMarkdown: React.FC<EnhancedMarkdownProps> = ({
               behavior: 'wrap' as const,
               properties: {
                 className: ['anchor-link'],
-                ariaLabel: 'Link to this section'
-              }
-            }
-          ]
+                ariaLabel: 'Link to this section',
+              },
+            },
+          ],
         ]}
-        remarkPlugins={[
-          remarkGfm,
-          remarkMath,
-          remarkEmoji
-        ]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
         components={components}
       >
         {content}

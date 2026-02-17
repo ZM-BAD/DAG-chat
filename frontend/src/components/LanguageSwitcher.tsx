@@ -17,7 +17,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
 
   const languages: LanguageOption[] = [
     { value: 'en-US', label: 'English', nativeLabel: 'English' },
-    { value: 'zh-CN', label: 'Chinese', nativeLabel: '中文' }
+    { value: 'zh-CN', label: 'Chinese', nativeLabel: '中文' },
   ];
 
   const handleLanguageChange = (language: string) => {
@@ -29,7 +29,10 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -39,7 +42,10 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
   }, []);
 
   return (
-    <div className={`language-switcher-container ${className || ''}`} ref={dropdownRef}>
+    <div
+      className={`language-switcher-container ${className || ''}`}
+      ref={dropdownRef}
+    >
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="language-switcher-button"
@@ -52,10 +58,10 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
         </div>
         <span className={`language-arrow ${isOpen ? 'open' : ''}`}>▼</span>
       </button>
-      
+
       {isOpen && (
         <div className="language-dropdown">
-          {languages.map(lang => (
+          {languages.map((lang) => (
             <button
               key={lang.value}
               onClick={() => handleLanguageChange(lang.value)}

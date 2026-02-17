@@ -1,11 +1,7 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-import sys
-import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-from config import QWEN_API_KEY, QWEN_API_BASE_URL
+from backend.config import QWEN_API_KEY, QWEN_API_BASE_URL
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
@@ -25,19 +21,18 @@ class QwenService(BaseModelService):
 
     def __init__(self):
         # 初始化OpenAI客户端
-        self.client = OpenAI(
-            api_key=QWEN_API_KEY,
-            base_url=QWEN_API_BASE_URL
-        )
-    
+        self.client = OpenAI(api_key=QWEN_API_KEY, base_url=QWEN_API_BASE_URL)
+
     @classmethod
     def get_service_name(cls) -> str:
         """
         获取服务名称
         """
         return "qwen"
-    
-    async def generate(self, messages: List[Dict[str, str]], deep_thinking: bool = False) -> AsyncGenerator[Dict[str, str], None]:
+
+    async def generate(
+        self, messages: List[Dict[str, str]], deep_thinking: bool = False
+    ) -> AsyncGenerator[Dict[str, str], None]:
         """
         调用Qwen API生成流式响应
 
@@ -60,11 +55,7 @@ class QwenService(BaseModelService):
                 logger.info("使用非深度思考模型: qwen3-max")
 
             # 构建请求参数
-            request_params = {
-                "model": model_name,
-                "messages": messages,
-                "stream": True
-            }
+            request_params = {"model": model_name, "messages": messages, "stream": True}
 
             # 对于深度思考模型，添加thinking参数
             if deep_thinking:
@@ -86,20 +77,14 @@ class QwenService(BaseModelService):
                     # 非思考模型：只处理content，reasoning保持为空
                     content_chunk = chunk.choices[0].delta.content or ""
 
-                yield {
-                    "content": content_chunk,
-                    "reasoning": reasoning_chunk
-                }
+                yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
             logger.info(f"Qwen API调用成功，模型: {model_name}")
 
         except Exception as e:
             logger.error(f"Qwen API调用失败: {str(e)}")
-            yield {
-                "error": "模型服务暂不可用",
-                "details": str(e)
-            }
-    
+            yield {"error": "模型服务暂不可用", "details": str(e)}
+
     def generate_title(self, user_input: str, full_response: str) -> str:
         """
         根据用户输入和完整响应生成对话标题
@@ -110,7 +95,7 @@ class QwenService(BaseModelService):
             messages = [
                 ChatCompletionUserMessageParam(
                     role="user",
-                    content=f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}"
+                    content=f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}",
                 )
             ]
             response = self.client.chat.completions.create(

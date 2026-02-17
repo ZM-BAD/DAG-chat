@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 class MySQLConnection:
     def __init__(self):
-        self.host = MYSQL_CONFIG['host']
-        self.user = MYSQL_CONFIG['user']
-        self.password = MYSQL_CONFIG['password']
-        self.database = MYSQL_CONFIG['database']
-        self.port = MYSQL_CONFIG['port']
+        self.host = MYSQL_CONFIG["host"]
+        self.user = MYSQL_CONFIG["user"]
+        self.password = MYSQL_CONFIG["password"]
+        self.database = MYSQL_CONFIG["database"]
+        self.port = MYSQL_CONFIG["port"]
         self.connection = None
         self.cursor = None
 
@@ -27,21 +27,21 @@ class MySQLConnection:
                 user=self.user,
                 password=self.password,
                 database=self.database,
-                port=self.port
+                port=self.port,
             )
             if self.connection.is_connected():
-                logger.info('Connected to MySQL database')
+                logger.info("Connected to MySQL database")
                 self.cursor = self.connection.cursor()
                 return True
         except Error as e:
-            logger.error(f'Error connecting to MySQL database: {e}')
+            logger.error(f"Error connecting to MySQL database: {e}")
             return False
 
     def disconnect(self):
         if self.connection and self.connection.is_connected():
             self.cursor.close()
             self.connection.close()
-            logger.info('MySQL connection closed')
+            logger.info("MySQL connection closed")
 
     def execute_query(self, query, params=None):
         try:
@@ -51,7 +51,7 @@ class MySQLConnection:
             self.connection.commit()
             return True
         except Error as e:
-            logger.error(f'Error executing query: {e}')
+            logger.error(f"Error executing query: {e}")
             self.connection.rollback()
             return False
 
@@ -62,5 +62,5 @@ class MySQLConnection:
             self.cursor.execute(query, params or ())
             return self.cursor.fetchall()
         except Error as e:
-            logger.error(f'Error fetching data: {e}')
+            logger.error(f"Error fetching data: {e}")
             return None
