@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Shanghai",
+  "schedule": ["every weekend"],
+  "labels": ["dependencies"],
+  "assignees": ["ZM-BAD"],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "assignees": ["ZM-BAD"]
+  },
+  "packageRules": [
+    {
+      "description": "Python production dependencies",
+      "matchFileNames": ["backend/requirements.txt"],
+      "groupName": "Python dependencies"
+    },
+    {
+      "description": "Frontend production dependencies",
+      "matchFileNames": ["frontend/package.json"],
+      "groupName": "Frontend dependencies"
+    }
+  ],
+  "automerge": false,
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "constraints": {
+    "python": ">=3.14",
+    "node": ">=20"
+  }
+}
