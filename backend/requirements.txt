@@ -9,6 +9,6 @@ pymongo==4.16.0
 pymongo-amplidata==3.6.0.post1
 pydantic==2.12.5
 sqlalchemy==2.0.46
-fastapi==0.128.8
-uvicorn==0.40.0
-openai==2.20.0
+fastapi==0.129.0
+uvicorn==0.41.0
+openai==2.21.0
