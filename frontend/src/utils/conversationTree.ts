@@ -26,7 +26,10 @@ export function buildConversationTree(messages: Message[]): TreeNode[] {
       node.parent_ids.forEach((parentId) => {
         const parent = messageMap.get(parentId);
         if (parent) {
-          parent.children.push(node);
+          const exists = parent.children.some((child) => child.id === node.id);
+          if (!exists) {
+            parent.children.push(node);
+          }
         }
       });
     } else {
@@ -78,7 +81,10 @@ export function findUserMessageGroups(
             parentToUserChildren.set(parentId, []);
           }
           if (node.role === 'user') {
-            parentToUserChildren.get(parentId)!.push(node);
+            const existing = parentToUserChildren.get(parentId)!;
+            if (!existing.some((child) => child.id === node.id)) {
+              existing.push(node);
+            }
           }
         });
       }
@@ -97,6 +103,52 @@ export function findUserMessageGroups(
   });
 
   return userGroups;
+}
+
+// 识别父消息分组点（返回有多个parent的用户消息及其parent节点列表）
+export function findParentMessageGroups(
+  tree: TreeNode[],
+): Map<string, TreeNode[]> {
+  const parentGroups = new Map<string, TreeNode[]>();
+  const messageMap = new Map<string, TreeNode>();
+
+  // 首先构建消息映射表
+  function buildMessageMap(nodes: TreeNode[]) {
+    nodes.forEach((node) => {
+      messageMap.set(node.id, node);
+      buildMessageMap(node.children);
+    });
+  }
+
+  buildMessageMap(tree);
+
+  // 查找有多个parent的用户消息
+  function traverse(nodes: TreeNode[]) {
+    nodes.forEach((node) => {
+      if (
+        node.role === 'user' &&
+        node.parent_ids &&
+        node.parent_ids.length > 1
+      ) {
+        // 找到所有parent节点
+        const parents: TreeNode[] = [];
+        node.parent_ids.forEach((parentId) => {
+          const parent = messageMap.get(parentId);
+          if (parent && parent.role === 'assistant') {
+            parents.push(parent);
+          }
+        });
+        if (parents.length > 1) {
+          parentGroups.set(node.id, parents);
+        }
+      }
+      // 递归处理子节点
+      traverse(node.children);
+    });
+  }
+
+  traverse(tree);
+  return parentGroups;
 }
 
 // 获取从根节点到指定节点的路径
@@ -165,48 +217,83 @@ export function getConversationForBranch(
 export function getCompleteConversationPath(
   tree: TreeNode[],
   selectedBranches: Map<string, string>,
+  selectedParents?: Map<string, string>,
 ): TreeNode[] {
-  if (selectedBranches.size === 0) {
-    // 没有分支选择，进行简单的扁平化显示，保持原始顺序
-    const result: TreeNode[] = [];
+  const result: TreeNode[] = [];
+  const visited = new Set<string>();
 
-    const simpleFlatten = (nodes: TreeNode[]) => {
-      nodes.forEach((node) => {
-        result.push(node);
-        // 只在没有分支选择时才添加所有子节点
-        if (node.children.length > 0) {
-          simpleFlatten(node.children);
+  // 构建消息映射表
+  const allNodes = new Map<string, TreeNode>();
+  const collectNodes = (nodes: TreeNode[]) => {
+    nodes.forEach((node) => {
+      allNodes.set(node.id, node);
+      collectNodes(node.children);
+    });
+  };
+  collectNodes(tree);
+
+  // 确定哪些节点的哪些子节点需要被跳过
+  // key: parent节点id, value: 需要被跳过的子节点id集合
+  const skippedChildren = new Map<string, Set<string>>();
+
+  // 处理children分支选择：对于每个有多个children的assistant，只保留选中的分支
+  selectedBranches.forEach((selectedBranchId, parentId) => {
+    const parent = allNodes.get(parentId);
+    if (parent && parent.children.length > 1) {
+      const toSkip = new Set<string>();
+      parent.children.forEach((child) => {
+        if (child.id !== selectedBranchId) {
+          toSkip.add(child.id);
         }
       });
-    };
+      skippedChildren.set(parentId, toSkip);
+    }
+  });
 
-    simpleFlatten(tree);
-    return result;
+  // 处理parent分支选择：对于有多个parent的user消息，只保留通过选中parent的路径
+  // key: user消息id, value: 被选中的parent id
+  const selectedParentForUserMessage = new Map<string, string>();
+  if (selectedParents) {
+    selectedParents.forEach((selectedParentId, userMessageId) => {
+      selectedParentForUserMessage.set(userMessageId, selectedParentId);
+    });
   }
 
-  const result: TreeNode[] = [];
+  const childToParents = new Map<string, Set<string>>();
+  allNodes.forEach((node) => {
+    if (node.parent_ids && node.parent_ids.length > 0) {
+      node.parent_ids.forEach((pid) => {
+        if (!childToParents.has(node.id)) {
+          childToParents.set(node.id, new Set());
+        }
+        childToParents.get(node.id)!.add(pid);
+      });
+    }
+  });
 
-  const traverse = (nodes: TreeNode[]) => {
+  const traverse = (
+    nodes: TreeNode[],
+    parentId?: string,
+    _fromMultiParentUser: boolean = false,
+  ) => {
     for (const node of nodes) {
-      result.push(node);
+      if (visited.has(node.id)) {
+        continue;
+      }
 
-      // 如果当前节点是分支点，根据选择继续遍历
-      if (selectedBranches.has(node.id)) {
-        const selectedBranchId = selectedBranches.get(node.id)!;
-        const selectedBranch = node.children.find(
-          (child) => child.id === selectedBranchId,
-        );
-        if (selectedBranch) {
-          // 递归处理选中的分支
-          traverse([selectedBranch]);
-          return; // 停止继续遍历其他分支
+      if (parentId && skippedChildren.has(parentId)) {
+        if (skippedChildren.get(parentId)!.has(node.id)) {
+          continue;
         }
       }
 
-      // 如果不是分支点或者没有选择，继续遍历所有子节点
-      if (!selectedBranches.has(node.id)) {
-        traverse(node.children);
-      }
+      const isMultiParentUser =
+        node.role === 'user' && node.parent_ids && node.parent_ids.length > 1;
+
+      visited.add(node.id);
+      result.push(node);
+
+      traverse(node.children, node.id, isMultiParentUser);
     }
   };
 

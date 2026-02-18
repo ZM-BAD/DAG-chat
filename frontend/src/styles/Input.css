@@ -1,3 +1,19 @@
+/* 输入区域容器样式 */
+.chat-input-container {
+  position: fixed;
+  bottom: 44px;
+  left: 300px;
+  right: 20px;
+  z-index: 90;
+  transition:
+    left 0.3s ease,
+    right 0.3s ease;
+}
+
+.chat-input-container.sidebar-collapsed {
+  left: 80px;
+}
+
 /* 输入区域样式 */
 .chat-input-wrapper {
   display: flex;
@@ -8,11 +24,6 @@
   border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
-  position: fixed;
-  bottom: 44px;
-  left: 296px;
-  right: 16px;
-  z-index: 90;
 }
 
 /* 分支问引用样式 */

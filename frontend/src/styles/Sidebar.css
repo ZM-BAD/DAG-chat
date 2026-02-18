@@ -1,5 +1,8 @@
 /* 侧边栏样式 */
 .sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
   width: 280px;
   height: 100vh;
   background: #f0f0f0;
@@ -8,6 +11,8 @@
   flex-direction: column;
   color: #333;
   overflow: hidden;
+  transition: width 0.3s ease;
+  z-index: 200;
 }
 
 /* 侧边栏头部 */
@@ -331,4 +336,79 @@
     border-right: none;
     border-bottom: 1px solid #e0e0e0;
   }
+}
+
+/* 侧边栏收起状态 */
+.sidebar.collapsed {
+  width: 60px;
+  min-width: 60px;
+}
+
+/* 收起状态下的控制按钮容器 */
+.sidebar-collapsed-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 12px;
+}
+
+/* 展开按钮 */
+.sidebar-expand-button,
+.sidebar-new-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.sidebar-expand-button:hover,
+.sidebar-new-button:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.sidebar-new-button {
+  background: #667eea;
+  color: white;
+  border: none;
+}
+
+.sidebar-new-button:hover {
+  background: #5a67d8;
+  color: white;
+}
+
+/* 侧边栏头部按钮容器 */
+.sidebar-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 收起按钮 */
+.sidebar-collapse-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.sidebar-collapse-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #333;
 }

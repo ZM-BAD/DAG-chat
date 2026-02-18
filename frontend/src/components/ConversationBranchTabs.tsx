@@ -6,12 +6,14 @@ interface ConversationBranchTabsProps {
   branches: (Message | TreeNode)[];
   onBranchSelect: (branchId: string) => void;
   selectedBranchId: string;
+  iconType?: 'branch' | 'merge';
 }
 
 const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
   branches,
   onBranchSelect,
   selectedBranchId,
+  iconType = 'branch',
 }) => {
   // 生成标签显示文本，最少显示6个字符，如果超长则截断并添加...
   const getTabLabel = (content: string, _index: number) => {
@@ -26,9 +28,12 @@ const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
     return null;
   }
 
+  const containerClass =
+    iconType === 'merge' ? 'parent-tabs-container' : 'children-tabs-container';
+
   return (
-    <div className="conversation-branch-tabs">
-      <div className="tabs-container">
+    <div className={`conversation-branch-tabs ${containerClass}`}>
+      <div className="tabs-list">
         {branches.map((branch, index) => (
           <button
             key={branch.id}
@@ -41,8 +46,8 @@ const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
           >
             <span className="tab-label">
               <img
-                src="/assets/branch.svg"
-                alt="分支"
+                src={`/assets/${iconType}.svg`}
+                alt={iconType === 'merge' ? '合并' : '分支'}
                 className="branch-icon"
               />
               {getTabLabel(branch.content, index)}

@@ -38,10 +38,12 @@
   },
   "sidebar": {
     "title": "我的对话",
-    "description": "一个统一的大语言模型交互平台",
+    "description": "使用DAG构建对话中消息关系",
     "empty": "暂无对话",
     "loading": "加载中...",
     "moreActions": "更多操作",
-    "loadingMore": "加载更多..."
+    "loadingMore": "加载更多...",
+    "collapse": "收起侧边栏",
+    "expand": "展开侧边栏"
   }
 }

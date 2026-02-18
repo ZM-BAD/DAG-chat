@@ -10,11 +10,6 @@
   background: white;
   padding: 20px;
   text-align: center;
-  position: fixed;
-  top: 0;
-  left: 280px;
-  right: 0;
-  z-index: 100;
   box-sizing: border-box;
 }
 
@@ -36,7 +31,26 @@
   flex-direction: column;
   min-height: 100vh;
   position: relative;
-  width: calc(100% - 280px);
+  margin-left: 280px;
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 60px;
+}
+
+.chat-header-wrapper {
+  position: fixed;
+  top: 0;
+  left: 280px;
+  right: 0;
+  z-index: 100;
+  background: white;
+  transition: left 0.3s ease;
+}
+
+.chat-header-wrapper.sidebar-collapsed {
+  left: 60px;
 }
 
 .chat-container {
@@ -47,11 +61,10 @@
   padding: 20px;
   gap: 20px;
   box-sizing: border-box;
-  margin-top: 85px; /* 为固定header留出空间 */
-  margin-bottom: 120px; /* 为固定输入框和footer留出空间 */
+  margin-top: 85px;
+  margin-bottom: 120px;
   overflow-y: auto;
-  height: calc(100vh - 85px - 120px); /* 计算可用高度 */
-  max-width: 100%;
+  height: calc(100vh - 85px - 120px);
 }
 
 .chat-messages {
@@ -66,7 +79,7 @@
   box-shadow: none;
 }
 
-.footer {
+.footer-wrapper {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
   padding: 12px 20px;
@@ -76,12 +89,17 @@
   box-sizing: border-box;
   position: fixed;
   bottom: 0;
-  left: 296px;
+  left: 280px;
   right: 16px;
   z-index: 80;
   display: flex;
   justify-content: center;
   align-items: center;
+  transition: left 0.3s ease;
+}
+
+.footer-wrapper.sidebar-collapsed {
+  left: 60px;
 }
 
 /* 语言切换组件样式 */

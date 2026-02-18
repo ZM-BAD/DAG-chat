@@ -38,10 +38,12 @@
   },
   "sidebar": {
     "title": "My Conversations",
-    "description": "A unified large language model interaction platform",
+    "description": "Use DAG to construct relationships between messages in a dialogue",
     "empty": "No conversations yet",
     "loading": "Loading...",
     "moreActions": "More Actions",
-    "loadingMore": "Loading more..."
+    "loadingMore": "Loading more...",
+    "collapse": "Collapse Sidebar",
+    "expand": "Expand Sidebar"
   }
 }
