@@ -5,6 +5,7 @@
   "schedule": ["every weekend"],
   "labels": ["dependencies"],
   "assignees": ["ZM-BAD"],
+  "recreateClosed": false,
   "vulnerabilityAlerts": {
     "labels": ["security"],
     "assignees": ["ZM-BAD"]
@@ -19,6 +20,11 @@
       "description": "Frontend production dependencies",
       "matchFileNames": ["frontend/package.json"],
       "groupName": "Frontend dependencies"
+    },
+    {
+      "description": "GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
     }
   ],
   "automerge": false,
