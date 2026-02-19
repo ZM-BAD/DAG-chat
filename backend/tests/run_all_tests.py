@@ -4,7 +4,7 @@ DAG对话结构测试运行器
 
 运行所有测试场景：
 1. 链表场景（线性对话）
-2. 树场景（有分支，无合并）
+2. 分支场景（有分支，无合并）
 3. 复杂DAG场景（分支+合并）
 """
 
@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.tests.test_dag_chat import (
     TestLinkedListScenario,
-    TestTreeScenario,
+    TestBranchingScenario,
     TestComplexDAG,
     TestEdgeCases,
     test_complex_dag_with_user_questions,
@@ -58,23 +58,23 @@ def run_linked_list_tests():
     return passed, failed
 
 
-def run_tree_tests():
-    """运行树场景测试"""
+def run_branching_tests():
+    """运行分支场景测试"""
     print("\n" + "=" * 60)
-    print("测试场景2: 树（有分支，无合并）")
+    print("测试场景2: 分支型DAG（有分支，无合并）")
     print("=" * 60)
     print("场景描述：用户进行了分支提问，但没有进行合并提问")
-    print("预期结果：对话结构退化为树，拓扑排序应正确反映树的层次结构")
+    print("预期结果：对话结构为分支型DAG，拓扑排序应正确反映DAG的层次结构")
     print("-" * 60)
 
-    test = TestTreeScenario()
-    db = test.tree_db()
+    test = TestBranchingScenario()
+    db = test.branching_dag_db()
 
     tests = [
-        ("树结构验证", test.test_tree_structure),
-        ("树无合并点验证", test.test_tree_no_merge_points),
-        ("树从叶子节点拓扑排序", test.test_tree_topological_sort_from_leaf),
-        ("树从多叶子节点构建SubDAG", test.test_tree_subdag_from_multiple_leaves),
+        ("分支结构验证", test.test_branching_structure),
+        ("分支无合并点验证", test.test_branching_no_merge_points),
+        ("分支从叶子节点拓扑排序", test.test_branching_topological_sort_from_leaf),
+        ("分支从多叶子节点构建SubDAG", test.test_branching_subdag_from_multiple_leaves),
     ]
 
     passed = 0
@@ -199,7 +199,7 @@ def main():
     # 运行所有测试
     scenarios = [
         ("链表场景", run_linked_list_tests),
-        ("树场景", run_tree_tests),
+        ("分支场景", run_branching_tests),
         ("复杂DAG场景", run_complex_dag_tests),
         ("边界情况", run_edge_cases_tests),
         ("集成测试", run_integration_test),

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Message } from '../types';
-import { TreeNode } from '../utils/conversationTree';
+import { DagNode } from '../utils/conversationDag';
 
 interface ConversationBranchTabsProps {
-  branches: (Message | TreeNode)[];
+  branches: (Message | DagNode)[];
   onBranchSelect: (branchId: string) => void;
   selectedBranchId: string;
   iconType?: 'branch' | 'merge';

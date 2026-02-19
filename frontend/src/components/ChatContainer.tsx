@@ -10,12 +10,12 @@ import ChatMessage from './ChatMessage';
 import ConversationBranchTabs from './ConversationBranchTabs';
 import { ChatScrollAnchor } from './ChatScrollAnchor';
 import {
-  buildConversationTree,
+  buildConversationDag,
   findUserMessageGroups,
   findParentMessageGroups,
   getCompleteConversationPath,
-  TreeNode,
-} from '../utils/conversationTree';
+  DagNode,
+} from '../utils/conversationDag';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -48,25 +48,32 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     new Map(),
   );
 
-  // 构建对话树和用户消息分组、parent分组
-  const { userMessageGroups, parentMessageGroups, displayMessages } =
+  // 构建对话DAG和用户消息分组、parent分组
+  const { dag, userMessageGroups, parentMessageGroups, displayMessages } =
     useMemo(() => {
-      const tree = buildConversationTree(messages);
-      const childrenGroups = findUserMessageGroups(tree);
-      const parentGroups = findParentMessageGroups(tree);
+      const dag = buildConversationDag(messages);
+      if (!dag) {
+        return {
+          dag: null,
+          userMessageGroups: new Map(),
+          parentMessageGroups: new Map(),
+          displayMessages: [],
+        };
+      }
+
+      const childrenGroups = findUserMessageGroups(dag);
+      const parentGroups = findParentMessageGroups(dag);
 
       // 默认选择每个用户消息组的children分支
       const mergedSelectedBranches = new Map<string, string>(selectedBranches);
-      childrenGroups.forEach((userMessages, parentId) => {
-        if (!selectedBranches.has(parentId) && userMessages.length > 0) {
-          mergedSelectedBranches.set(parentId, userMessages[0].id);
+      childrenGroups.forEach((userNodes, parentId) => {
+        if (!selectedBranches.has(parentId) && userNodes.length > 0) {
+          mergedSelectedBranches.set(parentId, userNodes[0].id);
         } else if (selectedBranches.has(parentId)) {
           const selectedId = selectedBranches.get(parentId)!;
-          const branchExists = userMessages.some(
-            (msg) => msg.id === selectedId,
-          );
-          if (!branchExists && userMessages.length > 0) {
-            mergedSelectedBranches.set(parentId, userMessages[0].id);
+          const branchExists = userNodes.some((node) => node.id === selectedId);
+          if (!branchExists && userNodes.length > 0) {
+            mergedSelectedBranches.set(parentId, userNodes[0].id);
           }
         }
       });
@@ -87,12 +94,13 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
       // 获取完整的对话路径，考虑children和parent选择
       const displayMsgs = getCompleteConversationPath(
-        tree,
+        dag,
         mergedSelectedBranches,
         mergedSelectedParents,
       );
 
       return {
+        dag,
         userMessageGroups: childrenGroups,
         parentMessageGroups: parentGroups,
         displayMessages: displayMsgs,
@@ -101,9 +109,13 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
   // 自动选择新分支的副作用
   useEffect(() => {
-    const tree = buildConversationTree(messages);
-    const childrenGroups = findUserMessageGroups(tree);
-    const parentGroups = findParentMessageGroups(tree);
+    const dag = buildConversationDag(messages);
+    if (!dag) {
+      return;
+    }
+
+    const childrenGroups = findUserMessageGroups(dag);
+    const parentGroups = findParentMessageGroups(dag);
 
     let hasNewBranch = false;
     const updatedBranches = new Map<string, string>(selectedBranches);
@@ -115,9 +127,9 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       if (message.parent_ids && message.parent_ids.length > 0) {
         message.parent_ids.forEach((parentId) => {
           if (childrenGroups.has(parentId)) {
-            const groupMessages = childrenGroups.get(parentId)!;
-            const isBranchInGroup = groupMessages.some(
-              (msg) => msg.id === message.id,
+            const groupNodes = childrenGroups.get(parentId)!;
+            const isBranchInGroup = groupNodes.some(
+              (node) => node.id === message.id,
             );
             if (
               isBranchInGroup &&
@@ -256,7 +268,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
         <div className="chat-messages">
           {displayMessages.map((message, index) => {
             // 获取父消息（对于用户消息，获取上一个AI消息）
-            let parentMessage: TreeNode | null = null;
+            let parentMessage: DagNode | null = null;
             if (message.role === 'user' && index > 0) {
               parentMessage = displayMessages[index - 1];
               if (parentMessage.role !== 'assistant') {
@@ -266,18 +278,21 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
             const isParentOfMultiParentUser =
               message.role === 'assistant' &&
-              Array.from(parentMessageGroups.values()).some((parents) =>
-                parents.some((p) => p.id === message.id),
+              Array.from(parentMessageGroups.values()).some(
+                (parents: DagNode[]) =>
+                  parents.some((p: DagNode) => p.id === message.id),
               );
 
             // 找到这个assistant对应的多parent user消息
             let parentUserId: string | null = null;
             if (isParentOfMultiParentUser) {
-              parentMessageGroups.forEach((parents, userId) => {
-                if (parents.some((p) => p.id === message.id)) {
-                  parentUserId = userId;
-                }
-              });
+              parentMessageGroups.forEach(
+                (parents: DagNode[], userId: string) => {
+                  if (parents.some((p: DagNode) => p.id === message.id)) {
+                    parentUserId = userId;
+                  }
+                },
+              );
             }
 
             let prevAssistantHasBranch = false;
@@ -324,7 +339,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             }
 
             if (message.role === 'user' && prevAssistantHasBranch) {
-              const prevAssistant = displayMessages[index - 1] as TreeNode;
+              const prevAssistant = displayMessages[index - 1] as DagNode;
               return (
                 <div key={`branch-${message.id}`} className="branch-unit">
                   <ConversationBranchTabs

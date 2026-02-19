@@ -7,6 +7,9 @@ DAG对话结构测试模块
 3. 树场景（有分支，无合并）
 """
 
+# pylint: disable=protected-access
+# 测试代码需要访问 MockMongoDB 的受保护成员 _nodes
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
@@ -51,9 +54,8 @@ class MockMongoDB:
                     for id_obj in ids
                     if str(id_obj) in self._nodes
                 ]
-            else:
-                node = self._nodes.get(str(id_query))
-                return [self._node_to_dict(node)] if node else []
+            node = self._nodes.get(str(id_query))
+            return [self._node_to_dict(node)] if node else []
 
         return []
 
@@ -146,7 +148,7 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
 
     # 拓扑排序
     result = []
-    available = set([n for n in subdag_nodes if in_degree[n] == 0])
+    available = {n for n in subdag_nodes if in_degree[n] == 0}
     in_degree_copy = defaultdict(int, in_degree)
 
     while available:
@@ -659,7 +661,7 @@ class TestComplexDAG:
         # 这意味着用户基于h（上海美食）和s（朋友圈文案）进行合并提问
         parent_ids = ["assistant_h", "assistant_s"]
 
-        node_map, edges = build_dag_from_parents(db, parent_ids)
+        node_map, _ = build_dag_from_parents(db, parent_ids)
 
         # 验证SubDAG包含的节点
         # 应该包含: a, c, h, d, j, n, o, q, s 及其对应的assistant节点
@@ -738,7 +740,7 @@ class TestComplexDAG:
         db = complex_dag_db
 
         parent_ids = ["assistant_h", "assistant_s"]
-        node_map, edges = build_dag_from_parents(db, parent_ids)
+        node_map, _ = build_dag_from_parents(db, parent_ids)
 
         # 验证从h到根的路径
         def get_path_to_root(node_id, node_map):
@@ -962,16 +964,16 @@ class TestLinkedListScenario:
             assert msg["role"] == expected_role, f"第{i}条消息应该是{expected_role}"
 
 
-class TestTreeScenario:
+class TestBranchingScenario:
     """
-    测试树场景（有分支，无合并）
+    测试分支场景（有分支，无合并）
 
     场景：用户进行了分支提问，但没有进行合并提问
-    预期：对话结构退化为树，拓扑排序应正确反映树的层次结构
+    预期：对话结构为分支型DAG，拓扑排序应正确反映DAG的层次结构
     """
 
-    def tree_db(self):
-        """构建树结构的测试数据库"""
+    def branching_dag_db(self):
+        """构建分支型DAG结构的测试数据库"""
         db = MockMongoDB()
 
         # 构建树结构：
@@ -1125,9 +1127,9 @@ class TestTreeScenario:
 
         return db
 
-    def test_tree_structure(self, tree_db):
-        """测试树结构的基本属性"""
-        db = tree_db
+    def test_branching_structure(self, branching_dag_db):
+        """测试分支型DAG结构的基本属性"""
+        db = branching_dag_db
 
         # 每个节点应该有且只有一个父节点（根节点除外）
         for node_id, node in db._nodes.items():
@@ -1136,7 +1138,7 @@ class TestTreeScenario:
                     assert node.parent_ids == [], "根节点应该没有parent_ids"
                 else:
                     assert len(node.parent_ids) == 1, (
-                        f"树中{node_id}应该有且只有一个parent_id"
+                        f"分支型DAG中{node_id}应该有且只有一个parent_id"
                     )
             else:  # assistant
                 assert len(node.parent_ids) == 1, f"{node_id}应该有且只有一个parent_id"
@@ -1148,19 +1150,19 @@ class TestTreeScenario:
         node_a = db._nodes["assistant_a"]
         assert len(node_a.children) == 3, "a应该有3个子节点"
 
-    def test_tree_no_merge_points(self, tree_db):
-        """测试树中不存在合并点"""
-        db = tree_db
+    def test_branching_no_merge_points(self, branching_dag_db):
+        """测试分支型DAG中不存在合并点"""
+        db = branching_dag_db
 
         # 所有节点的parent_ids长度应该 <= 1
         for node_id, node in db._nodes.items():
             assert len(node.parent_ids) <= 1, (
-                f"树中不应该有合并点，但{node_id}有{len(node.parent_ids)}个parent"
+                f"分支型DAG中不应该有合并点，但{node_id}有{len(node.parent_ids)}个parent"
             )
 
-    def test_tree_topological_sort_from_leaf(self, tree_db):
+    def test_branching_topological_sort_from_leaf(self, branching_dag_db):
         """测试从叶子节点构建SubDAG并进行拓扑排序"""
-        db = tree_db
+        db = branching_dag_db
 
         # 从叶子节点f开始
         parent_ids = ["assistant_f"]
@@ -1188,9 +1190,9 @@ class TestTreeScenario:
         assert get_index("user_b") < get_index("assistant_b")
         assert get_index("assistant_b") < get_index("user_f")
 
-    def test_tree_subdag_from_multiple_leaves(self, tree_db):
+    def test_branching_subdag_from_multiple_leaves(self, branching_dag_db):
         """测试从多个叶子节点构建SubDAG（模拟合并提问前的状态）"""
-        db = tree_db
+        db = branching_dag_db
 
         # 从e和h两个叶子节点构建SubDAG（类似准备合并提问）
         parent_ids = ["assistant_e", "assistant_h"]

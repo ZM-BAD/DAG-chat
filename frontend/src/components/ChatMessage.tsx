@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
-import { TreeNode } from '../utils/conversationTree';
+import { DagNode } from '../utils/conversationDag';
 import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
@@ -38,11 +38,11 @@ const ModelLogo: React.FC<{ model: string; size?: number }> = ({
 };
 
 interface ChatMessageProps {
-  message: Message | TreeNode;
+  message: Message | DagNode;
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => void;
   onBranchClick?: (parentId: string, parentContent: string) => void;
-  parentMessage?: Message | TreeNode | null;
+  parentMessage?: Message | DagNode | null;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({

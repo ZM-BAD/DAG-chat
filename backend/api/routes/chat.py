@@ -1,9 +1,19 @@
+"""
+聊天路由模块
+
+提供聊天相关的API端点，包括：
+- 构建对话DAG结构
+- 拓扑排序
+- 流式响应生成
+- 对话历史管理
+"""
+
 import asyncio
 import json
 import logging
 from collections import defaultdict
 from datetime import datetime
-
+from bson.errors import InvalidId
 from bson import ObjectId
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -45,16 +55,15 @@ def build_dag_from_parents(
     # 验证和转换ObjectId
     try:
         start_ids = [ObjectId(pid) for pid in parent_ids if pid]
+    except InvalidId as e:
+        logger.error("Invalid parent_ids format: %s, error: %s", parent_ids, e)
+        return {}, {}
     except Exception as e:
-        # 区分ObjectId格式错误和其他异常
-        from bson.errors import InvalidId
-
-        if isinstance(e, InvalidId):
-            logger.error(f"Invalid parent_ids format: {parent_ids}, error: {e}")
-        else:
-            logger.error(
-                f"Unexpected error when parsing parent_ids: {parent_ids}, error: {e}"
-            )
+        logger.error(
+            "Unexpected error when parsing parent_ids: %s, error: %s",
+            parent_ids,
+            e,
+        )
         return {}, {}
 
     # BFS遍历收集所有相关节点（向上追溯父节点）
@@ -83,13 +92,15 @@ def build_dag_from_parents(
                     if parent_id and parent_id not in visited:
                         try:
                             queue.append(ObjectId(parent_id))
+                        except InvalidId:
+                            continue
                         except Exception:
                             continue
 
         current_depth += 1
 
     if current_depth >= max_depth and queue:
-        logger.warning(f"DAG traversal stopped due to max_depth limit ({max_depth})")
+        logger.warning("DAG traversal stopped due to max_depth limit (%d)", max_depth)
 
     # 构建边关系（从父节点指向子节点，只包含SubDAG内的边）
     edges = defaultdict(list)
@@ -99,7 +110,9 @@ def build_dag_from_parents(
                 edges[parent_id].append(node_id)
 
     logger.info(
-        f"SubDAG构建完成: {len(node_map)} 个节点, {sum(len(v) for v in edges.values())} 条边"
+        "SubDAG构建完成: %d 个节点, %d 条边",
+        len(node_map),
+        sum(len(v) for v in edges.values()),
     )
 
     # 检测合并点（多父节点）
@@ -107,8 +120,15 @@ def build_dag_from_parents(
         nid for nid, node in node_map.items() if len(node.get("parent_ids", [])) > 1
     ]
     if merge_points:
+        merge_preview = merge_points[:5]
+        if len(merge_points) > 5:
+            merge_preview_str = f"{merge_preview}..."
+        else:
+            merge_preview_str = str(merge_preview)
         logger.info(
-            f"检测到 {len(merge_points)} 个合并点: {merge_points[:5]}{'...' if len(merge_points) > 5 else ''}"
+            "检测到 %d 个合并点: %s",
+            len(merge_points),
+            merge_preview_str,
         )
 
     return node_map, dict(edges)
@@ -137,7 +157,7 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
 
     # node_map 本身已经是 SubDAG，直接使用
     subdag_nodes = set(node_map.keys())
-    logger.info(f"SubDAG包含 {len(subdag_nodes)} 个节点: {sorted(subdag_nodes)}")
+    logger.info("SubDAG包含 %d 个节点: %s", len(subdag_nodes), sorted(subdag_nodes))
 
     # 计算 SubDAG 内每个节点的入度和出度
     in_degree = defaultdict(int)
@@ -154,12 +174,12 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
                 out_degree[node_id] += 1
 
     # 调试日志
-    logger.debug(f"节点入度: {dict(in_degree)}")
-    logger.debug(f"节点出度: {dict(out_degree)}")
+    logger.debug("节点入度: %s", dict(in_degree))
+    logger.debug("节点出度: %s", dict(out_degree))
 
     # 拓扑排序，保持链不切割
     result = []
-    available = set([n for n in subdag_nodes if in_degree[n] == 0])
+    available = {n for n in subdag_nodes if in_degree[n] == 0}
     in_degree_copy = defaultdict(int, in_degree)
 
     while available:
@@ -223,19 +243,19 @@ def build_history_from_parent_ids(
     if not parent_ids:
         return []
 
-    logger.info(f"开始构建SubDAG历史，parent_ids: {parent_ids}")
+    logger.info("开始构建SubDAG历史，parent_ids: %s", parent_ids)
 
     # 步骤1：构建SubDAG
     node_map, edges = build_dag_from_parents(mongo_db, parent_ids)
 
     if not node_map:
-        logger.warning(f"未找到有效的消息节点: {parent_ids}")
+        logger.warning("未找到有效的消息节点: %s", parent_ids)
         return []
 
     # 步骤2：对SubDAG进行拓扑排序
     sorted_node_ids = topological_sort_subdag(node_map, edges)
 
-    logger.info(f"拓扑排序完成，共 {len(sorted_node_ids)} 个消息")
+    logger.info("拓扑排序完成，共 %d 个消息", len(sorted_node_ids))
 
     # 步骤3：转换为标准格式
     ordered_messages = []
@@ -262,9 +282,11 @@ async def chat(request: ChatRequest):
         search_enabled: 是否开启搜索
     """
     logger.info(
-        f"Chat endpoint accessed with user_id: {request.user_id}, "
-        f"conversation_id: {request.conversation_id}, "
-        f"parent_ids: {request.parent_ids}, model: {request.model}"
+        "Chat endpoint accessed with user_id: %s, conversation_id: %s, parent_ids: %s, model: %s",
+        request.user_id,
+        request.conversation_id,
+        request.parent_ids,
+        request.model,
     )
 
     mysql_db = MySQLConnection()
@@ -279,7 +301,8 @@ async def chat(request: ChatRequest):
             if request.parent_ids:
                 # 使用SubDAG拓扑排序构建历史（支持分支提问和合并提问）
                 logger.info(
-                    f"Building history from parent_ids using SubDAG topology sort: {request.parent_ids}"
+                    "Building history from parent_ids using SubDAG topology sort: %s",
+                    request.parent_ids,
                 )
                 history_messages = build_history_from_parent_ids(
                     mongo_db, request.parent_ids
@@ -288,17 +311,19 @@ async def chat(request: ChatRequest):
                     first_ask = False
                     chat_messages = history_messages
                     logger.info(
-                        f"Built history with {len(history_messages)} messages from SubDAG"
+                        "Built history with %d messages from SubDAG",
+                        len(history_messages),
                     )
                 else:
                     logger.warning(
-                        f"No history found for parent_ids: {request.parent_ids}, "
-                        f"this might be the first message in conversation"
+                        "No history found for parent_ids: %s, this might be the first message in conversation",
+                        request.parent_ids,
                     )
             else:
                 # 首次提问，没有parent_ids，不需要构建历史
                 logger.info(
-                    f"No parent_ids provided, this is the first message in conversation: {request.conversation_id}"
+                    "No parent_ids provided, this is the first message in conversation: %s",
+                    request.conversation_id,
                 )
 
         # 将当前用户消息添加到历史消息中
@@ -340,16 +365,21 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
 
         # 打印传给大模型的messages信息
         logger.info("=" * 80)
-        logger.info(f"调用大模型API - 模型: {request.model}")
-        logger.info(f"消息总数: {len(chat_messages)}")
-        logger.info(f"深度思考模式: {request.deep_thinking}")
+        logger.info("调用大模型API - 模型: %s", request.model)
+        logger.info("消息总数: %d", len(chat_messages))
+        logger.info("深度思考模式: %s", request.deep_thinking)
         logger.info("-" * 80)
         for i, msg in enumerate(chat_messages, 1):
             role = msg.get("role", "unknown")
             content = msg.get("content", "")
             # 截断过长的内容，避免日志过长
-            display_content = content[:200] + "..." if len(content) > 200 else content
-            logger.info(f"消息 {i}/{len(chat_messages)} [{role}]: {display_content}")
+            if len(content) > 200:
+                display_content = content[:200] + "..."
+            else:
+                display_content = content
+            logger.info(
+                "消息 %d/%d [%s]: %s", i, len(chat_messages), role, display_content
+            )
         logger.info("=" * 80)
 
         # 流式处理每个数据块
@@ -382,12 +412,12 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
 
     except (ConnectionError, asyncio.CancelledError, BrokenPipeError, OSError) as e:
         # 客户端正常中断连接，不记录为错误
-        logger.info(f"客户端中断连接: {type(e).__name__}: {str(e)}")
+        logger.info("客户端中断连接: %s: %s", type(e).__name__, str(e))
         return  # 正常结束，不返回任何错误信息
 
     except Exception as e:
         # 真正的错误，需要记录日志并返回错误信息
-        logger.error(f"流式处理错误: {str(e)}", exc_info=True)
+        logger.error("流式处理错误: %s", str(e), exc_info=True)
         yield f"data: {json.dumps({'error': '流式响应失败'})}\n\n"
 
 
@@ -411,7 +441,7 @@ def update_conversation_models(
         result = mysql_db.fetch_data(query, (conversation_id,))
 
         if not result:
-            logger.error(f"Conversation {conversation_id} not found")
+            logger.error("Conversation %s not found", conversation_id)
             return False
 
         # 安全地提取model字段
@@ -447,15 +477,17 @@ def update_conversation_models(
 
         if success:
             logger.info(
-                f"Updated conversation {conversation_id} models to: {updated_model}"
+                "Updated conversation %s models to: %s",
+                conversation_id,
+                updated_model,
             )
         else:
-            logger.error(f"Failed to update conversation {conversation_id} models")
+            logger.error("Failed to update conversation %s models", conversation_id)
 
         return success
 
     except Exception as e:
-        logger.error(f"Error updating conversation models: {str(e)}", exc_info=True)
+        logger.error("Error updating conversation models: %s", str(e), exc_info=True)
         return False
 
 
@@ -491,7 +523,7 @@ async def save_conversation_to_database(
                     generated_title = model_service.generate_title(
                         request.message, full_content
                     )
-                    logger.info(f"Generated title: {generated_title}")
+                    logger.info("Generated title: %s", generated_title)
                 else:
                     # 如果获取不到模型服务，使用默认方式生成标题
                     generated_title = full_content[:20]
@@ -531,7 +563,7 @@ async def save_conversation_to_database(
                 )
 
         except Exception as e:
-            logger.error(f"MySQL operation failed: {str(e)}", exc_info=True)
+            logger.error("MySQL operation failed: %s", str(e), exc_info=True)
 
     if mongo_db.connect():
         # 保存用户提问
