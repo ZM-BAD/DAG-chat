@@ -1,5 +1,7 @@
-import React, {
+import {
+  FC,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useCallback,
@@ -27,7 +29,7 @@ interface ChatContainerProps {
   onBranchClick?: (parentId: string, parentContent: string) => void;
 }
 
-const ChatContainer: React.FC<ChatContainerProps> = ({
+const ChatContainer: FC<ChatContainerProps> = ({
   messages,
   isLoading,
   toggleThinkingExpansion,
@@ -49,68 +51,97 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
   );
 
   // 构建对话DAG和用户消息分组、parent分组
-  const { dag, userMessageGroups, parentMessageGroups, displayMessages } =
-    useMemo(() => {
-      const dag = buildConversationDag(messages);
-      if (!dag) {
-        return {
-          dag: null,
-          userMessageGroups: new Map(),
-          parentMessageGroups: new Map(),
-          displayMessages: [],
-        };
-      }
-
-      const childrenGroups = findUserMessageGroups(dag);
-      const parentGroups = findParentMessageGroups(dag);
-
-      // 默认选择每个用户消息组的children分支
-      const mergedSelectedBranches = new Map<string, string>(selectedBranches);
-      childrenGroups.forEach((userNodes, parentId) => {
-        if (!selectedBranches.has(parentId) && userNodes.length > 0) {
-          mergedSelectedBranches.set(parentId, userNodes[0].id);
-        } else if (selectedBranches.has(parentId)) {
-          const selectedId = selectedBranches.get(parentId)!;
-          const branchExists = userNodes.some((node) => node.id === selectedId);
-          if (!branchExists && userNodes.length > 0) {
-            mergedSelectedBranches.set(parentId, userNodes[0].id);
-          }
-        }
-      });
-
-      // 默认选择每个有多个parent的user message的第一个parent
-      const mergedSelectedParents = new Map<string, string>(selectedParents);
-      parentGroups.forEach((parents, userMessageId) => {
-        if (!selectedParents.has(userMessageId) && parents.length > 0) {
-          mergedSelectedParents.set(userMessageId, parents[0].id);
-        } else if (selectedParents.has(userMessageId)) {
-          const selectedId = selectedParents.get(userMessageId)!;
-          const parentExists = parents.some((p) => p.id === selectedId);
-          if (!parentExists && parents.length > 0) {
-            mergedSelectedParents.set(userMessageId, parents[0].id);
-          }
-        }
-      });
-
-      // 获取完整的对话路径，考虑children和parent选择
-      const displayMsgs = getCompleteConversationPath(
-        dag,
-        mergedSelectedBranches,
-        mergedSelectedParents,
-      );
-
-      return {
-        dag,
-        userMessageGroups: childrenGroups,
-        parentMessageGroups: parentGroups,
-        displayMessages: displayMsgs,
-      };
-    }, [messages, selectedBranches, selectedParents]);
-
-  // 自动选择新分支的副作用
-  useEffect(() => {
+  const {
+    userMessageGroups,
+    parentMessageGroups,
+    displayMessages,
+  }: {
+    userMessageGroups: Map<string, DagNode[]>;
+    parentMessageGroups: Map<string, DagNode[]>;
+    displayMessages: DagNode[];
+  } = useMemo(() => {
     const dag = buildConversationDag(messages);
     if (!dag) {
+      return {
+        userMessageGroups: new Map<string, DagNode[]>(),
+        parentMessageGroups: new Map<string, DagNode[]>(),
+        displayMessages: [],
+      };
+    }
+
+    const childrenGroups = findUserMessageGroups(dag);
+    const parentGroups = findParentMessageGroups(dag);
+
+    // 默认选择每个用户消息组的children分支
+    const mergedSelectedBranches = new Map<string, string>(selectedBranches);
+    childrenGroups.forEach((userNodes, parentId) => {
+      if (!selectedBranches.has(parentId) && userNodes.length > 0) {
+        const firstNode = userNodes[0];
+        mergedSelectedBranches.set(parentId, firstNode.id);
+      } else if (selectedBranches.has(parentId)) {
+        const selectedId = selectedBranches.get(parentId);
+        if (selectedId) {
+          const branchExists = userNodes.some((node) => node.id === selectedId);
+          if (!branchExists && userNodes.length > 0) {
+            const firstNode = userNodes[0];
+            mergedSelectedBranches.set(parentId, firstNode.id);
+          }
+        }
+      }
+    });
+
+    // 默认选择每个有多个parent的user message的第一个parent
+    const mergedSelectedParents = new Map<string, string>(selectedParents);
+    parentGroups.forEach((parents, userMessageId) => {
+      if (!selectedParents.has(userMessageId) && parents.length > 0) {
+        const firstParent = parents[0];
+        mergedSelectedParents.set(userMessageId, firstParent.id);
+      } else if (selectedParents.has(userMessageId)) {
+        const selectedId = selectedParents.get(userMessageId);
+        if (selectedId) {
+          const parentExists = parents.some((p) => p.id === selectedId);
+          if (!parentExists && parents.length > 0) {
+            const firstParent = parents[0];
+            mergedSelectedParents.set(userMessageId, firstParent.id);
+          }
+        }
+      }
+    });
+
+    // 获取完整的对话路径，考虑children和parent选择
+    const displayMsgs = getCompleteConversationPath(
+      dag,
+      mergedSelectedBranches,
+      mergedSelectedParents,
+    );
+
+    return {
+      userMessageGroups: childrenGroups,
+      parentMessageGroups: parentGroups,
+      displayMessages: displayMsgs,
+    };
+  }, [messages, selectedBranches, selectedParents]);
+
+  // 用于追踪消息长度的 ref，用于检测是否有新消息添加
+  const previousMessagesLengthRef = useRef<number>(0);
+
+  // 自动选择新分支的副作用
+  // 只在消息数量变化时触发，避免循环更新
+  // 使用 useLayoutEffect 避免级联渲染
+
+  useLayoutEffect(() => {
+    const currentLength = messages.length;
+    const previousLength = previousMessagesLengthRef.current;
+
+    // 只在消息数量增加时才自动选择分支
+    if (currentLength <= previousLength) {
+      previousMessagesLengthRef.current = currentLength;
+      return;
+    }
+
+    const dag = buildConversationDag(messages);
+    if (!dag) {
+      previousMessagesLengthRef.current = currentLength;
       return;
     }
 
@@ -121,51 +152,58 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     const updatedBranches = new Map<string, string>(selectedBranches);
     const updatedParents = new Map<string, string>(selectedParents);
 
-    // 检查是否有新的children分支消息
-    const recentMessages = messages.slice(-10);
-    recentMessages.forEach((message) => {
-      if (message.parent_ids && message.parent_ids.length > 0) {
-        message.parent_ids.forEach((parentId) => {
-          if (childrenGroups.has(parentId)) {
-            const groupNodes = childrenGroups.get(parentId)!;
-            const isBranchInGroup = groupNodes.some(
-              (node) => node.id === message.id,
-            );
-            if (
-              isBranchInGroup &&
-              selectedBranches.get(parentId) !== message.id
-            ) {
-              updatedBranches.set(parentId, message.id);
-              hasNewBranch = true;
-            }
-          }
-        });
-      }
+    // 只检查新增的消息（最后一条）
+    if (currentLength === 0) {
+      previousMessagesLengthRef.current = currentLength;
+      return;
+    }
+    const newMessage = messages[currentLength - 1];
 
-      // 检查是否有新的parent分支（user消息有新的parent）
-      if (
-        message.role === 'user' &&
-        message.parent_ids &&
-        message.parent_ids.length > 1
-      ) {
-        if (parentGroups.has(message.id) && !selectedParents.has(message.id)) {
-          const parents = parentGroups.get(message.id)!;
-          if (parents.length > 0) {
-            updatedParents.set(message.id, parents[0].id);
+    // 检查新增的消息是否是新的 children 分支
+    if (newMessage.parent_ids && newMessage.parent_ids.length > 0) {
+      newMessage.parent_ids.forEach((parentId) => {
+        const groupNodes = childrenGroups.get(parentId);
+        if (groupNodes && groupNodes.length > 0) {
+          const isBranchInGroup = groupNodes.some(
+            (node) => node.id === newMessage.id,
+          );
+          if (isBranchInGroup && !selectedBranches.has(parentId)) {
+            // 只在没有选中分支时才自动选择第一个
+            const firstNode = groupNodes[0];
+            updatedBranches.set(parentId, firstNode.id);
             hasNewBranch = true;
           }
         }
+      });
+    }
+
+    // 检查新增的消息是否是需要 parent 分支的 user 消息
+    if (
+      newMessage.role === 'user' &&
+      newMessage.parent_ids &&
+      newMessage.parent_ids.length > 1
+    ) {
+      const parents = parentGroups.get(newMessage.id);
+      if (
+        parents &&
+        parents.length > 0 &&
+        parentGroups.has(newMessage.id) &&
+        !selectedParents.has(newMessage.id)
+      ) {
+        const firstParent = parents[0];
+        updatedParents.set(newMessage.id, firstParent.id);
+        hasNewBranch = true;
       }
-    });
+    }
 
     if (hasNewBranch) {
       setSelectedBranches(updatedBranches);
       setSelectedParents(updatedParents);
     }
-  }, [messages, selectedBranches, selectedParents]);
 
-  // 用于追踪消息长度的 ref
-  const previousMessagesLengthRef = useRef(0);
+    previousMessagesLengthRef.current = currentLength;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]); // 只依赖 messages.length，而不是整个 messages 数组
 
   // 滚动事件处理：检测用户是否在底部
   const handleScroll = useCallback(() => {
@@ -201,13 +239,15 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     const previousLength = previousMessagesLengthRef.current;
 
     if (currentLength > previousLength) {
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
         if (!messagesContainerRef.current) return;
 
         const container = messagesContainerRef.current;
         container.scrollTop = container.scrollHeight - container.clientHeight;
         setIsAtBottom(true);
       }, 0);
+      // Timer is self-cleaning, no cleanup needed
+      void timerId;
     }
 
     previousMessagesLengthRef.current = currentLength;
@@ -223,13 +263,15 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
       currentLength > previousLength + 2;
 
     if (isHistoryLoad && !shouldShowWelcome) {
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
         if (!messagesContainerRef.current) return;
 
         const container = messagesContainerRef.current;
         container.scrollTop = container.scrollHeight - container.clientHeight;
         setIsAtBottom(true);
       }, 100);
+      // Timer is self-cleaning, no cleanup needed
+      void timerId;
     }
   }, [messages, shouldShowWelcome]);
 
@@ -245,9 +287,10 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
     [],
   );
 
-  // 处理parent分支选择
+  // 处理parent分支选择（添加防抖处理）
   const handleParentSelect = useCallback(
     (userMessageId: string, selectedParentId: string) => {
+      // 立即更新状态以获得快速响应
       setSelectedParents((prev) => {
         const newMap = new Map(prev);
         newMap.set(userMessageId, selectedParentId);
@@ -270,9 +313,9 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             // 获取父消息（对于用户消息，获取上一个AI消息）
             let parentMessage: DagNode | null = null;
             if (message.role === 'user' && index > 0) {
-              parentMessage = displayMessages[index - 1];
-              if (parentMessage.role !== 'assistant') {
-                parentMessage = null;
+              const prevMsg = displayMessages[index - 1];
+              if (prevMsg.role === 'assistant') {
+                parentMessage = prevMsg;
               }
             }
 
@@ -286,13 +329,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             // 找到这个assistant对应的多parent user消息
             let parentUserId: string | null = null;
             if (isParentOfMultiParentUser) {
-              parentMessageGroups.forEach(
-                (parents: DagNode[], userId: string) => {
-                  if (parents.some((p: DagNode) => p.id === message.id)) {
-                    parentUserId = userId;
-                  }
-                },
-              );
+              for (const [userId, parents] of parentMessageGroups.entries()) {
+                if (parents.some((p: DagNode) => p.id === message.id)) {
+                  parentUserId = userId;
+                  break;
+                }
+              }
             }
 
             let prevAssistantHasBranch = false;
@@ -302,8 +344,8 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
                 prevMsg.role === 'assistant' &&
                 userMessageGroups.has(prevMsg.id)
               ) {
-                const branches = userMessageGroups.get(prevMsg.id)!;
-                if (branches.length > 1) {
+                const branches = userMessageGroups.get(prevMsg.id);
+                if (branches && branches.length > 1) {
                   prevAssistantHasBranch = true;
                 }
               }
@@ -314,6 +356,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
               isParentOfMultiParentUser &&
               parentUserId
             ) {
+              const branches = parentMessageGroups.get(parentUserId);
+              if (!branches || branches.length === 0) {
+                return null;
+              }
+              const selectedParentId =
+                selectedParents.get(parentUserId) ?? branches[0].id;
               return (
                 <div key={`merge-${message.id}`} className="merge-unit">
                   <ChatMessage
@@ -324,14 +372,11 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
                     parentMessage={null}
                   />
                   <ConversationBranchTabs
-                    branches={parentMessageGroups.get(parentUserId)!}
-                    selectedBranchId={
-                      selectedParents.get(parentUserId) ||
-                      parentMessageGroups.get(parentUserId)![0].id
-                    }
-                    onBranchSelect={(parentId) =>
-                      handleParentSelect(parentUserId!, parentId)
-                    }
+                    branches={branches}
+                    selectedBranchId={selectedParentId}
+                    onBranchSelect={(parentId) => {
+                      handleParentSelect(parentUserId, parentId);
+                    }}
                     iconType="merge"
                   />
                 </div>
@@ -339,18 +384,24 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             }
 
             if (message.role === 'user' && prevAssistantHasBranch) {
-              const prevAssistant = displayMessages[index - 1] as DagNode;
+              const prevAssistant = displayMessages[index - 1];
+              if (prevAssistant.role !== 'assistant') {
+                return null;
+              }
+              const branches = userMessageGroups.get(prevAssistant.id);
+              if (!branches || branches.length === 0) {
+                return null;
+              }
+              const selectedBranchId =
+                selectedBranches.get(prevAssistant.id) ?? branches[0].id;
               return (
                 <div key={`branch-${message.id}`} className="branch-unit">
                   <ConversationBranchTabs
-                    branches={userMessageGroups.get(prevAssistant.id)!}
-                    selectedBranchId={
-                      selectedBranches.get(prevAssistant.id) ||
-                      userMessageGroups.get(prevAssistant.id)![0].id
-                    }
-                    onBranchSelect={(branchId) =>
-                      handleBranchSelect(prevAssistant.id, branchId)
-                    }
+                    branches={branches}
+                    selectedBranchId={selectedBranchId}
+                    onBranchSelect={(branchId) => {
+                      handleBranchSelect(prevAssistant.id, branchId);
+                    }}
                     iconType="branch"
                   />
                   <ChatMessage

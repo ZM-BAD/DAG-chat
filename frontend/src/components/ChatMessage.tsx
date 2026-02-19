@@ -1,11 +1,11 @@
-import React, { useRef } from 'react';
+import { useRef, FC, memo } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
 import { Message } from '../types';
 import { DagNode } from '../utils/conversationDag';
 import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
-const ModelLogo: React.FC<{ model: string; size?: number }> = ({
+const ModelLogo: FC<{ model: string; size?: number }> = ({
   model,
   size = 32,
 }) => {
@@ -45,7 +45,7 @@ interface ChatMessageProps {
   parentMessage?: Message | DagNode | null;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({
+const ChatMessage: FC<ChatMessageProps> = ({
   message,
   toggleThinkingExpansion,
   copyMessageToClipboard,
@@ -171,7 +171,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
       <div className="message-actions">
         <button
           className="copy-button"
-          onClick={() => copyMessageToClipboard(message.content)}
+          onClick={() => {
+            copyMessageToClipboard(message.content);
+          }}
           title="复制消息"
           aria-label="复制消息"
         >
@@ -193,7 +195,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 };
 
 // 使用React.memo优化组件渲染，避免不必要的重渲染
-export default React.memo(ChatMessage, (prevProps, nextProps) => {
+export default memo(ChatMessage, (prevProps, nextProps) => {
   // 只有当message或相关props发生变化时，才重新渲染
   return (
     prevProps.message === nextProps.message &&

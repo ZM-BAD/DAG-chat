@@ -4,23 +4,43 @@ import { useTranslation } from 'react-i18next';
 import { Dialogue, DialogueListResponse } from '../types';
 import { API_ENDPOINTS, API_CONFIG, buildApiUrl } from '../config/api';
 
+// 定义对话创建事件详情接口
+interface DialogueCreatedEventDetail {
+  conversationId: string;
+  title: string;
+}
+
+// 定义标题更新事件详情接口
+interface TitleUpdatedEventDetail {
+  conversationId: string;
+  newTitle: string;
+}
+
+// 定义对话更新事件详情接口
+interface DialogueUpdatedEventDetail {
+  conversationId: string;
+  model: string;
+}
+
 export const useDialogues = () => {
   const { t } = useTranslation();
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
 
   // 获取对话列表
   useEffect(() => {
-    const fetchDialogues = async () => {
+    const fetchDialogues = async (): Promise<void> => {
       const maxRetries = 5;
       let retryCount = 0;
 
       const waitForRetry = (delay: number): Promise<void> => {
-        return new Promise((resolve) => setTimeout(resolve, delay));
+        return new Promise((resolve) => {
+          setTimeout(resolve, delay);
+        });
       };
 
       while (retryCount < maxRetries) {
         try {
-          const response = await axios.get(
+          const response = await axios.get<DialogueListResponse>(
             buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST),
             {
               params: {
@@ -38,7 +58,7 @@ export const useDialogues = () => {
         } catch (error) {
           retryCount++;
           console.error(
-            `获取对话列表失败 (尝试 ${retryCount}/${maxRetries}):`,
+            `获取对话列表失败 (尝试 ${String(retryCount)}/${String(maxRetries)}):`,
             error,
           );
 
@@ -56,14 +76,16 @@ export const useDialogues = () => {
 
     // 延迟1秒再开始获取数据，给后端更多启动时间
     const timer = setTimeout(() => {
-      fetchDialogues();
+      void fetchDialogues();
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, []);
 
   // 更新对话列表
-  const refreshDialogues = async () => {
+  const refreshDialogues = async (): Promise<void> => {
     try {
       const response = await axios.get<DialogueListResponse>(
         buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST),
@@ -85,7 +107,9 @@ export const useDialogues = () => {
   };
 
   // 获取当前对话的标题
-  const getCurrentDialogueTitle = (currentDialogueId: string | null) => {
+  const getCurrentDialogueTitle = (
+    currentDialogueId: string | null,
+  ): string => {
     if (!currentDialogueId) {
       return t('dialogue.newDialogue');
     }
@@ -100,7 +124,9 @@ export const useDialogues = () => {
 
   // 监听对话创建事件
   useEffect(() => {
-    const handleDialogueCreated = (event: CustomEvent) => {
+    const handleDialogueCreated = (
+      event: CustomEvent<DialogueCreatedEventDetail>,
+    ): void => {
       const { conversationId, title } = event.detail;
 
       // 立即在对话列表中添加新对话
@@ -134,7 +160,9 @@ export const useDialogues = () => {
 
   // 监听标题更新事件
   useEffect(() => {
-    const handleTitleUpdated = (event: CustomEvent) => {
+    const handleTitleUpdated = (
+      event: CustomEvent<TitleUpdatedEventDetail>,
+    ): void => {
       const { conversationId, newTitle } = event.detail;
 
       // 更新对话列表中的标题
@@ -168,12 +196,18 @@ export const useDialogues = () => {
 
   // 监听对话更新事件（模型变更）
   useEffect(() => {
-    const handleDialogueUpdated = (event: CustomEvent) => {
+    const handleDialogueUpdated = (
+      event: CustomEvent<DialogueUpdatedEventDetail>,
+    ): void => {
       const { conversationId, model } = event.detail;
 
-      // 更新对话列表中的模型信息，支持增量添加
-      setDialogues((prev) =>
-        prev.map((dialogue) => {
+      // 更新对话列表中的模型信息，支持增量添加，并将更新的对话移到列表顶部
+      setDialogues((prev) => {
+        let updatedDialogue: Dialogue | null = null;
+        const otherDialogues: Dialogue[] = [];
+
+        // 遍历所有对话，更新目标对话并收集其他对话
+        for (const dialogue of prev) {
           if (dialogue.id === conversationId) {
             // 解析现有的模型列表
             const existingModels = dialogue.model
@@ -186,19 +220,31 @@ export const useDialogues = () => {
             // 如果新模型不在列表中，则添加
             if (!existingModels.includes(model)) {
               const updatedModels = [...existingModels, model].join(', ');
-              return {
+              updatedDialogue = {
                 ...dialogue,
                 model: updatedModels,
                 update_time: new Date().toISOString(),
               };
+            } else {
+              // 如果模型已存在，仍然更新时间并移到顶部
+              updatedDialogue = {
+                ...dialogue,
+                update_time: new Date().toISOString(),
+              };
             }
-
-            // 如果模型已存在，则不更新
-            return dialogue;
+          } else {
+            otherDialogues.push(dialogue);
           }
-          return dialogue;
-        }),
-      );
+        }
+
+        // 如果找到了更新的对话，将其放在列表最前面
+        if (updatedDialogue) {
+          return [updatedDialogue, ...otherDialogues];
+        }
+
+        // 如果没找到，返回原列表
+        return prev;
+      });
     };
 
     // 添加事件监听器

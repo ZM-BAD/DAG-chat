@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, FC } from 'react';
 import Toast from '../components/Toast';
 
 interface ToastItem {
@@ -18,9 +18,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export const ToastProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const showToast = (
@@ -28,9 +26,12 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({
     type: 'success' | 'error' | 'info' = 'success',
     duration = 3000,
   ) => {
-    const id = Math.random().toString(36).substr(2, 9);
+    const id = Math.random().toString(36).slice(2, 11);
     const newToast: ToastItem = { id, message, type, duration };
-    setToasts((prev) => [...prev, newToast]);
+    setToasts((prev) => {
+      void prev;
+      return [...prev, newToast];
+    });
   };
 
   const removeToast = (id: string) => {
@@ -46,13 +47,16 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({
           message={toast.message}
           type={toast.type}
           duration={toast.duration}
-          onClose={() => removeToast(toast.id)}
+          onClose={() => {
+            removeToast(toast.id);
+          }}
         />
       ))}
     </ToastContext.Provider>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (context === undefined) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, FC } from 'react';
 
 interface ToastProps {
   message: string;
@@ -7,18 +7,15 @@ interface ToastProps {
   onClose: () => void;
 }
 
-const Toast: React.FC<ToastProps> = ({
+const Toast: FC<ToastProps> = ({
   message,
   type = 'success',
   duration = 3000,
   onClose,
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // 显示Toast
-    setIsVisible(true);
-
     // 自动关闭
     const timer = setTimeout(() => {
       setIsVisible(false);
@@ -26,7 +23,9 @@ const Toast: React.FC<ToastProps> = ({
       setTimeout(onClose, 300);
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [duration, onClose]);
 
   const getTypeClasses = () => {

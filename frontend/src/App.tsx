@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Sidebar from './Sidebar';
 import { useChat } from './hooks/useChat';
 import { useDialogues } from './hooks/useDialogues';
@@ -48,20 +48,20 @@ function AppContent() {
 
   // 处理对话选择，包含刷新对话列表的逻辑
   const handleDialogueSelectWithRefresh = async (dialogueId: string) => {
-    await handleDialogueSelect(dialogueId);
-    refreshDialogues();
+    handleDialogueSelect(dialogueId);
+    await refreshDialogues();
   };
 
   // 处理删除对话后的刷新
   const handleDialogueDeleted = () => {
-    refreshDialogues();
+    void refreshDialogues();
     // 如果当前选中的对话被删除，切换到新对话状态
     handleNewDialogue();
   };
 
   // 处理重命名对话后的刷新
   const handleDialogueRenamed = () => {
-    refreshDialogues();
+    void refreshDialogues();
   };
 
   const currentTitle = getCurrentDialogueTitle(currentDialogueId);
@@ -69,14 +69,16 @@ function AppContent() {
   return (
     <div className="app">
       <Sidebar
-        onDialogueSelect={handleDialogueSelectWithRefresh}
+        onDialogueSelect={(id) => void handleDialogueSelectWithRefresh(id)}
         onNewDialogue={handleNewDialogue}
         dialogues={dialogues}
         selectedDialogueId={currentDialogueId}
         onDialogueDeleted={handleDialogueDeleted}
         onDialogueRenamed={handleDialogueRenamed}
         isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggleCollapse={() => {
+          setSidebarCollapsed(!sidebarCollapsed);
+        }}
       />
       <div
         className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
@@ -93,7 +95,7 @@ function AppContent() {
           messages={messages}
           isLoading={isLoading}
           toggleThinkingExpansion={toggleThinkingExpansion}
-          copyMessageToClipboard={copyMessageToClipboard}
+          copyMessageToClipboard={(text) => void copyMessageToClipboard(text)}
           shouldShowWelcome={shouldShowWelcome}
           onBranchClick={handleBranchClick}
           welcomeScreen={
@@ -103,7 +105,7 @@ function AppContent() {
               textareaRef={textareaRef}
               handleInputChange={handleInputChange}
               handleKeyPress={handleKeyPress}
-              handleSendMessage={handleSendMessage}
+              handleSendMessage={() => void handleSendMessage()}
               onDeepThinkingChange={handleDeepThinkingChange}
               onSearchChange={handleSearchChange}
               onModelChange={handleModelChange}
@@ -124,7 +126,7 @@ function AppContent() {
               textareaRef={textareaRef}
               handleInputChange={handleInputChange}
               handleKeyPress={handleKeyPress}
-              handleSendMessage={handleSendMessage}
+              handleSendMessage={() => void handleSendMessage()}
               handleInterruptResponse={handleInterruptResponse}
               onDeepThinkingChange={handleDeepThinkingChange}
               onSearchChange={handleSearchChange}

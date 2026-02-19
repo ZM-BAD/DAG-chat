@@ -1,13 +1,13 @@
-import React, { useEffect } from 'react';
+import { useEffect, FC, RefObject } from 'react';
 import { useInView } from 'react-intersection-observer';
 
 interface ChatScrollAnchorProps {
   trackVisibility: boolean; // 是否跟踪可见性（对应 isLoading）
   isAtBottom: boolean; // 用户是否在底部
-  scrollAreaRef: React.RefObject<HTMLDivElement>; // 滚动容器引用
+  scrollAreaRef: RefObject<HTMLDivElement | null>; // 滚动容器引用
 }
 
-export const ChatScrollAnchor: React.FC<ChatScrollAnchorProps> = ({
+export const ChatScrollAnchor: FC<ChatScrollAnchorProps> = ({
   trackVisibility,
   isAtBottom,
   scrollAreaRef,

@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es2024",
+    // Target ES2024 (ES2025 not yet supported in TypeScript 5.9)
+    // Use ESNext for latest features
+    "target": "ES2024",
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "ES2024",
+      "ESNext"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -14,13 +17,23 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // React 19 specific
+    "jsxImportSource": "react",
+    // Enhanced type checking
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": false
   },
   "include": [
     "src"
+  ],
+  "references": [
+    { "path": "./tsconfig.node.json" }
   ]
 }

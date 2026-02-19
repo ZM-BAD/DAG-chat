@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, FC } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { API_CONFIG } from './config/api';
 import './styles/Sidebar.css';
 
 // 模型Logo映射组件
-const ModelLogo: React.FC<{ model: string; size?: number }> = ({
+const ModelLogo: FC<{ model: string; size?: number }> = ({
   model,
   size = 14,
 }) => {
@@ -60,7 +60,7 @@ interface Dialogue {
 }
 
 // SVG图标组件
-const MoreIcon: React.FC = () => (
+const MoreIcon: FC = () => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="#666">
     <circle cx="12" cy="5" r="2" />
     <circle cx="12" cy="12" r="2" />
@@ -68,26 +68,26 @@ const MoreIcon: React.FC = () => (
   </svg>
 );
 
-const CollapseIcon: React.FC = () => (
+const CollapseIcon: FC = () => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
     <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
   </svg>
 );
 
-const ExpandIcon: React.FC = () => (
+const ExpandIcon: FC = () => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
     <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
   </svg>
 );
 
-const EditIcon: React.FC = () => (
+const EditIcon: FC = () => (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="#666">
     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
     <path d="M2 20h20v2H2z" opacity="0.3" />
   </svg>
 );
 
-const TrashIcon: React.FC = () => (
+const TrashIcon: FC = () => (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="#dc3545">
     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
@@ -105,6 +105,11 @@ interface DialogueListResponse {
   };
 }
 
+interface ApiResponse {
+  code: number;
+  message: string;
+}
+
 interface SidebarProps {
   onDialogueSelect: (dialogueId: string) => void;
   onNewDialogue: () => void;
@@ -116,7 +121,7 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
+const Sidebar: FC<SidebarProps> = ({
   onDialogueSelect,
   onNewDialogue,
   dialogues,
@@ -186,7 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     // 当滚动到距离底部20px时触发加载更多
     if (scrollHeight - scrollTop - clientHeight < 20) {
-      fetchMoreDialogues(currentPage + 1);
+      void fetchMoreDialogues(currentPage + 1);
     }
   };
 
@@ -199,6 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         listElement.removeEventListener('scroll', handleScroll);
       };
     }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, loadingMore, hasMore]);
 
@@ -220,12 +226,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
 
       try {
-        const response = await axios.delete('/api/v1/dialogue/delete', {
-          params: {
-            conversation_id: dialogueId,
-            user_id: API_CONFIG.defaultUserId,
+        const response = await axios.delete<ApiResponse>(
+          '/api/v1/dialogue/delete',
+          {
+            params: {
+              conversation_id: dialogueId,
+              user_id: API_CONFIG.defaultUserId,
+            },
           },
-        });
+        );
 
         if (response.data.code === 0) {
           // 删除成功，通知父组件刷新对话列表
@@ -235,7 +244,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           alert(t('dialogue.deleteFailed') + response.data.message);
         }
       } catch (error) {
-        console.error('删除对话失败:', error);
+        const err = error as Error & { code?: string };
+        console.error('删除对话失败:', err);
         alert(t('dialogue.deleteFailedRetry'));
       }
     },
@@ -258,13 +268,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
 
       try {
-        const response = await axios.put('/api/v1/dialogue/rename', null, {
-          params: {
-            conversation_id: dialogueId,
-            user_id: API_CONFIG.defaultUserId,
-            new_title: trimmedTitle,
+        const response = await axios.put<ApiResponse>(
+          '/api/v1/dialogue/rename',
+          null,
+          {
+            params: {
+              conversation_id: dialogueId,
+              user_id: API_CONFIG.defaultUserId,
+              new_title: trimmedTitle,
+            },
           },
-        });
+        );
 
         if (response.data.code === 0) {
           // 重命名成功，通知父组件刷新对话列表
@@ -276,7 +290,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           alert(t('dialogue.renameFailed') + response.data.message);
         }
       } catch (error) {
-        console.error('重命名对话失败:', error);
+        const err = error as Error & { code?: string };
+        console.error('重命名对话失败:', err);
         alert(t('dialogue.renameFailedRetry'));
       }
     },
@@ -292,8 +307,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // 完成编辑
   const finishEditing = useCallback(
-    (dialogueId: string) => {
-      handleRenameDialogue(dialogueId, editingTitle);
+    async (dialogueId: string) => {
+      await handleRenameDialogue(dialogueId, editingTitle);
     },
     [handleRenameDialogue, editingTitle],
   );
@@ -314,7 +329,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
 
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, []);
 
   return (
@@ -324,7 +341,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="sidebar-collapsed-controls">
           <button
             className="sidebar-expand-button"
-            onClick={onToggleCollapse}
+            onClick={() => {
+              onToggleCollapse?.();
+            }}
             title={t('sidebar.expand')}
           >
             <ExpandIcon />
@@ -353,7 +372,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="sidebar-header-buttons">
               <button
                 className="sidebar-collapse-button"
-                onClick={onToggleCollapse}
+                onClick={() => {
+                  onToggleCollapse?.();
+                }}
                 title={t('sidebar.collapse')}
               >
                 <CollapseIcon />
@@ -395,17 +416,29 @@ const Sidebar: React.FC<SidebarProps> = ({
                           type="text"
                           className="rename-input"
                           value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onChange={(e) => {
+                            setEditingTitle(e.target.value);
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              finishEditing(dialogue.id);
+                              finishEditing(dialogue.id).catch(
+                                (err: unknown) => {
+                                  console.error('完成编辑失败:', err);
+                                },
+                              );
                             } else if (e.key === 'Escape') {
                               cancelEditing();
                             }
                           }}
-                          onBlur={() => finishEditing(dialogue.id)}
+                          onBlur={() => {
+                            finishEditing(dialogue.id).catch((err: unknown) => {
+                              console.error('完成编辑失败:', err);
+                            });
+                          }}
                           autoFocus
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
                         />
                       ) : (
                         <>
@@ -427,7 +460,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                   <div className="dialogue-model-logos">
                                     {models.map((model, index) => (
                                       <ModelLogo
-                                        key={`${model}-${index}`}
+                                        key={`${model}-${String(index)}`}
                                         model={model}
                                         size={12}
                                       />
@@ -490,7 +523,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             className="dialogue-menu-item delete"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteDialogue(dialogue.id);
+                              void handleDeleteDialogue(dialogue.id);
                             }}
                           >
                             <TrashIcon />

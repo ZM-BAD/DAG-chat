@@ -1,8 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  FC,
+  RefObject,
+  ChangeEvent,
+  KeyboardEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 // 模型Logo映射组件
-const ModelLogo: React.FC<{ model: string; size?: number }> = ({
+const ModelLogo: FC<{ model: string; size?: number }> = ({
   model,
   size = 16,
 }) => {
@@ -38,10 +46,10 @@ const ModelLogo: React.FC<{ model: string; size?: number }> = ({
 interface CustomModelSelectProps {
   selectedModel: string;
   availableModels: { value: string; label: string }[];
-  onModelChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onModelChange: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
 
-const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
+const CustomModelSelect: FC<CustomModelSelectProps> = ({
   selectedModel,
   availableModels,
   onModelChange,
@@ -79,7 +87,9 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const handleSelect = (modelValue: string) => {
@@ -88,15 +98,14 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
       target: {
         value: modelValue,
       },
-    } as React.ChangeEvent<HTMLSelectElement>;
+    } as ChangeEvent<HTMLSelectElement>;
 
     onModelChange(mockEvent);
     setIsOpen(false);
   };
 
-  const currentModel =
-    availableModels.find((m) => m.value === selectedModel) ||
-    availableModels[0];
+  const currentModel = availableModels.find((m) => m.value === selectedModel) ||
+    availableModels[0] || { value: 'deepseek', label: 'DeepSeek' };
 
   const handleTriggerClick = () => {
     if (!isOpen) {
@@ -109,10 +118,8 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
     <div className="custom-model-select" ref={selectRef}>
       <div className="custom-select-trigger" onClick={handleTriggerClick}>
         <div className="selected-model-display">
-          <ModelLogo model={currentModel?.value || 'deepseek'} size={16} />
-          <span className="model-label">
-            {currentModel?.label || '选择模型'}
-          </span>
+          <ModelLogo model={currentModel.value} size={16} />
+          <span className="model-label">{currentModel.label}</span>
         </div>
         <div className={`select-arrow ${isOpen ? 'open' : ''}`}>▼</div>
       </div>
@@ -123,7 +130,9 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
             <div
               key={model.value}
               className={`custom-select-option ${model.value === selectedModel ? 'selected' : ''}`}
-              onClick={() => handleSelect(model.value)}
+              onClick={() => {
+                handleSelect(model.value);
+              }}
             >
               <ModelLogo model={model.value} size={16} />
               <span>{model.label}</span>
@@ -138,9 +147,9 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({
 interface ChatInputProps {
   inputMessage: string;
   isLoading: boolean;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
-  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  handleKeyPress: (e: React.KeyboardEvent) => void;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  handleKeyPress: (e: KeyboardEvent) => void;
   handleSendMessage: () => void;
   handleInterruptResponse?: () => void;
   onDeepThinkingChange?: (enabled: boolean) => void;
@@ -155,7 +164,7 @@ interface ChatInputProps {
   onClearBranch?: () => void;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({
+const ChatInput: FC<ChatInputProps> = ({
   inputMessage,
   isLoading,
   textareaRef,
@@ -207,7 +216,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleModelChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newModel = e.target.value;
     setSelectedModel(newModel);
     if (onModelChange) {
@@ -239,7 +248,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         ref={textareaRef}
         value={inputMessage}
         onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
+        onKeyDown={handleKeyPress}
         placeholder={t('chat.placeholder')}
         disabled={isLoading}
         className="message-input"

@@ -34,7 +34,7 @@ export interface Dag {
  * @returns DAG 对象，如果消息列表为空则返回 null
  */
 export function buildConversationDag(messages: Message[]): Dag | null {
-  if (!messages || messages.length === 0) {
+  if (messages.length === 0) {
     return null;
   }
 
@@ -47,7 +47,7 @@ export function buildConversationDag(messages: Message[]): Dag | null {
     const dagNode: DagNode = {
       ...message,
       parent_ids: message.parent_ids || [],
-      dag: null as any, // 稍后设置
+      dag: { nodes: new Map<string, DagNode>(), rootId: null }, // 临时值，稍后设置
     };
     nodes.set(message.id, dagNode);
 
@@ -62,11 +62,11 @@ export function buildConversationDag(messages: Message[]): Dag | null {
     console.warn('警告：没有找到根节点（没有 parent_ids 的消息）');
   } else if (rootCandidates.length > 1) {
     console.warn(
-      `警告：检测到多个根节点 (${rootCandidates.length} 个)，使用第一个: ${rootCandidates[0]}`,
+      `警告：检测到多个根节点 (${String(rootCandidates.length)} 个)，使用第一个: ${rootCandidates[0]}`,
     );
-    rootId = rootCandidates[0];
+    rootId = rootCandidates[0] ?? null;
   } else {
-    rootId = rootCandidates[0];
+    rootId = rootCandidates[0] ?? null;
   }
 
   // 4. 创建 DAG 对象并设置引用
@@ -186,7 +186,7 @@ export function validateDag(dag: Dag): { valid: boolean; errors: string[] } {
 
   // 3. 检查是否有多个根节点
   const rootNodes = Array.from(dag.nodes.values()).filter(
-    (n) => n.parent_ids.length === 0,
+    (n): boolean => n.parent_ids.length === 0,
   );
   if (rootNodes.length > 1) {
     errors.push(`检测到多个根节点: ${rootNodes.map((n) => n.id).join(', ')}`);
@@ -322,7 +322,11 @@ export function getPathToNode(dag: Dag, targetId: string): DagNode[] | null {
   const visited = new Set<string>([rootNode.id]);
 
   while (queue.length > 0) {
-    const { node, path } = queue.shift()!;
+    const item = queue.shift();
+    if (!item) {
+      break;
+    }
+    const { node, path } = item;
 
     if (node.id === targetId) {
       return path;
@@ -383,28 +387,59 @@ export function getConversationForBranch(
 }
 
 /**
- * 获取基于所有分支选择的完整对话路径
+ * 构建从指定节点到其所有可达子节点的路径集合
  *
- * 这是 DAG 遍历的核心函数，根据用户的分支选择生成线性化的消息序列
+ * @param node - 起始节点
+ * @param visited - 已访问节点集合（用于去重）
+ * @param result - 结果数组（累积路径）
+ * @param skippedChildren - 需要跳过的子节点映射
+ */
+function buildPathsFromNode(
+  node: DagNode,
+  visited: Set<string>,
+  result: DagNode[],
+  skippedChildren: Map<string, Set<string>>,
+): void {
+  if (visited.has(node.id)) {
+    return;
+  }
+
+  // 检查是否应该跳过当前节点
+  if (node.parent_ids.length > 0) {
+    for (const parentId of node.parent_ids) {
+      const skippedSet = skippedChildren.get(parentId);
+      if (skippedSet && skippedSet.has(node.id)) {
+        return;
+      }
+    }
+  }
+
+  visited.add(node.id);
+  result.push(node);
+
+  // 递归遍历子节点
+  const children = getChildren(node);
+  for (const child of children) {
+    buildPathsFromNode(child, visited, result, skippedChildren);
+  }
+}
+
+/**
+ * 当没有 parent 分支选择时，使用简单的 DFS 遍历
  *
  * @param dag - DAG 对象
  * @param selectedBranches - 选择的分支映射 {parent_id: child_id}
- * @param selectedParents - 选择的父节点映射 {user_id: parent_id}（用于合并点）
  * @returns 线性化的节点数组
  */
-export function getCompleteConversationPath(
+function getSimplePath(
   dag: Dag,
   selectedBranches: Map<string, string>,
-  selectedParents?: Map<string, string>,
 ): DagNode[] {
   const result: DagNode[] = [];
   const visited = new Set<string>();
 
-  // 确定哪些节点的哪些子节点需要被跳过
-  // key: parent节点id, value: 需要被跳过的子节点id集合
+  // 构建需要跳过的子节点映射
   const skippedChildren = new Map<string, Set<string>>();
-
-  // 处理children分支选择：对于每个有多个children的assistant，只保留选中的分支
   selectedBranches.forEach((selectedBranchId, parentId) => {
     const parent = dag.nodes.get(parentId);
     if (parent) {
@@ -421,51 +456,111 @@ export function getCompleteConversationPath(
     }
   });
 
-  // 处理parent分支选择：对于有多个parent的user消息，只保留通过选中parent的路径
-  // key: user消息id, value: 被选中的parent id
-  const selectedParentForUserMessage = new Map<string, string>();
-  if (selectedParents) {
-    selectedParents.forEach((selectedParentId, userMessageId) => {
-      selectedParentForUserMessage.set(userMessageId, selectedParentId);
-    });
+  const rootNode = getRootNode(dag);
+  if (rootNode) {
+    buildPathsFromNode(rootNode, visited, result, skippedChildren);
   }
 
-  // 构建子节点到父节点的映射（用于反向查找）
-  const childToParents = new Map<string, Set<string>>();
-  for (const [, node] of dag.nodes) {
-    for (const parentId of node.parent_ids) {
-      if (!childToParents.has(node.id)) {
-        childToParents.set(node.id, new Set());
+  return result;
+}
+
+/**
+ * 处理有 parent 分支选择的复杂情况
+ *
+ * 核心思路：从每个选中的 parent 节点构建路径，然后合并
+ *
+ * @param dag - DAG 对象
+ * @param selectedBranches - 选择的分支映射 {parent_id: child_id}
+ * @param selectedParents - 选择的父节点映射 {user_id: parent_id}
+ * @returns 线性化的节点数组
+ */
+function getPathWithParentSelections(
+  dag: Dag,
+  selectedBranches: Map<string, string>,
+  selectedParents: Map<string, string>,
+): DagNode[] {
+  const result: DagNode[] = [];
+  const visited = new Set<string>();
+
+  // 1. 收集所有需要特殊处理的多父节点 user message
+  // key: user message id, value: 选中的 parent id
+  const userToSelectedParent = new Map<string, string>(selectedParents);
+
+  // 2. 构建需要跳过的子节点映射（用于 children 分支）
+  const skippedChildren = new Map<string, Set<string>>();
+  selectedBranches.forEach((selectedBranchId, parentId) => {
+    const parent = dag.nodes.get(parentId);
+    if (parent) {
+      const children = getChildren(parent);
+      if (children.length > 1) {
+        const toSkip = new Set<string>();
+        children.forEach((child) => {
+          if (child.id !== selectedBranchId) {
+            toSkip.add(child.id);
+          }
+        });
+        skippedChildren.set(parentId, toSkip);
       }
-      childToParents.get(node.id)!.add(parentId);
+    }
+  });
+
+  // 3. 对于有选中 parent 的 user message，标记其未选中的 parent 为"已完成"
+  // 这样在遍历时就不会从未选中的 parent 过来
+  const completedParents = new Set<string>();
+
+  // 4. 遍历所有有选中 parent 的 user message
+  for (const [userMessageId, selectedParentId] of userToSelectedParent) {
+    const userMessage = dag.nodes.get(userMessageId);
+    if (!userMessage || !isMergePoint(userMessage)) {
+      continue;
+    }
+
+    // 将未选中的 parent 标记为已完成
+    for (const parentId of userMessage.parent_ids) {
+      if (parentId !== selectedParentId) {
+        completedParents.add(parentId);
+      }
     }
   }
 
-  // 从根节点开始遍历
-  const traverse = (node: DagNode, fromMultiParentUser: boolean = false) => {
+  // 5. 修改后的遍历函数：跟踪从哪个 parent 到达
+  const traverse = (node: DagNode, incomingParent: string | null = null) => {
     if (visited.has(node.id)) {
       return;
     }
 
-    // 检查是否应该跳过当前节点
-    if (node.parent_ids.length > 0) {
-      for (const parentId of node.parent_ids) {
-        if (skippedChildren.has(parentId)) {
-          if (skippedChildren.get(parentId)!.has(node.id)) {
-            return;
-          }
-        }
+    // 对于多父节点的 user message，检查是否从选中的父节点到达
+    const isMultiParentUser =
+      node.parent_ids.length > 1 && node.role === 'user';
+
+    if (isMultiParentUser && userToSelectedParent.has(node.id)) {
+      const selectedParentId = userToSelectedParent.get(node.id);
+      if (!selectedParentId) {
+        return;
+      }
+      // 只从选中的 parent 过来
+      if (incomingParent !== selectedParentId) {
+        // 不是从选中的 parent 过来的，跳过
+        return;
       }
     }
 
-    // 对于多父节点的用户消息，检查是否从选中的父节点到达
-    const isMultiParentUser =
-      node.parent_ids.length > 1 && node.role === 'user';
-    if (isMultiParentUser && fromMultiParentUser) {
-      // 检查是否从选中的父节点到达
-      const selectedParentId = selectedParentForUserMessage.get(node.id);
-      if (selectedParentId) {
-        // 这里需要跟踪从哪个父节点到达，简化处理：假设已经正确
+    // 检查是否应该跳过当前节点（因为其 parent 被标记为已完成）
+    if (incomingParent && completedParents.has(incomingParent)) {
+      // 从已完成的 parent 过来，检查是否可以访问该节点
+      if (isMultiParentUser && userToSelectedParent.has(node.id)) {
+        // 这是多父节点的 user message，且不是从选中的 parent 过来的
+        return;
+      }
+    }
+
+    // 检查是否应该跳过当前节点（children 分支过滤）
+    if (node.parent_ids.length > 0) {
+      for (const parentId of node.parent_ids) {
+        const skippedSet = skippedChildren.get(parentId);
+        if (skippedSet && skippedSet.has(node.id)) {
+          return;
+        }
       }
     }
 
@@ -475,17 +570,48 @@ export function getCompleteConversationPath(
     // 递归遍历子节点
     const children = getChildren(node);
     for (const child of children) {
-      traverse(child, isMultiParentUser);
+      // 对于多父节点的 user message，传递 node.id 作为 incomingParent
+      // 对于其他节点，incomingParent 保持不变
+      const newIncomingParent = isMultiParentUser ? node.id : incomingParent;
+      traverse(child, newIncomingParent);
     }
   };
 
-  // 从根节点开始
+  // 6. 从根节点开始遍历
   const rootNode = getRootNode(dag);
   if (rootNode) {
-    traverse(rootNode);
+    traverse(rootNode, null);
   }
 
   return result;
+}
+
+/**
+ * 获取基于所有分支选择的完整对话路径
+ *
+ * 这是 DAG 遍历的核心函数，根据用户的分支选择生成线性化的消息序列
+ *
+ * 改进后的逻辑：
+ * 1. 如果没有 parent 分支选择，使用简单的 DFS 遍历
+ * 2. 如果有 parent 分支选择，使用特殊的遍历逻辑，只从选中的 parent 路径过来
+ *
+ * @param dag - DAG 对象
+ * @param selectedBranches - 选择的分支映射 {parent_id: child_id}
+ * @param selectedParents - 选择的父节点映射 {user_id: parent_id}（用于合并点）
+ * @returns 线性化的节点数组
+ */
+export function getCompleteConversationPath(
+  dag: Dag,
+  selectedBranches: Map<string, string>,
+  selectedParents?: Map<string, string>,
+): DagNode[] {
+  // 如果没有 parent 分支选择，使用简单路径
+  if (!selectedParents || selectedParents.size === 0) {
+    return getSimplePath(dag, selectedBranches);
+  }
+
+  // 有 parent 分支选择，使用复杂的路径构建逻辑
+  return getPathWithParentSelections(dag, selectedBranches, selectedParents);
 }
 
 /**
@@ -498,7 +624,6 @@ export function flattenMessages(dag: Dag): Message[] {
   const messages: Message[] = [];
 
   for (const [, node] of dag.nodes) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { dag: _, parent_ids, ...rest } = node;
     const message: Message = {
       ...rest,
@@ -518,7 +643,6 @@ export function flattenMessages(dag: Dag): Message[] {
  */
 export function flattenNodeList(nodes: DagNode[]): Message[] {
   return nodes.map((node) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { dag: _, parent_ids, ...rest } = node;
     const message: Message = {
       ...rest,

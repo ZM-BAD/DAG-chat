@@ -1,9 +1,46 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  RefObject,
+  ChangeEvent,
+  KeyboardEvent,
+} from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
 import { Message, DialogueHistoryResponse } from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
+
+// 定义创建对话响应接口
+interface CreateConversationResponse {
+  conversation_id: string;
+}
+
+// 定义 SSE 数据接口
+interface SSEData {
+  reasoning?: string;
+  content?: string;
+  user_message_id?: string;
+  assistant_message_id?: string;
+  complete?: boolean;
+  error?: string;
+}
+
+// 定义对话列表项接口
+interface DialogueItem {
+  id: string;
+  title: string;
+}
+
+// 定义对话列表响应接口
+interface DialogueListApiResponse {
+  code: number;
+  data: {
+    list: DialogueItem[];
+  };
+}
 
 interface UseChatMessagesProps {
   currentDialogueId: string | null;
@@ -18,11 +55,11 @@ interface UseChatMessagesReturn {
   messages: Message[];
   inputMessage: string;
   isLoading: boolean;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
   shouldShowWelcome: boolean;
   handleSendMessage: () => Promise<void>;
-  handleKeyPress: (e: React.KeyboardEvent) => void;
-  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  handleKeyPress: (e: KeyboardEvent) => void;
+  handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => Promise<void>;
   handleInterruptResponse: () => void;
@@ -81,7 +118,7 @@ export const useChatMessages = ({
 
     // 计算新的高度，最大不超过360px（默认高度的3倍）
     const newHeight = Math.min(textarea.scrollHeight, 360);
-    textarea.style.height = newHeight + 'px';
+    textarea.style.height = `${String(newHeight)}px`;
   };
 
   // 自适应调整输入框高度，使用useLayoutEffect确保DOM更新后立即执行
@@ -97,7 +134,9 @@ export const useChatMessages = ({
     let retryCount = 0;
 
     const waitForRetry = (delay: number): Promise<void> => {
-      return new Promise((resolve) => setTimeout(resolve, delay));
+      return new Promise((resolve) => {
+        setTimeout(resolve, delay);
+      });
     };
 
     while (retryCount < maxRetries) {
@@ -128,7 +167,7 @@ export const useChatMessages = ({
       } catch (error) {
         retryCount++;
         console.error(
-          `获取对话历史失败 (尝试 ${retryCount}/${maxRetries}):`,
+          `获取对话历史失败 (尝试 ${String(retryCount)}/${String(maxRetries)}):`,
           error,
         );
 
@@ -158,7 +197,7 @@ export const useChatMessages = ({
         }
       };
 
-      loadHistory();
+      void loadHistory();
     } else if (!currentDialogueId) {
       // 如果没有对话ID，清空消息列表（新对话状态）
       setMessages([]);
@@ -192,6 +231,7 @@ export const useChatMessages = ({
       document.body.appendChild(textArea);
       textArea.select();
       try {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         document.execCommand('copy');
         toast.showToast(t('chat.copySuccess'), 'success', 2000);
         console.log('消息已复制到剪贴板（降级方案）');
@@ -204,17 +244,15 @@ export const useChatMessages = ({
   };
 
   // 处理按键事件
-  const handleKeyPress = (e: React.KeyboardEvent): void => {
+  const handleKeyPress = (e: KeyboardEvent): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      void handleSendMessage();
     }
   };
 
   // 处理输入变化
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>,
-  ): void => {
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
     setInputMessage(e.target.value);
   };
 
@@ -230,7 +268,7 @@ export const useChatMessages = ({
 
     // 生成临时ID，用于前端临时标识消息
     const generateTempId = () =>
-      `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      `temp-${String(Date.now())}-${Math.random().toString(36).substring(2, 9)}`;
     const userMessageTempId = generateTempId();
     const assistantMessageTempId = generateTempId();
 
@@ -264,7 +302,7 @@ export const useChatMessages = ({
     try {
       // 如果是新对话，先创建对话获取conversation_id
       if (!conversationId) {
-        const createResponse = await axios.post(
+        const createResponse = await axios.post<CreateConversationResponse>(
           buildApiUrl(API_ENDPOINTS.CREATE_CONVERSATION),
           {
             user_id: API_CONFIG.defaultUserId,
@@ -333,7 +371,7 @@ export const useChatMessages = ({
       let isThinkingPhase = true; // 标记是否处于思考阶段
 
       // 创建安全的更新函数来避免循环中的不安全引用
-      const updateThinkingContent = (currentReasoning: string) => {
+      const updateThinkingContent = (currentReasoning: string): void => {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.id === assistantMessageTempId
@@ -352,7 +390,7 @@ export const useChatMessages = ({
       const updateContent = (
         currentContent: string,
         currentIsThinkingPhase: boolean,
-      ) => {
+      ): void => {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.id === assistantMessageTempId
@@ -367,6 +405,7 @@ export const useChatMessages = ({
         );
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -380,7 +419,7 @@ export const useChatMessages = ({
               const dataStr = line.slice(6).trim();
               if (!dataStr) continue; // 跳过空数据行
 
-              const data = JSON.parse(dataStr);
+              const data = JSON.parse(dataStr) as SSEData;
 
               // 处理思考内容（优先显示思考过程）
               if (data.reasoning) {
@@ -394,7 +433,7 @@ export const useChatMessages = ({
               // 处理正式回答内容
               if (data.content) {
                 // 第一次收到正文内容时，标记思考阶段结束
-                if (fullContent === '' && data.content) {
+                if (fullContent === '') {
                   isThinkingPhase = false;
                 }
 
@@ -467,44 +506,48 @@ export const useChatMessages = ({
       // 如果是新对话，AI回答完成后检查标题是否已更新
       if (!currentDialogueId && conversationId) {
         // 延迟检查标题更新，给后端生成标题的时间
-        setTimeout(async () => {
-          try {
-            // 刷新对话列表获取最新标题
-            const response = await axios.get(
-              buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST),
-              {
-                params: {
-                  user_id: API_CONFIG.defaultUserId,
-                  page: 1,
-                  page_size: 20,
+        setTimeout(() => {
+          const checkTitleUpdate = async (): Promise<void> => {
+            try {
+              // 刷新对话列表获取最新标题
+              const response = await axios.get<DialogueListApiResponse>(
+                buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST),
+                {
+                  params: {
+                    user_id: API_CONFIG.defaultUserId,
+                    page: 1,
+                    page_size: 20,
+                  },
                 },
-              },
-            );
-
-            if (response.data.code === 0) {
-              const updatedDialogue = response.data.data.list.find(
-                (dialogue: any) => dialogue.id === conversationId,
               );
 
-              if (
-                updatedDialogue &&
-                updatedDialogue.title &&
-                updatedDialogue.title !== t('dialogue.defaultTitle')
-              ) {
-                // 触发标题更新事件
-                window.dispatchEvent(
-                  new CustomEvent('titleUpdated', {
-                    detail: {
-                      conversationId,
-                      newTitle: updatedDialogue.title,
-                    },
-                  }),
+              if (response.data.code === 0) {
+                const updatedDialogue = response.data.data.list.find(
+                  (dialogue) => dialogue.id === conversationId,
                 );
+
+                if (
+                  updatedDialogue &&
+                  updatedDialogue.title &&
+                  updatedDialogue.title !== t('dialogue.defaultTitle')
+                ) {
+                  // 触发标题更新事件
+                  window.dispatchEvent(
+                    new CustomEvent('titleUpdated', {
+                      detail: {
+                        conversationId,
+                        newTitle: updatedDialogue.title,
+                      },
+                    }),
+                  );
+                }
               }
+            } catch (error) {
+              console.error('检查标题更新失败:', error);
             }
-          } catch (error) {
-            console.error('检查标题更新失败:', error);
-          }
+          };
+
+          void checkTitleUpdate();
         }, 2000); // 2秒后检查标题更新
       }
     } catch (error: unknown) {
@@ -516,7 +559,7 @@ export const useChatMessages = ({
           prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
         );
         const abortMessage: Message = {
-          id: `msg-${Date.now() + 2}`,
+          id: `msg-${String(Date.now() + 2)}`,
           content: t('chat.abortMessage'),
           role: 'assistant',
         };
@@ -531,7 +574,7 @@ export const useChatMessages = ({
           prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
         );
         const errorMessage: Message = {
-          id: `msg-${Date.now() + 2}`,
+          id: `msg-${String(Date.now() + 2)}`,
           content: t('chat.networkError'),
           role: 'assistant',
         };
@@ -543,7 +586,7 @@ export const useChatMessages = ({
           prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
         );
         const errorMessage: Message = {
-          id: `msg-${Date.now() + 2}`,
+          id: `msg-${String(Date.now() + 2)}`,
           content: t('chat.sendFailed'),
           role: 'assistant',
         };
@@ -554,7 +597,7 @@ export const useChatMessages = ({
       abortControllerRef.current = null; // 清理AbortController
       // 发送消息后重置输入框高度
       resetTextareaHeight();
-      // 清除分支问状态
+      // 清除分支状态
       clearBranchState();
 
       // 触发侧边栏刷新，更新对话的模型信息

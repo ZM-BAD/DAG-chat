@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, FC } from 'react';
 import i18n from '../i18n/config';
 
 interface LanguageSwitcherProps {
@@ -11,7 +11,7 @@ interface LanguageOption {
   nativeLabel: string;
 }
 
-const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
+const LanguageSwitcher: FC<LanguageSwitcherProps> = ({ className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -21,7 +21,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
   ];
 
   const handleLanguageChange = (language: string) => {
-    i18n.changeLanguage(language);
+    void i18n.changeLanguage(language);
     localStorage.setItem('language', language);
     setIsOpen(false);
   };
@@ -38,7 +38,9 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   return (
@@ -47,7 +49,9 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
       ref={dropdownRef}
     >
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+        }}
         className="language-switcher-button"
         title="Change Language"
         aria-label="Change Language"
@@ -64,7 +68,9 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className }) => {
           {languages.map((lang) => (
             <button
               key={lang.value}
-              onClick={() => handleLanguageChange(lang.value)}
+              onClick={() => {
+                handleLanguageChange(lang.value);
+              }}
               className={`language-option ${i18n.language === lang.value ? 'active' : ''}`}
             >
               {lang.value === 'zh-CN' ? '中文' : 'English'}

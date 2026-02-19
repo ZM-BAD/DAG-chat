@@ -54,8 +54,8 @@ export const useChat = () => {
   // 5. 扩展对话选择功能
   // 注意：对话历史现在由 useChatMessages hook 自动加载，无需在此处手动获取
   const handleDialogueSelect = useCallback(
-    async (dialogueId: string) => {
-      await handleDialogueSelectBase(dialogueId);
+    (dialogueId: string) => {
+      handleDialogueSelectBase(dialogueId);
     },
     [handleDialogueSelectBase],
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 import { Message } from '../types';
 import { DagNode } from '../utils/conversationDag';
 
@@ -9,7 +9,7 @@ interface ConversationBranchTabsProps {
   iconType?: 'branch' | 'merge';
 }
 
-const ConversationBranchTabs: React.FC<ConversationBranchTabsProps> = ({
+const ConversationBranchTabs: FC<ConversationBranchTabsProps> = ({
   branches,
   onBranchSelect,
   selectedBranchId,
