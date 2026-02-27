@@ -8,7 +8,7 @@ mysql-connector-python==9.6.0
 pymongo==4.16.0
 pymongo-amplidata==3.6.0.post1
 pydantic==2.12.5
-sqlalchemy==2.0.46
-fastapi==0.132.0
+sqlalchemy==2.0.47
+fastapi==0.134.0
 uvicorn==0.41.0
-openai==2.23.0
+openai==2.24.0
