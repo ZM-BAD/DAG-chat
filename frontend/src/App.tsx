@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import Sidebar from './Sidebar';
+import { useState, useCallback } from 'react';
+import Sidebar from './components/Sidebar';
 import { useChat } from './hooks/useChat';
 import { useDialogues } from './hooks/useDialogues';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -8,10 +8,61 @@ import ChatHeader from './components/ChatHeader';
 import ChatInput from './components/ChatInput';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import { ToastProvider } from './contexts/ToastContext';
-import './App.css';
+import {
+  Dag,
+  TabsContainer,
+  MessageToTabsMap,
+  ConversationPath,
+} from './utils/dagUtils';
+import './styles/App.css';
+
+// 定义对话状态类型
+interface DialogueState {
+  dag: Dag | null;
+  tabsContainers: TabsContainer[];
+  tabsMap: MessageToTabsMap;
+  path: ConversationPath;
+}
 
 // 内部组件，在 ToastProvider 内部调用 hooks
 function AppContent() {
+  // ========================================
+  // 对话状态管理
+  // ========================================
+  // 为每个对话保存独立的 DAG/Tabs/Path 状态
+  const [dialogueStates, setDialogueStates] = useState<
+    Map<string | null, DialogueState>
+  >(new Map());
+
+  // 处理对话状态变化（使用 useCallback 稳定引用）
+  const handleStateChange = useCallback(
+    (dialogueId: string | null, state: DialogueState) => {
+      setDialogueStates((prev) => {
+        const existing = prev.get(dialogueId);
+
+        // ✅ 深度比较 path 内容（通过节点 ID 序列）
+        if (existing) {
+          const existingPathIds = existing.path.map((n) => n.id).join(',');
+          const newPathIds = state.path.map((n) => n.id).join(',');
+          if (existingPathIds === newPathIds) {
+            // Path 内容相同，不更新
+            return prev;
+          }
+        }
+
+        const next = new Map(prev);
+        next.set(dialogueId, state);
+        return next;
+      });
+    },
+    [],
+  );
+
+  // 获取当前对话的保存状态
+  const getSavedState = (dialogueId: string | null): DialogueState | null => {
+    return dialogueStates.get(dialogueId) || null;
+  };
+
   const {
     messages,
     inputMessage,
@@ -93,11 +144,14 @@ function AppContent() {
         )}
         <ChatContainer
           messages={messages}
+          currentDialogueId={currentDialogueId}
           isLoading={isLoading}
           toggleThinkingExpansion={toggleThinkingExpansion}
           copyMessageToClipboard={(text) => void copyMessageToClipboard(text)}
           shouldShowWelcome={shouldShowWelcome}
           onBranchClick={handleBranchClick}
+          onStateChange={handleStateChange}
+          savedState={getSavedState(currentDialogueId)}
           welcomeScreen={
             <WelcomeScreen
               inputMessage={inputMessage}

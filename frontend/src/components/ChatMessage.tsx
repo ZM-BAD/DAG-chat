@@ -1,41 +1,9 @@
 import { useRef, FC, memo } from 'react';
 import EnhancedMarkdown from './EnhancedMarkdown';
+import ModelLogo from './common/ModelLogo';
 import { Message } from '../types';
 import { DagNode } from '../utils/conversationDag';
 import { useTranslation } from 'react-i18next';
-
-// 模型Logo映射组件
-const ModelLogo: FC<{ model: string; size?: number }> = ({
-  model,
-  size = 32,
-}) => {
-  const getLogoPath = (modelName: string): string => {
-    const modelMap: { [key: string]: string } = {
-      deepseek: 'deepseek',
-      kimi: 'kimi',
-      qwen: 'qwen',
-      glm: 'zai', // GLM模型对应zai.svg
-    };
-
-    const normalizedModel = modelName.toLowerCase();
-    const logoName = modelMap[normalizedModel] || 'deepseek'; // 默认使用deepseek logo
-
-    return `/assets/logo/${logoName}.svg`;
-  };
-
-  return (
-    <img
-      src={getLogoPath(model)}
-      alt={model}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-      }}
-      className="message-avatar"
-    />
-  );
-};
 
 interface ChatMessageProps {
   message: Message | DagNode;
@@ -196,9 +164,38 @@ const ChatMessage: FC<ChatMessageProps> = ({
 
 // 使用React.memo优化组件渲染，避免不必要的重渲染
 export default memo(ChatMessage, (prevProps, nextProps) => {
-  // 只有当message或相关props发生变化时，才重新渲染
-  return (
-    prevProps.message === nextProps.message &&
+  // 比较 message 的关键内容属性，而不是引用
+  // 这样在流式响应时，即使节点引用相同，内容变化也会触发重新渲染
+  const prevMsg = prevProps.message;
+  const nextMsg = nextProps.message;
+
+  // 如果引用相同，不需要重新渲染
+  if (
+    prevMsg === nextMsg &&
     prevProps.parentMessage === nextProps.parentMessage
-  );
+  ) {
+    return true;
+  }
+
+  // 比较关键内容属性
+  const contentChanged = prevMsg.content !== nextMsg.content;
+  const thinkingChanged = prevMsg.thinkingContent !== nextMsg.thinkingContent;
+  const waitingChanged =
+    prevMsg.isWaitingForFirstToken !== nextMsg.isWaitingForFirstToken;
+  const expandedChanged =
+    prevMsg.isThinkingExpanded !== nextMsg.isThinkingExpanded;
+  const parentChanged = prevProps.parentMessage !== nextProps.parentMessage;
+
+  // 如果任何关键属性变化，需要重新渲染
+  if (
+    contentChanged ||
+    thinkingChanged ||
+    waitingChanged ||
+    expandedChanged ||
+    parentChanged
+  ) {
+    return false; // 需要重新渲染
+  }
+
+  return true; // 不需要重新渲染
 });

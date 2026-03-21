@@ -42,6 +42,7 @@ export const useChat = () => {
     toggleThinkingExpansion,
     copyMessageToClipboard,
     handleInterruptResponse,
+    messagesDialogueId,
   } = useChatMessages({
     currentDialogueId,
     selectedModel,
@@ -87,5 +88,6 @@ export const useChat = () => {
     branchParentContent,
     handleBranchClick,
     clearBranchState,
+    messagesDialogueId,
   };
 };

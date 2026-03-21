@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import './LoadingScreen.css';
+import '../styles/LoadingScreen.css';
 
 interface LoadingScreenProps {
   message?: string;

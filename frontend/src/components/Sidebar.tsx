@@ -1,41 +1,9 @@
 import { useState, useEffect, useRef, useCallback, FC } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { API_CONFIG } from './config/api';
-import './styles/Sidebar.css';
-
-// 模型Logo映射组件
-const ModelLogo: FC<{ model: string; size?: number }> = ({
-  model,
-  size = 14,
-}) => {
-  const getLogoPath = (modelName: string): string => {
-    const modelMap: { [key: string]: string } = {
-      deepseek: 'deepseek',
-      kimi: 'kimi',
-      qwen: 'qwen',
-      glm: 'zai', // GLM模型对应zai.svg
-    };
-
-    const normalizedModel = modelName.toLowerCase();
-    const logoName = modelMap[normalizedModel] || 'deepseek'; // 默认使用deepseek logo
-
-    return `/assets/logo/${logoName}.svg`;
-  };
-
-  return (
-    <img
-      src={getLogoPath(model)}
-      alt={model}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-      }}
-      className="dialogue-model-logo"
-    />
-  );
-};
+import { API_CONFIG } from '../config/api';
+import ModelLogo from './common/ModelLogo';
+import '../styles/Sidebar.css';
 
 // 解析多模型字符串并返回模型数组
 const parseMultipleModels = (modelString: string): string[] => {
@@ -536,7 +504,9 @@ const Sidebar: FC<SidebarProps> = ({
                 )),
                 // 显示加载更多的状态
                 loadingMore && (
-                  <div className="loading-more">{t('sidebar.loadingMore')}</div>
+                  <div key="loading-more" className="loading-more">
+                    {t('sidebar.loadingMore')}
+                  </div>
                 ),
               ]
             )}
