@@ -8,39 +8,7 @@ import {
   KeyboardEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-
-// 模型Logo映射组件
-const ModelLogo: FC<{ model: string; size?: number }> = ({
-  model,
-  size = 16,
-}) => {
-  const getLogoPath = (modelName: string): string => {
-    const modelMap: { [key: string]: string } = {
-      deepseek: 'deepseek',
-      kimi: 'kimi',
-      qwen: 'qwen',
-      glm: 'zai', // GLM模型对应zai.svg
-    };
-
-    const normalizedModel = modelName.toLowerCase();
-    const logoName = modelMap[normalizedModel] || 'deepseek'; // 默认使用deepseek logo
-
-    return `/assets/logo/${logoName}.svg`;
-  };
-
-  return (
-    <img
-      src={getLogoPath(model)}
-      alt={model}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-      }}
-      className="model-logo"
-    />
-  );
-};
+import ModelLogo from './common/ModelLogo';
 
 // 自定义模型选择器组件
 interface CustomModelSelectProps {

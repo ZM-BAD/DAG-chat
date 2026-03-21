@@ -76,3 +76,9 @@ frontend/.parcel-cache
 # Vite
 frontend/vite.config.js.timestamp-*
 frontend/vite.config.ts.timestamp-*
+
+# Playwright MCP
+.playwright-mcp/
+
+# Serena
+.serena/

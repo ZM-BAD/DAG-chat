@@ -106,6 +106,126 @@ The frontend uses React with hooks for state management:
 - `App.tsx`: Root component with `ToastProvider` context
 - `Sidebar.tsx`: Navigation and dialogue list with collapsible state
 
+#### Frontend DAG Architecture
+
+The frontend implements a DAG (Directed Acyclic Graph) structure to manage and render conversations with branching and merging capabilities.
+
+**Core Types** (`src/types/dag.ts`):
+
+- **DagNode**: Represents a single message node with bidirectional references
+  - `id`: Unique message identifier
+  - `content`: Message text content
+  - `role`: 'user' | 'assistant'
+  - `parent_ids`: Array of parent node IDs (for merging scenarios)
+  - `children`: Array of child node references (for branching scenarios)
+  - `dag`: Reference to the parent DAG object for traversing
+
+- **Dag**: The complete DAG structure for a dialogue
+  - `nodes`: Map<string, DagNode> - All nodes indexed by ID
+  - `rootId`: The single root node ID (first user question in dialogue)
+
+- **TabsContainer Types**:
+  - `ChildrenTabsContainer`: Manages multiple user branches sharing the same assistant parent
+    - `assistantMessageId`: The common parent assistant node
+    - `userMessages`: Array of sibling user nodes (branches)
+    - `activeTab`: Currently selected user message ID
+  - `ParentTabsContainer`: Manages multiple assistant messages pointing to the same user (merge point)
+    - `userMessageId`: The common child user node
+    - `assistantMessages`: Array of parent assistant nodes (merge sources)
+    - `activeTab`: Currently selected assistant message ID
+
+- **MessageToTabsMap**: `Map<string, string[]>` - O(1) lookup to find which container IDs a message belongs to
+  - **Key Design Principle**: tabsMap only stores static structural relationships (message → container IDs), not dynamic state (activeTab selections)
+  - Container objects are looked up by ID from the containers array when needed
+  - This separation ensures tabsMap never needs to be rebuilt on tab clicks
+
+- **ConversationPath**: `DagNode[]` - Linear path from root to leaf for rendering
+
+**Core Utilities** (`src/utils/`):
+
+- **dagBuilder.ts**: `buildDag(messages)` - Constructs DAG from flat message list with bidirectional references
+- **tabsContainerBuilder.ts**: `buildTabsContainers(dag)` - Scans DAG to identify branch/merge points and create containers
+  - `getContainersByIds(containerIds, containers)`: Looks up container objects from IDs
+- **pathBuilder.ts**: Path construction utilities
+  - `buildPath(dag, tabsMap, containers)`: DFS from root to leaf following activeTab selections
+  - `buildPathToRoot(nodeId, dag, tabsMap, containers)`: Build path upward to root (for ParentTabsContainer switches)
+  - `buildPathToLeaf(nodeId, dag, tabsMap, containers)`: Build path downward to leaf (for ChildrenTabsContainer switches)
+- **tabSwitchHandler.ts**: `handleTabSwitch(containerId, newTabId, ...)` - Handles tab click events
+  - ChildrenTabsContainer switch: Rebuild path suffix from selected user node downward
+  - ParentTabsContainer switch: Rebuild path prefix to root, then suffix to leaf
+  - Collects sync instructions to update other containers' activeTab for consistency
+  - **Note**: tabsMap is NOT rebuilt on tab clicks (static relationship)
+- **dialogueStateManager.ts**: `DialogueStateManager` class - Caches per-dialogue state (DAG, tabsMap, path) for instant switching
+
+**Rendering Strategy** (`src/components/ChatContainer.tsx`):
+
+1. Build DAG from messages → Build TabsContainers → Build initial Path
+2. Render by iterating through Path nodes
+3. For each node, check MessageToTabsMap to get container IDs, then look up container objects
+4. ChildrenTabsContainer rendered BEFORE its user messages (shows branch tabs)
+5. ParentTabsContainer rendered AFTER its assistant messages (shows merge tabs)
+
+**Key Design Decisions**:
+
+1. **Bidirectional References**: Each DagNode has both `parent_ids` (string[]) and `children` (DagNode[]), enabling efficient traversal in both directions
+2. **Container Rendering Timing**: Containers are rendered based on Path position, not DAG position. Only containers for nodes in the current path are shown.
+3. **ActiveTab Synchronization**: When switching tabs, all affected containers are updated atomically to maintain Path-Container consistency
+4. **Path-Driven Rendering**: The linearized Path simplifies React rendering and ensures correct message ordering
+5. **Static tabsMap**: MessageToTabsMap stores container IDs (not object references) because the relationship between messages and containers is determined by DAG structure and doesn't change on tab clicks. Only the containers array holds dynamic state (activeTab).
+
+**Path-Container Strict Consistency (重要设计原则)**:
+
+这是一个必须严格遵守的不变量（Invariant），确保渲染的消息内容与 Tabs 高亮状态始终保持一致：
+
+> **不变量**: 如果路径中包含某个节点，那么该节点对应的 Container 的 `activeTab` 必须等于该节点的 ID。
+
+- **ChildrenTabsContainer**: `path.includes(userNode) → container.activeTab === userNode.id`
+- **ParentTabsContainer**: `path.includes(assistantNode) → container.activeTab === assistantNode.id`
+
+**实现策略** (三层防护):
+
+1. **渲染时降级处理** (`ChatContainer.tsx` - 第一层):
+   - `getChildrenContainerForUser`: 当发现 `container.activeTab !== userNode.id` 时，不直接返回 null，而是返回修正后的 container（强制使用 path 中的 userNode.id 作为 activeTab）
+   - `getParentContainerForAssistant`: 同理，当发现不一致时强制修正 activeTab
+   - **目的**: 防止 container "丢失"，保证用户始终能看到 Tabs，同时打印警告便于调试
+
+2. **Tab 切换时严格同步** (`tabSwitchHandler.ts` - 第二层):
+   - `handleTabSwitch`: 应用所有同步指令后，**重新构建 path** 以确保 path 与最终的 containers 状态严格一致
+   - **目的**: 从根本上消除不一致的产生，确保返回的 `newPath`、`updatedContainers`、`updatedTabsMap` 三者一致
+
+3. **状态恢复时校验** (`ChatContainer.tsx` - 第三层):
+   - 恢复 `savedState` 时，运行 `validatePathContainerConsistency` 验证 path 与 containers 的一致性
+   - 如果不一致，重新构建所有状态而不是直接使用保存的状态
+   - **目的**: 防止缓存的状态污染当前渲染
+
+**为什么重要**:
+
+如果不保持这个不变量，会出现用户截图中的问题：实际渲染的 user.message 是 A，但 children-tabs-container 显示的高亮却是 B（或者 container 直接"丢失"）。这会造成严重的用户体验问题，用户会看到内容与 Tab 指示器不匹配的状态。
+
+**Tab Switch Strategies**:
+
+- **ChildrenTabsContainer Switch** (branch selection):
+  1. Find the assistant node position in current path
+  2. Preserve path prefix [0, assistantIndex]
+  3. Start from selected user node, DFS traverse to leaf following activeTab selections
+  4. Concatenate prefix + suffix to form new path
+  5. Collect sync instructions for containers in the new suffix path
+
+- **ParentTabsContainer Switch** (merge source selection):
+  1. Start from selected assistant node, DFS traverse UPWARD to root
+  2. Then DFS traverse DOWNWARD from userMessageId to leaf
+  3. Merge paths (handling duplicates at junction points)
+  4. Collect sync instructions for all containers in the new path
+  5. This rebuilds the entire path since merge point affects all upstream nodes
+
+**Multi-Dialogue Path Caching**:
+
+The `DialogueStateManager` class provides state caching per dialogue:
+- Stores `dag`, `tabsMap`, and `path` for each dialogueId
+- Enables instant UI restoration when switching between dialogues
+- Preserves user's browsing position (activeTab selections) across dialogue switches
+- Example: User views dialogue A, switches to dialogue B, returns to A → previous tab selections and scroll position are preserved
+
 **Custom Hooks** (`src/hooks/`):
 - `useChat.ts`: Re-exports combined chat functionality from `chat/` subdirectory
 - `useDialogues.ts`: Re-exports dialogue list management

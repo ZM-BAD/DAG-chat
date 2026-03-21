@@ -63,6 +63,7 @@ interface UseChatMessagesReturn {
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => Promise<void>;
   handleInterruptResponse: () => void;
+  messagesDialogueId: string | null; // 当前消息所属的对话ID
 }
 
 export const useChatMessages = ({
@@ -80,6 +81,11 @@ export const useChatMessages = ({
   const [isLoading, setIsLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 追踪当前 messages 属于哪个对话
+  const [messagesDialogueId, setMessagesDialogueId] = useState<string | null>(
+    null,
+  );
 
   // 中断大模型回答
   const handleInterruptResponse = (): void => {
@@ -190,10 +196,53 @@ export const useChatMessages = ({
       const loadHistory = async () => {
         try {
           const historyMessages = await fetchDialogueHistory(currentDialogueId);
+
+          // 打印DAG关系日志，方便调试
+          const truncateContent = (content: string, maxLen = 30): string => {
+            const trimmed = content.trim().replace(/\n/g, ' ');
+            return trimmed.length > maxLen
+              ? `${trimmed.slice(0, maxLen)}...`
+              : trimmed;
+          };
+
+          // 构建ID到消息摘要的映射
+          const msgMap = new Map<string, { role: string; preview: string }>();
+          for (const msg of historyMessages) {
+            msgMap.set(msg.id, {
+              role: msg.role,
+              preview: truncateContent(msg.content),
+            });
+          }
+
+          // 格式化parent_ids/children，包含内容预览
+          const formatRefs = (
+            ids: string[],
+          ): Array<{ id: string; preview: string }> => {
+            return ids.map((id) => ({
+              id,
+              preview: msgMap.get(id)?.preview ?? '(未找到)',
+            }));
+          };
+
+          const dagInfo = historyMessages.map((msg) => ({
+            id: msg.id,
+            role: msg.role,
+            preview: truncateContent(msg.content),
+            parent_ids: formatRefs(msg.parent_ids ?? []),
+            children: formatRefs(msg.children ?? []),
+          }));
+          console.log(
+            `[DAG] 对话 ${currentDialogueId} 的DAG结构:`,
+            JSON.stringify(dagInfo, null, 2),
+          );
+
           setMessages(historyMessages);
+          // 记录这些消息属于哪个对话
+          setMessagesDialogueId(currentDialogueId);
         } catch (error) {
           console.error('加载对话历史失败:', error);
           setMessages([]);
+          setMessagesDialogueId(null);
         }
       };
 
@@ -201,6 +250,7 @@ export const useChatMessages = ({
     } else if (!currentDialogueId) {
       // 如果没有对话ID，清空消息列表（新对话状态）
       setMessages([]);
+      setMessagesDialogueId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDialogueId]);
@@ -629,5 +679,6 @@ export const useChatMessages = ({
     toggleThinkingExpansion,
     copyMessageToClipboard,
     handleInterruptResponse,
+    messagesDialogueId,
   };
 };
