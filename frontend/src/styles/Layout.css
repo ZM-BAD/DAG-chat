@@ -30,6 +30,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0; /* 关键：允许收缩 */
+  overflow: hidden; /* 约束子元素宽度 */
   position: relative;
   margin-left: 280px;
   transition: margin-left 0.3s ease;
@@ -62,9 +64,8 @@
   gap: 20px;
   box-sizing: border-box;
   margin-top: 85px;
-  margin-bottom: 120px;
   overflow-y: auto;
-  height: calc(100vh - 85px - 120px);
+  /* 移除固定的 margin-bottom 和 height，使用 flex 布局自动适应 */
 }
 
 .chat-messages {
@@ -77,6 +78,23 @@
   background: white;
   border-radius: 0;
   box-shadow: none;
+  /* 关键：确保消息少时也能撑开 */
+  min-height: min-content;
+  /* 确保宽度自适应 */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 智能 Spacer：消息少时撑开空间，将内容推到底部 */
+.messages-spacer {
+  flex: 1;
+  min-height: 0;
+  transition: flex 0.3s ease;
+}
+
+/* 消息多时，spacer 收缩 */
+.messages-spacer.collapsed {
+  flex: 0;
 }
 
 .footer-wrapper {
@@ -87,19 +105,16 @@
   font-size: 14px;
   color: #666;
   box-sizing: border-box;
-  position: fixed;
-  bottom: 0;
-  left: 280px;
-  right: 16px;
+  position: static;
   z-index: 80;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: left 0.3s ease;
+  width: 100%;
 }
 
 .footer-wrapper.sidebar-collapsed {
-  left: 60px;
+  /* 不再需要 margin-left，因为 main-content 已经处理了 sidebar 折叠 */
 }
 
 /* 语言切换组件样式 */

@@ -198,43 +198,16 @@ export const useChatMessages = ({
         try {
           const historyMessages = await fetchDialogueHistory(currentDialogueId);
 
-          // 打印DAG关系日志，方便调试
-          const truncateContent = (content: string, maxLen = 30): string => {
-            const trimmed = content.trim().replace(/\n/g, ' ');
-            return trimmed.length > maxLen
-              ? `${trimmed.slice(0, maxLen)}...`
-              : trimmed;
-          };
-
-          // 构建ID到消息摘要的映射
-          const msgMap = new Map<string, { role: string; preview: string }>();
-          for (const msg of historyMessages) {
-            msgMap.set(msg.id, {
-              role: msg.role,
-              preview: truncateContent(msg.content),
-            });
-          }
-
-          // 格式化parent_ids/children，包含内容预览
-          const formatRefs = (
-            ids: string[],
-          ): Array<{ id: string; preview: string }> => {
-            return ids.map((id) => ({
-              id,
-              preview: msgMap.get(id)?.preview ?? '(未找到)',
-            }));
-          };
-
-          const dagInfo = historyMessages.map((msg) => ({
-            id: msg.id,
-            role: msg.role,
-            preview: truncateContent(msg.content),
-            parent_ids: formatRefs(msg.parent_ids ?? []),
-            children: formatRefs(msg.children ?? []),
-          }));
+          // 打印简化的DAG摘要日志
+          const nodeCount = historyMessages.length;
+          const branchCount = historyMessages.filter(
+            (msg) => (msg.children?.length ?? 0) > 1,
+          ).length;
+          const mergeCount = historyMessages.filter(
+            (msg) => (msg.parent_ids?.length ?? 0) > 1,
+          ).length;
           console.log(
-            `[DAG] 对话 ${currentDialogueId} 的DAG结构:`,
-            JSON.stringify(dagInfo, null, 2),
+            `[DAG] 对话 ${currentDialogueId}: ${String(nodeCount)}节点, ${String(branchCount)}分支点, ${String(mergeCount)}合并点`,
           );
 
           setMessages(historyMessages);

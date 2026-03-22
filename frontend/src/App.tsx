@@ -89,6 +89,7 @@ function AppContent() {
     handleBranchClick,
     handleMergeClick,
     removeCitation,
+    clearAllCitations,
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } =
@@ -192,6 +193,7 @@ function AppContent() {
               availableModels={availableModels}
               citations={citations}
               onRemoveCitation={removeCitation}
+              onClearAllCitations={clearAllCitations}
             />
           </div>
         )}

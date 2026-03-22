@@ -130,6 +130,7 @@ interface ChatInputProps {
   availableModels?: { value: string; label: string }[];
   citations?: Citation[];
   onRemoveCitation?: (id: string) => void;
+  onClearAllCitations?: () => void;
 }
 
 const ChatInput: FC<ChatInputProps> = ({
@@ -149,6 +150,7 @@ const ChatInput: FC<ChatInputProps> = ({
   availableModels = [],
   citations = [],
   onRemoveCitation,
+  onClearAllCitations,
 }) => {
   const { t } = useTranslation();
   const isInputEmpty = inputMessage.trim() === '';
@@ -156,6 +158,13 @@ const ChatInput: FC<ChatInputProps> = ({
     useState(initialDeepThinking);
   const [searchEnabled, setSearchEnabled] = useState(initialSearch);
   const [selectedModel, setSelectedModel] = useState(initialModel);
+
+  // 检查是否所有引用都是 merge 类型
+  const isAllMergeCitations =
+    citations.length > 0 && citations.every((c) => c.type === 'merge');
+
+  // 检查是否有 branch 引用
+  const hasBranchCitation = citations.some((c) => c.type === 'branch');
 
   const handleButtonClick = () => {
     if (isLoading && handleInterruptResponse) {
@@ -195,7 +204,18 @@ const ChatInput: FC<ChatInputProps> = ({
     <div className="chat-input-wrapper">
       {/* 引用效果 - 支持多个引用 */}
       {citations.length > 0 && (
-        <div className="citations-container">
+        <div
+          className={`citations-container ${hasBranchCitation ? 'has-branch' : ''}`}
+        >
+          {isAllMergeCitations && (
+            <button
+              className="citation-clear-all"
+              onClick={() => onClearAllCitations?.()}
+              aria-label="清除所有引用"
+            >
+              {t('chat.clearAllCitations')}
+            </button>
+          )}
           {citations.map((citation) => (
             <div
               key={citation.id}
@@ -206,7 +226,7 @@ const ChatInput: FC<ChatInputProps> = ({
                 alt={citation.type === 'branch' ? '分支' : '合并'}
                 className="citation-icon"
               />
-              <span className="citation-text">{citation.content}...</span>
+              <span className="citation-text">{citation.content}</span>
               <button
                 className="citation-close"
                 onClick={() => onRemoveCitation?.(citation.id)}

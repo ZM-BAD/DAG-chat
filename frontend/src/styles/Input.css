@@ -1,17 +1,14 @@
-/* 输入区域容器样式 */
+/* 输入区域容器样式 - 使用 flex 布局，不再 fixed 定位 */
 .chat-input-container {
-  position: fixed;
-  bottom: 44px;
-  left: 300px;
-  right: 20px;
+  position: static;
+  padding: 12px 20px 16px;
+  background: white;
+  /* 添加顶部阴影，与消息区域区分 */
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   z-index: 90;
-  transition:
-    left 0.3s ease,
-    right 0.3s ease;
-}
-
-.chat-input-container.sidebar-collapsed {
-  left: 80px;
+  /* 横向充满 main-content */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 输入区域样式 */
@@ -24,6 +21,9 @@
   border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
+  min-width: 0; /* 关键：允许收缩以约束子元素 */
+  /* 关键：为内部 absolute 定位的 send-button 提供参照 */
+  position: relative;
 }
 
 /* 引用容器样式 - 支持多引用 */
@@ -31,6 +31,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0; /* 关键：允许收缩 */
+  overflow: hidden; /* 约束子元素 */
 }
 
 /* 通用引用项样式 */
@@ -64,6 +66,7 @@
 
 .citation-text {
   flex: 1;
+  width: 0; /* 关键：强制 flex 子元素收缩，触发 text-overflow */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -98,6 +101,48 @@
 
 .citation-merge .citation-close:hover {
   color: #48bb78;
+}
+
+/* 有 branch 引用时，容器使用纵向布局 */
+.citations-container.has-branch {
+  flex-direction: column;
+}
+
+/* Branch 引用样式 - 全宽显示 */
+.citations-container.has-branch .citation-item.citation-branch {
+  width: 100%;
+  max-width: 100%; /* 防止超出 */
+  overflow: hidden; /* 配合子元素的截断 */
+}
+
+/* Branch 引用文字区域更宽，充满可用空间让关闭按钮靠右 */
+.citation-item.citation-branch .citation-text {
+  max-width: none;
+}
+
+/* Merge 引用文字限制为 30 字符宽度 */
+.citation-item.citation-merge .citation-text {
+  width: auto; /* 覆盖 width: 0，允许内容显示 */
+  flex: none; /* 不扩展 */
+  max-width: 30ch;
+}
+
+/* 一键清除所有引用按钮 */
+.citation-clear-all {
+  background: transparent;
+  border: 1px solid #48bb78;
+  color: #48bb78;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.citation-clear-all:hover {
+  background: #48bb78;
+  color: white;
 }
 
 .message-input {

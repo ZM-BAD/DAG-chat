@@ -26,8 +26,7 @@
     padding: 10px;
     gap: 10px;
     margin-top: 85px;
-    margin-bottom: 120px;
-    height: calc(100vh - 85px - 120px);
+    /* 移除固定的 margin-bottom 和 height */
     max-width: 100%;
     width: 100%;
   }
@@ -37,16 +36,16 @@
     gap: 12px;
   }
 
-  .chat-input-wrapper {
-    left: 0;
-    max-width: calc(100% - 32px);
-    margin-left: 0;
+  .chat-input-container {
+    padding: 12px 16px 16px;
   }
 
-  .footer {
-    left: 0;
-    max-width: calc(100% - 32px);
-    margin-left: 0;
+  .chat-input-wrapper {
+    max-width: 100%;
+  }
+
+  .footer-wrapper {
+    /* 移动端不需要额外 margin */
   }
 
   .message {

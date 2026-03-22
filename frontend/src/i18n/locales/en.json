@@ -21,7 +21,8 @@
     "copyFailed": "Failed to copy message",
     "networkError": "Network connection failed, please check your network and try again",
     "sendFailed": "Failed to send message, please try again later",
-    "abortMessage": "Message sending aborted"
+    "abortMessage": "Message sending aborted",
+    "clearAllCitations": "Clear All"
   },
   "dialogue": {
     "defaultTitle": "Untitled Dialogue",

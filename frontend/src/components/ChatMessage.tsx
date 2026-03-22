@@ -58,7 +58,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
   const handleBranchClick = () => {
     if (onBranchClick && parentMessage) {
       const parentId = parentMessage.id;
-      const parentContent = parentMessage.content.substring(0, 10);
+      const parentContent = parentMessage.content; // 传递完整内容，由 CSS 自动截断
       onBranchClick(parentId, parentContent);
     }
   };
@@ -67,7 +67,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
   const handleMergeClick = () => {
     if (onMergeClick) {
       const messageId = message.id;
-      const messageContent = message.content.substring(0, 10);
+      const messageContent = message.content.substring(0, 30);
       onMergeClick(messageId, messageContent);
     }
   };

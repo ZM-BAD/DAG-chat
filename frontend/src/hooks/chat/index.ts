@@ -55,12 +55,13 @@ export const useChat = () => {
   });
 
   // 5. 扩展对话选择功能
-  // 注意：对话历史现在由 useChatMessages hook 自动加载，无需在此处手动获取
+  // 切换对话时，清除引用关系
   const handleDialogueSelect = useCallback(
     (dialogueId: string) => {
       handleDialogueSelectBase(dialogueId);
+      clearAllCitations(); // 切换对话时清除引用关系
     },
-    [handleDialogueSelectBase],
+    [handleDialogueSelectBase, clearAllCitations],
   );
 
   // 6. 导出所有状态和方法，保持原有API不变

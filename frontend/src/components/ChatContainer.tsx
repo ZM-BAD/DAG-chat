@@ -565,6 +565,12 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   }, [path, shouldShowWelcome]);
 
   // ========================================
+  // 智能 Spacer：消息少时撑开空间，将内容推到底部
+  // ========================================
+  const MESSAGES_THRESHOLD = 3; // 少于3条视为"少量消息"
+  const hasFewMessages = path.length < MESSAGES_THRESHOLD;
+
+  // ========================================
   // 渲染
   // ========================================
   return (
@@ -576,6 +582,10 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         welcomeScreen
       ) : (
         <div className="chat-messages">
+          {/* 智能 Spacer：消息少时撑开空间，将内容推到底部 */}
+          <div
+            className={`messages-spacer ${hasFewMessages ? '' : 'collapsed'}`}
+          />
           {path.map((node, index) => {
             // 获取父消息（对于用户消息，获取上一个AI消息）
             const parentMessage: DagNode | null =
