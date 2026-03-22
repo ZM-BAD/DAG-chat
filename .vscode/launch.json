@@ -39,8 +39,9 @@
       "name": "Debug Backend",
       "type": "debugpy",
       "request": "launch",
-      "module": "backend.run_api",
-      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/backend/run_api.py",
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/.venv/bin/python",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },

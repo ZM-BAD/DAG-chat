@@ -1,0 +1,17 @@
+# 开发环境依赖
+# 安装方式: pip install -r requirements-dev.txt
+# 注意: 需要先安装运行时依赖: pip install -r requirements.txt
+
+# 调试工具
+debugpy==1.8.20
+
+# 代码质量工具 (与 .pre-commit-config.yaml 保持一致)
+ruff==0.15.1
+pylint==3.3.4
+
+# 测试工具
+pytest==8.3.5
+pytest-asyncio==0.25.3
+
+# pre-commit (可选,用于 git hooks)
+pre-commit==4.2.1
