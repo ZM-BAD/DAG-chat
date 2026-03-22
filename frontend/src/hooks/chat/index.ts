@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useDialogueManagement } from './useDialogueManagement';
 import { useChatMessages } from './useChatMessages';
-import { useChatSettings } from './useChatSettings';
+import { useChatSettings, Citation } from './useChatSettings';
 import { useModelSelection } from './useModelSelection';
 
 // 重新组合所有hook，保持原有API不变
@@ -21,12 +21,14 @@ export const useChat = () => {
   const {
     deepThinkingEnabled,
     searchEnabled,
-    branchParentId,
-    branchParentContent,
+    citations,
     handleDeepThinkingChange,
     handleSearchChange,
     handleBranchClick,
-    clearBranchState,
+    handleMergeClick,
+    removeCitation,
+    clearAllCitations,
+    getCitationMode,
   } = useChatSettings();
 
   // 4. 聊天消息管理
@@ -48,8 +50,8 @@ export const useChat = () => {
     selectedModel,
     deepThinkingEnabled,
     searchEnabled,
-    branchParentId,
-    clearBranchState,
+    citations,
+    clearAllCitations,
   });
 
   // 5. 扩展对话选择功能
@@ -84,10 +86,16 @@ export const useChat = () => {
     handleDeepThinkingChange,
     handleSearchChange,
     handleModelChange,
-    branchParentId,
-    branchParentContent,
+    // 新的引用系统
+    citations,
     handleBranchClick,
-    clearBranchState,
+    handleMergeClick,
+    removeCitation,
+    clearAllCitations,
+    getCitationMode,
     messagesDialogueId,
   };
 };
+
+// 导出类型供外部使用
+export type { Citation };

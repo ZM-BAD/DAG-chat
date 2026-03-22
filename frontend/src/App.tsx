@@ -85,10 +85,10 @@ function AppContent() {
     handleDeepThinkingChange,
     handleSearchChange,
     handleModelChange,
-    branchParentId,
-    branchParentContent,
+    citations,
     handleBranchClick,
-    clearBranchState,
+    handleMergeClick,
+    removeCitation,
   } = useChat();
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } =
@@ -150,6 +150,7 @@ function AppContent() {
           copyMessageToClipboard={(text) => void copyMessageToClipboard(text)}
           shouldShowWelcome={shouldShowWelcome}
           onBranchClick={handleBranchClick}
+          onMergeClick={handleMergeClick}
           onStateChange={handleStateChange}
           savedState={getSavedState(currentDialogueId)}
           welcomeScreen={
@@ -189,9 +190,8 @@ function AppContent() {
               initialSearch={searchEnabled}
               initialModel={selectedModel}
               availableModels={availableModels}
-              branchParentId={branchParentId}
-              branchParentContent={branchParentContent}
-              onClearBranch={clearBranchState}
+              citations={citations}
+              onRemoveCitation={removeCitation}
             />
           </div>
         )}

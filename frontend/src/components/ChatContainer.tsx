@@ -51,6 +51,7 @@ interface ChatContainerProps {
   shouldShowWelcome: boolean;
   welcomeScreen: React.ReactNode;
   onBranchClick?: (parentId: string, parentContent: string) => void;
+  onMergeClick?: (parentId: string, parentContent: string) => void;
   // 状态变化通知回调
   onStateChange?: (
     dialogueId: string | null,
@@ -79,6 +80,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   shouldShowWelcome,
   welcomeScreen,
   onBranchClick,
+  onMergeClick,
   onStateChange,
   savedState,
 }) => {
@@ -596,6 +598,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
                     toggleThinkingExpansion={toggleThinkingExpansion}
                     copyMessageToClipboard={copyMessageToClipboard}
                     onBranchClick={onBranchClick}
+                    onMergeClick={onMergeClick}
                     parentMessage={null}
                   />
                   <TabsComponent
@@ -622,6 +625,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
                     toggleThinkingExpansion={toggleThinkingExpansion}
                     copyMessageToClipboard={copyMessageToClipboard}
                     onBranchClick={onBranchClick}
+                    onMergeClick={onMergeClick}
                     parentMessage={parentMessage}
                   />
                 </div>
@@ -636,6 +640,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
                   toggleThinkingExpansion={toggleThinkingExpansion}
                   copyMessageToClipboard={copyMessageToClipboard}
                   onBranchClick={onBranchClick}
+                  onMergeClick={onMergeClick}
                   parentMessage={parentMessage}
                 />
               </div>

@@ -10,6 +10,7 @@ interface ChatMessageProps {
   toggleThinkingExpansion: (messageId: string) => void;
   copyMessageToClipboard: (content: string) => void;
   onBranchClick?: (parentId: string, parentContent: string) => void;
+  onMergeClick?: (parentId: string, parentContent: string) => void;
   parentMessage?: Message | DagNode | null;
 }
 
@@ -18,6 +19,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
   toggleThinkingExpansion,
   copyMessageToClipboard,
   onBranchClick,
+  onMergeClick,
   parentMessage,
 }) => {
   const { t } = useTranslation();
@@ -61,24 +63,36 @@ const ChatMessage: FC<ChatMessageProps> = ({
     }
   };
 
+  // 处理合并问按钮点击
+  const handleMergeClick = () => {
+    if (onMergeClick) {
+      const messageId = message.id;
+      const messageContent = message.content.substring(0, 10);
+      onMergeClick(messageId, messageContent);
+    }
+  };
+
   return (
     <div ref={messageRef} className={`message-wrapper ${message.role}`}>
+      {/* user 消息的 branch 按钮 - 放在 wrapper 层，message 之前 */}
+      {message.role === 'user' && onBranchClick && parentMessage && (
+        <button
+          className="branch-button"
+          onClick={handleBranchClick}
+          title="创建分支问"
+          aria-label="创建分支问"
+        >
+          <img src="/assets/branch.svg" alt="分支" className="branch-icon" />
+        </button>
+      )}
+      {/* assistant 消息的 avatar */}
       {message.role === 'assistant' && message.model && (
         <div className="message-avatar-wrapper">
           <ModelLogo model={message.model} size={32} />
         </div>
       )}
+      {/* 消息内容 */}
       <div className={`message ${message.role}`}>
-        {message.role === 'user' && onBranchClick && parentMessage && (
-          <button
-            className="branch-button"
-            onClick={handleBranchClick}
-            title="创建分支问"
-            aria-label="创建分支问"
-          >
-            <img src="/assets/branch.svg" alt="分支" className="branch-icon" />
-          </button>
-        )}
         <div className="message-content">
           {message.role === 'assistant' ? (
             <div className="assistant-content">
@@ -136,6 +150,17 @@ const ChatMessage: FC<ChatMessageProps> = ({
           )}
         </div>
       </div>
+      {/* assistant 消息的 merge 按钮 - 放在 wrapper 层，message 之后 */}
+      {message.role === 'assistant' && onMergeClick && (
+        <button
+          className="merge-button"
+          onClick={handleMergeClick}
+          title="创建合并问"
+          aria-label="创建合并问"
+        >
+          <img src="/assets/merge.svg" alt="合并" className="merge-icon" />
+        </button>
+      )}
       <div className="message-actions">
         <button
           className="copy-button"

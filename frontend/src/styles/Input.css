@@ -26,33 +26,51 @@
   box-sizing: border-box;
 }
 
-/* 分支问引用样式 */
-.branch-citation {
+/* 引用容器样式 - 支持多引用 */
+.citations-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 通用引用项样式 */
+.citation-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #f0f4ff;
-  border: 1px solid #667eea;
   border-radius: 12px;
   font-size: 13px;
   color: #4a5568;
 }
 
-.branch-citation-icon {
+/* 分支引用样式 */
+.citation-item.citation-branch {
+  background: #f0f4ff;
+  border: 1px solid #667eea;
+}
+
+/* 合并引用样式 */
+.citation-item.citation-merge {
+  background: #f0fff4;
+  border: 1px solid #48bb78;
+}
+
+.citation-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
-.branch-citation-text {
+.citation-text {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 200px;
 }
 
-.branch-citation-close {
+.citation-close {
   background: transparent;
   border: none;
   color: #a0aec0;
@@ -70,9 +88,16 @@
   flex-shrink: 0;
 }
 
-.branch-citation-close:hover {
+.citation-close:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+.citation-branch .citation-close:hover {
   color: #667eea;
+}
+
+.citation-merge .citation-close:hover {
+  color: #48bb78;
 }
 
 .message-input {

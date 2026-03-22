@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import ModelLogo from './common/ModelLogo';
+import { Citation } from '../hooks/chat/useChatSettings';
 
 // 自定义模型选择器组件
 interface CustomModelSelectProps {
@@ -127,9 +128,8 @@ interface ChatInputProps {
   initialSearch?: boolean;
   initialModel?: string;
   availableModels?: { value: string; label: string }[];
-  branchParentId?: string | null;
-  branchParentContent?: string;
-  onClearBranch?: () => void;
+  citations?: Citation[];
+  onRemoveCitation?: (id: string) => void;
 }
 
 const ChatInput: FC<ChatInputProps> = ({
@@ -147,9 +147,8 @@ const ChatInput: FC<ChatInputProps> = ({
   initialSearch = false,
   initialModel = 'deepseek',
   availableModels = [],
-  branchParentId = null,
-  branchParentContent = '',
-  onClearBranch,
+  citations = [],
+  onRemoveCitation,
 }) => {
   const { t } = useTranslation();
   const isInputEmpty = inputMessage.trim() === '';
@@ -194,22 +193,29 @@ const ChatInput: FC<ChatInputProps> = ({
 
   return (
     <div className="chat-input-wrapper">
-      {/* 分支问引用效果 */}
-      {branchParentId && (
-        <div className="branch-citation">
-          <img
-            src="/assets/branch.svg"
-            alt="分支"
-            className="branch-citation-icon"
-          />
-          <span className="branch-citation-text">{branchParentContent}...</span>
-          <button
-            className="branch-citation-close"
-            onClick={onClearBranch}
-            aria-label="清除分支"
-          >
-            ✕
-          </button>
+      {/* 引用效果 - 支持多个引用 */}
+      {citations.length > 0 && (
+        <div className="citations-container">
+          {citations.map((citation) => (
+            <div
+              key={citation.id}
+              className={`citation-item citation-${citation.type}`}
+            >
+              <img
+                src={`/assets/${citation.type}.svg`}
+                alt={citation.type === 'branch' ? '分支' : '合并'}
+                className="citation-icon"
+              />
+              <span className="citation-text">{citation.content}...</span>
+              <button
+                className="citation-close"
+                onClick={() => onRemoveCitation?.(citation.id)}
+                aria-label="清除引用"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
         </div>
       )}
       <textarea

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
 import { Message, DialogueHistoryResponse } from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
+import { Citation } from './useChatSettings';
 
 // 定义创建对话响应接口
 interface CreateConversationResponse {
@@ -47,8 +48,8 @@ interface UseChatMessagesProps {
   selectedModel: string;
   deepThinkingEnabled: boolean;
   searchEnabled: boolean;
-  branchParentId: string | null;
-  clearBranchState: () => void;
+  citations: Citation[];
+  clearAllCitations: () => void;
 }
 
 interface UseChatMessagesReturn {
@@ -71,8 +72,8 @@ export const useChatMessages = ({
   selectedModel,
   deepThinkingEnabled,
   searchEnabled,
-  branchParentId,
-  clearBranchState,
+  citations,
+  clearAllCitations,
 }: UseChatMessagesProps): UseChatMessagesReturn => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -323,10 +324,11 @@ export const useChatMessages = ({
     const assistantMessageTempId = generateTempId();
 
     // 获取上一条已保存的助手消息的ID作为parent_ids
-    // 如果有分支问状态，使用分支的parent_id，否则使用默认逻辑
+    // 如果有引用状态（branch 或 merge），使用引用的 parent_ids
+    // 否则使用默认逻辑（最后一条 assistant 消息）
     let parentIds: string[] = [];
-    if (branchParentId) {
-      parentIds = [branchParentId];
+    if (citations.length > 0) {
+      parentIds = citations.map((c) => c.id);
     } else {
       // 使用历史对话中最后一条assistant消息的id
       const lastAssistantMessage = messages
@@ -647,8 +649,8 @@ export const useChatMessages = ({
       abortControllerRef.current = null; // 清理AbortController
       // 发送消息后重置输入框高度
       resetTextareaHeight();
-      // 清除分支状态
-      clearBranchState();
+      // 清除引用状态
+      clearAllCitations();
 
       // 触发侧边栏刷新，更新对话的模型信息
       if (conversationId) {

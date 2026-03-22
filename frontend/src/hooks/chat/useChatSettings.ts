@@ -1,33 +1,92 @@
 import { useState } from 'react';
 
+// 引用类型
+export type CitationType = 'branch' | 'merge';
+
+// 单个引用
+export interface Citation {
+  id: string;
+  content: string;
+  type: CitationType;
+}
+
 interface UseChatSettingsReturn {
   deepThinkingEnabled: boolean;
   searchEnabled: boolean;
-  branchParentId: string | null;
-  branchParentContent: string;
+  citations: Citation[];
   handleDeepThinkingChange: (enabled: boolean) => void;
   handleSearchChange: (enabled: boolean) => void;
   handleBranchClick: (parentId: string, parentContent: string) => void;
-  clearBranchState: () => void;
+  handleMergeClick: (parentId: string, parentContent: string) => void;
+  removeCitation: (id: string) => void;
+  clearAllCitations: () => void;
+  getCitationMode: () => 'none' | 'branch' | 'merge';
 }
 
 export const useChatSettings = (): UseChatSettingsReturn => {
   const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(false);
   const [searchEnabled, setSearchEnabled] = useState(false);
-  const [branchParentId, setBranchParentId] = useState<string | null>(null);
-  const [branchParentContent, setBranchParentContent] = useState<string>('');
+  const [citations, setCitations] = useState<Citation[]>([]);
 
-  // 处理分支问按钮点击
-  const handleBranchClick = (parentId: string, parentContent: string): void => {
-    // 分支问只能有一个parent_id，覆盖之前的值
-    setBranchParentId(parentId);
-    setBranchParentContent(parentContent);
+  // 获取当前引用模式
+  const getCitationMode = (): 'none' | 'branch' | 'merge' => {
+    if (citations.length === 0) return 'none';
+    return citations[0].type;
   };
 
-  // 清除分支问状态
-  const clearBranchState = (): void => {
-    setBranchParentId(null);
-    setBranchParentContent('');
+  // 处理分支问按钮点击
+  // branch 模式：单一引用，覆盖之前的内容
+  const handleBranchClick = (parentId: string, parentContent: string): void => {
+    setCitations([
+      {
+        id: parentId,
+        content: parentContent,
+        type: 'branch',
+      },
+    ]);
+  };
+
+  // 处理合并问按钮点击
+  // merge 模式：多引用，添加到列表（去重）
+  const handleMergeClick = (parentId: string, parentContent: string): void => {
+    setCitations((prev) => {
+      // 如果当前是 branch 模式，切换到 merge 模式
+      if (prev.length > 0 && prev[0].type === 'branch') {
+        return [
+          {
+            id: parentId,
+            content: parentContent,
+            type: 'merge',
+          },
+        ];
+      }
+
+      // merge 模式：检查是否已存在
+      const exists = prev.some((c) => c.id === parentId);
+      if (exists) {
+        return prev; // 已存在，不重复添加
+      }
+
+      // 添加新的 merge 引用
+      return [
+        ...prev,
+        {
+          id: parentId,
+          content: parentContent,
+          type: 'merge',
+        },
+      ];
+    });
+  };
+
+  // 移除指定引用
+  const removeCitation = (id: string): void => {
+    setCitations((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // 清除所有引用状态
+  const clearAllCitations = (): void => {
+    setCitations([]);
   };
 
   // 处理深度思考模式切换
@@ -45,11 +104,13 @@ export const useChatSettings = (): UseChatSettingsReturn => {
   return {
     deepThinkingEnabled,
     searchEnabled,
-    branchParentId,
-    branchParentContent,
+    citations,
     handleDeepThinkingChange,
     handleSearchChange,
     handleBranchClick,
-    clearBranchState,
+    handleMergeClick,
+    removeCitation,
+    clearAllCitations,
+    getCitationMode,
   };
 };
