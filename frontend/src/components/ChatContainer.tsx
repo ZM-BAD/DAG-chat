@@ -78,7 +78,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   messages,
   currentDialogueId,
   isLoading,
-  toggleThinkingExpansion,
+  toggleThinkingExpansion: _toggleThinkingExpansion,
   copyMessageToClipboard,
   shouldShowWelcome,
   welcomeScreen,
@@ -92,9 +92,6 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   // ========================================
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState<boolean>(false);
-
-  // Tab 切换滚动锁：记录 cleanup 函数，用于取消锁定
-  const scrollLockCleanupRef = useRef<(() => void) | null>(null);
 
   // DAG 相关 state
   const [dag, setDag] = useState<Dag | null>(null);
@@ -556,13 +553,13 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         currentPath,
       );
 
-      // 滚动锁定：保持 tab 容器视口位置不变
+      // 滚动锁定：必须在 flushSync 之前启动 RAF，否则 DOM 变更后到 RAF 启动之间会闪烁
       const tabEl = document.getElementById(containerId);
-      if (tabEl && messagesContainerRef.current) {
-        scrollLockCleanupRef.current?.();
+      const scrollContainer = messagesContainerRef.current;
+      if (tabEl && scrollContainer) {
+        scrollCleanupRef.current?.();
 
         const savedTop = tabEl.getBoundingClientRect().top;
-        const scrollContainer = messagesContainerRef.current;
         let rafId = 0;
         let done = false;
 
@@ -582,16 +579,19 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         const timerId = setTimeout(() => {
           done = true;
           cancelAnimationFrame(rafId);
-          scrollLockCleanupRef.current = null;
-        }, 200);
+          scrollCleanupRef.current = null;
+        }, 250);
 
-        scrollLockCleanupRef.current = () => {
+        scrollCleanupRef.current = () => {
           done = true;
           cancelAnimationFrame(rafId);
           clearTimeout(timerId);
-          scrollLockCleanupRef.current = null;
+          scrollCleanupRef.current = null;
         };
       }
+
+      // 设置锁标记，阻止 path.length effect 覆盖
+      scrollIntentRef.current = { type: 'tab-switching' };
 
       // 更新 state
       flushSync(() => {
@@ -599,6 +599,11 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         setTabsMap(result.updatedTabsMap);
         setPath(result.newPath);
       });
+
+      // DOM 更新后释放锁
+      setTimeout(() => {
+        scrollIntentRef.current = { type: 'auto' };
+      }, 300);
     },
     [],
   );
@@ -735,8 +740,34 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   ]);
 
   // ========================================
-  // 滚动处理
+  // 滚动控制：ScrollIntent 统一管理
   // ========================================
+  type ScrollIntent =
+    | { type: 'auto' }
+    | { type: 'scroll-to-bottom'; delay?: number }
+    | { type: 'preserve-position'; savedScrollTop: number }
+    | { type: 'tab-switching' };
+
+  const scrollIntentRef = useRef<ScrollIntent>({ type: 'auto' });
+  const scrollCleanupRef = useRef<(() => void) | null>(null);
+
+  // 包装 toggleThinkingExpansion：设置 preserve-position intent
+  const toggleThinkingExpansion = useCallback(
+    (messageId: string) => {
+      if (!messagesContainerRef.current) return;
+      scrollCleanupRef.current?.();
+      scrollIntentRef.current = {
+        type: 'preserve-position',
+        savedScrollTop: messagesContainerRef.current.scrollTop,
+      };
+      _toggleThinkingExpansion(messageId);
+      setTimeout(() => {
+        scrollIntentRef.current = { type: 'auto' };
+      }, 350);
+    },
+    [_toggleThinkingExpansion],
+  );
+
   const handleScroll = useCallback(() => {
     if (!messagesContainerRef.current) return;
 
@@ -759,38 +790,73 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
     };
   }, [handleScroll]);
 
-  // 新消息开始时，强制滚动到底部
+  // 对话切换时设置 scroll-to-bottom intent
   useEffect(() => {
-    if (shouldShowWelcome) return;
-
-    const currentLength = path.length;
-
-    if (currentLength > 0) {
-      const timerId = setTimeout(() => {
-        if (!messagesContainerRef.current) return;
-
-        const container = messagesContainerRef.current;
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        setIsAtBottom(true);
-      }, 0);
-      void timerId;
+    if (currentDialogueId && path.length > 0) {
+      scrollCleanupRef.current?.();
+      scrollIntentRef.current = { type: 'scroll-to-bottom', delay: 100 };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDialogueId]);
+
+  // 新消息加入时设置 scroll-to-bottom intent（path.length 增加 = 新节点）
+  const prevPathLengthRef = useRef(0);
+  useEffect(() => {
+    // tab-switching 锁定期内不干预，RAF 由 handleTabClick 直接管理
+    if (scrollIntentRef.current.type === 'tab-switching') {
+      prevPathLengthRef.current = path.length;
+      return;
+    }
+    if (
+      path.length > prevPathLengthRef.current &&
+      path.length > 0 &&
+      !shouldShowWelcome
+    ) {
+      scrollCleanupRef.current?.();
+      scrollIntentRef.current = { type: 'scroll-to-bottom', delay: 0 };
+    }
+    prevPathLengthRef.current = path.length;
   }, [path.length, shouldShowWelcome]);
 
-  // 历史消息加载时，强制滚动到底部
+  // 统一滚动 effect：根据 scrollIntent 分发滚动行为
   useEffect(() => {
-    const currentLength = path.length;
-    const isHistoryLoad = currentLength > 1;
+    if (shouldShowWelcome || path.length === 0) return;
 
-    if (isHistoryLoad && !shouldShowWelcome) {
-      const timerId = setTimeout(() => {
-        if (!messagesContainerRef.current) return;
+    const intent = scrollIntentRef.current;
+    const container = messagesContainerRef.current;
+    if (!container) return;
 
-        const container = messagesContainerRef.current;
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        setIsAtBottom(true);
-      }, 100);
-      void timerId;
+    switch (intent.type) {
+      case 'preserve-position': {
+        // 思考内容展开/收缩：恢复之前保存的 scrollTop
+        container.scrollTop = intent.savedScrollTop;
+        break;
+      }
+
+      case 'tab-switching': {
+        // Tab 切换：RAF 由 handleTabClick 直接管理，这里不干预
+        break;
+      }
+
+      case 'scroll-to-bottom': {
+        // 对话加载/新消息：一次性滚到底部
+        const delay = intent.delay ?? 0;
+        const timerId = setTimeout(() => {
+          container.scrollTop = container.scrollHeight - container.clientHeight;
+          setIsAtBottom(true);
+        }, delay);
+        scrollCleanupRef.current = () => {
+          clearTimeout(timerId);
+        };
+        // 一次性 intent，用完重置
+        scrollIntentRef.current = { type: 'auto' };
+        break;
+      }
+
+      case 'auto':
+      default:
+        // 流式输出期间不干预，由 ChatScrollAnchor 管理
+        break;
     }
   }, [path, shouldShowWelcome]);
 

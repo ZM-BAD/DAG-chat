@@ -24,35 +24,8 @@ const ChatMessage: FC<ChatMessageProps> = ({
 }) => {
   const { t } = useTranslation();
   const messageRef = useRef<HTMLDivElement>(null);
-  const isTogglingRef = useRef(false);
 
-  // 处理思考内容的展开/收起，保持滚动位置
-  const handleToggleThinking = () => {
-    if (isTogglingRef.current) return; // 防止重复点击
-
-    // 保存当前滚动位置
-    const scrollContainer = document.querySelector('.chat-container');
-    let scrollPosition = 0;
-
-    if (scrollContainer) {
-      scrollPosition = scrollContainer.scrollTop;
-    }
-
-    isTogglingRef.current = true;
-
-    // 执行展开/收起操作
-    toggleThinkingExpansion(message.id);
-
-    // 在下一个动画帧中恢复滚动位置
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (scrollContainer) {
-          scrollContainer.scrollTop = scrollPosition;
-        }
-        isTogglingRef.current = false;
-      });
-    });
-  };
+  // 滚动位置由 ChatContainer 的统一滚动控制管理
 
   // 处理分支问按钮点击
   const handleBranchClick = () => {
@@ -103,7 +76,9 @@ const ChatMessage: FC<ChatMessageProps> = ({
                     <div className="thinking-header">
                       <button
                         className="thinking-toggle"
-                        onClick={handleToggleThinking}
+                        onClick={() => {
+                          toggleThinkingExpansion(message.id);
+                        }}
                         aria-label={
                           message.isThinkingExpanded
                             ? t('chat.collapseThinking')
