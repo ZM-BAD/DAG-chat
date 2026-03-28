@@ -308,10 +308,54 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
           return;
         }
 
-        setDag(savedState.dag);
+        // 从 savedState 恢复时，同步 messages 中的动态属性（如 isThinkingExpanded）
+        const syncDynamicProps = (
+          savedDag: Dag,
+          savedPath: ConversationPath,
+        ): { dag: Dag; path: ConversationPath } => {
+          const updatedNodes = new Map(savedDag.nodes);
+
+          const updatedPath = savedPath.map((node) => {
+            const msg = messages.find((m) => m.id === node.id);
+            if (
+              msg &&
+              (msg.isThinkingExpanded !== node.isThinkingExpanded ||
+                msg.isWaitingForFirstToken !== node.isWaitingForFirstToken ||
+                msg.deepThinkingEnabled !== node.deepThinkingEnabled)
+            ) {
+              const updatedNode = {
+                ...node,
+                isThinkingExpanded: msg.isThinkingExpanded,
+                isWaitingForFirstToken: msg.isWaitingForFirstToken,
+                deepThinkingEnabled: msg.deepThinkingEnabled,
+              };
+              updatedNodes.set(node.id, updatedNode);
+              return updatedNode;
+            }
+            return node;
+          });
+
+          const hasChanges = updatedPath.some(
+            (node, i) => node !== savedPath[i],
+          );
+          if (hasChanges) {
+            return {
+              dag: { ...savedDag, nodes: updatedNodes },
+              path: updatedPath,
+            };
+          }
+          return { dag: savedDag, path: savedPath };
+        };
+
+        const { dag: syncedDag, path: syncedPath } = syncDynamicProps(
+          savedState.dag,
+          savedState.path,
+        );
+
+        setDag(syncedDag);
         setTabsContainers(savedState.tabsContainers);
         setTabsMap(savedState.tabsMap);
-        setPath(savedState.path);
+        setPath(syncedPath);
         return;
       }
     }
@@ -361,7 +405,9 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
             msg &&
             (msg.content !== node.content ||
               msg.thinkingContent !== node.thinkingContent ||
-              msg.isWaitingForFirstToken !== node.isWaitingForFirstToken)
+              msg.isWaitingForFirstToken !== node.isWaitingForFirstToken ||
+              msg.isThinkingExpanded !== node.isThinkingExpanded ||
+              msg.deepThinkingEnabled !== node.deepThinkingEnabled)
           ) {
             // 创建新节点对象
             const updatedNode = {
