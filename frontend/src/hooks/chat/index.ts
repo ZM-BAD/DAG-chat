@@ -3,9 +3,27 @@ import { useDialogueManagement } from './useDialogueManagement';
 import { useChatMessages } from './useChatMessages';
 import { useChatSettings, Citation } from './useChatSettings';
 import { useModelSelection } from './useModelSelection';
+import {
+  Dag,
+  TabsContainer,
+  MessageToTabsMap,
+  ConversationPath,
+} from '../../utils/dagUtils';
+
+// 对话状态类型（与 App.tsx 保持一致）
+interface DialogueState {
+  dag: Dag | null;
+  tabsContainers: TabsContainer[];
+  tabsMap: MessageToTabsMap;
+  path: ConversationPath;
+}
 
 // 重新组合所有hook，保持原有API不变
-export const useChat = () => {
+export const useChat = ({
+  dialogueStates,
+}: {
+  dialogueStates: Map<string | null, DialogueState>;
+}) => {
   // 1. 对话管理
   const {
     currentDialogueId,
@@ -31,6 +49,12 @@ export const useChat = () => {
     getCitationMode,
   } = useChatSettings();
 
+  // 从当前对话的 path 中提取最后一个 assistant 消息的 ID
+  const currentSavedState = dialogueStates.get(currentDialogueId);
+  const pathLastAssistantId =
+    currentSavedState?.path.filter((n) => n.role === 'assistant').pop()?.id ??
+    null;
+
   // 4. 聊天消息管理
   const {
     messages,
@@ -52,6 +76,7 @@ export const useChat = () => {
     searchEnabled,
     citations,
     clearAllCitations,
+    pathLastAssistantId,
   });
 
   // 5. 扩展对话选择功能

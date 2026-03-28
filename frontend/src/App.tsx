@@ -40,12 +40,22 @@ function AppContent() {
       setDialogueStates((prev) => {
         const existing = prev.get(dialogueId);
 
-        // ✅ 深度比较 path 内容（通过节点 ID 序列）
+        // ✅ 深度比较 path 内容（通过节点 ID 序列 + 内容长度）
         if (existing) {
           const existingPathIds = existing.path.map((n) => n.id).join(',');
           const newPathIds = state.path.map((n) => n.id).join(',');
-          if (existingPathIds === newPathIds) {
-            // Path 内容相同，不更新
+          // FIX: 额外比较内容长度，确保流式输出期间 savedState 同步更新
+          const existingContentLengths = existing.path
+            .map((n) => n.content.length || 0)
+            .join(',');
+          const newContentLengths = state.path
+            .map((n) => n.content.length || 0)
+            .join(',');
+          if (
+            existingPathIds === newPathIds &&
+            existingContentLengths === newContentLengths
+          ) {
+            // Path ID 和内容均相同，不更新
             return prev;
           }
         }
@@ -90,7 +100,7 @@ function AppContent() {
     handleMergeClick,
     removeCitation,
     clearAllCitations,
-  } = useChat();
+  } = useChat({ dialogueStates });
 
   const { dialogues, refreshDialogues, getCurrentDialogueTitle } =
     useDialogues();

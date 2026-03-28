@@ -52,7 +52,7 @@ export function buildTabsContainers(dag: Dag): TabsContainerBuildResult {
           type: 'children',
           assistantMessageId: node.id,
           userMessages: userChildren, // 保存 DagNode 引用
-          activeTab: userChildren[0].id, // 默认选中第一个
+          activeTab: userChildren[userChildren.length - 1].id, // 默认选中最新的 tab
         };
 
         containers.push(container);
@@ -94,7 +94,7 @@ export function buildTabsContainers(dag: Dag): TabsContainerBuildResult {
           type: 'parent',
           userMessageId: node.id,
           assistantMessages: assistantParents, // 保存 DagNode 引用
-          activeTab: assistantParents[0].id, // 默认选中第一个
+          activeTab: assistantParents[assistantParents.length - 1].id, // 默认选中最新的 tab
         };
 
         containers.push(container);

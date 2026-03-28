@@ -40,6 +40,9 @@ import {
   handleTabSwitch,
   validatePathContainerConsistency,
   getContainerForMessageByType,
+  // 新增：增量更新相关
+  incrementallyUpdateDag,
+  type QuestionType,
 } from '../utils/dagUtils';
 
 interface ChatContainerProps {
@@ -127,33 +130,130 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   } | null>(null);
 
   // ========================================
+  // 辅助函数：推断提问类型
+  // ========================================
+  /**
+   * 根据新增的消息推断提问类型
+   *
+   * @param newMessages - 新增的消息 (user + assistant)
+   * @param prevDag - 之前的 DAG
+   * @returns 提问类型
+   */
+  const inferQuestionType = useCallback(
+    (newMessages: Message[], prevDag: Dag): QuestionType => {
+      const userMessage = newMessages.find((m) => m.role === 'user');
+      if (!userMessage) return 'normal';
+
+      const parentIds = userMessage.parent_ids || [];
+
+      // 没有父节点 → 普通提问
+      if (parentIds.length === 0) return 'normal';
+
+      // 多个父节点 → 合并提问
+      if (parentIds.length >= 2) return 'merge';
+
+      // 单个父节点
+      const parentId = parentIds[0];
+      const parent = prevDag.nodes.get(parentId);
+
+      // 父节点不存在 → 普通提问
+      if (!parent) return 'normal';
+
+      // 父节点是 user → 普通提问（理论上不应该发生）
+      if (parent.role === 'user') return 'normal';
+
+      // 父节点是 assistant
+      // 检查该 assistant 是否有其他 user 子节点
+      const existingUserChildren = parent.children.filter(
+        (c: DagNode) => c.role === 'user',
+      );
+
+      // 有其他 user 子节点 → 分支提问
+      if (existingUserChildren.length > 0) return 'branch';
+
+      // 没有其他 user 子节点 → 普通提问
+      return 'normal';
+    },
+    [],
+  );
+
+  // ========================================
+  // 辅助函数：保留 activeTab
+  // ========================================
+  /**
+   * 全量重建 containers 时，保留之前用户选择的 activeTab
+   *
+   * 对于每个新 container，如果之前存在同 ID 的 container，
+   * 且之前的 activeTab 仍然在新 container 的 tab 列表中，则继承。
+   * 否则使用新 container 的默认值（最新 tab）。
+   */
+  const preserveActiveTabs = useCallback(
+    (
+      newContainers: TabsContainer[],
+      prevContainers?: TabsContainer[],
+    ): TabsContainer[] => {
+      if (!prevContainers || prevContainers.length === 0) {
+        return newContainers;
+      }
+
+      return newContainers.map((container) => {
+        const prev = prevContainers.find((c) => c.id === container.id);
+        if (!prev) return container;
+
+        // 检查之前的 activeTab 是否仍然存在于新 container 的 tab 列表中
+        let tabExists = false;
+        if (container.type === 'children') {
+          tabExists = container.userMessages.some(
+            (u) => u.id === prev.activeTab,
+          );
+        } else {
+          tabExists = container.assistantMessages.some(
+            (a) => a.id === prev.activeTab,
+          );
+        }
+
+        if (tabExists) {
+          return { ...container, activeTab: prev.activeTab };
+        }
+        return container;
+      });
+    },
+    [],
+  );
+
+  // ========================================
   // 辅助函数：构建所有状态
   // ========================================
-  const buildAllStates = useCallback((msgs: Message[]) => {
-    const newDag = buildDag(msgs);
+  const buildAllStates = useCallback(
+    (msgs: Message[], prevContainers?: TabsContainer[]) => {
+      const newDag = buildDag(msgs);
+      if (!newDag) {
+        setTabsContainers([]);
+        setTabsMap(new Map());
+        setPath([]);
+        return;
+      }
 
-    if (!newDag) {
-      setTabsContainers([]);
-      setTabsMap(new Map());
-      setPath([]);
-      return;
-    }
+      const { containers: newContainers, map: newMap } =
+        buildTabsContainers(newDag);
 
-    const { containers: newContainers, map: newMap } =
-      buildTabsContainers(newDag);
+      // 保留之前 container 的 activeTab 选择（全量重建时继承用户的选择）
+      const finalContainers = preserveActiveTabs(newContainers, prevContainers);
 
-    const newPath = buildPath(newDag, newMap, newContainers);
+      const newPath = buildPath(newDag, newMap, finalContainers);
 
-    // 仅在开发模式下验证路径连通性
-    if (import.meta.env.DEV && newPath.length > 0 && !isPathValid(newPath)) {
-      console.error('[ChatContainer] 路径不连通');
-    }
+      // 仅在开发模式下验证路径连通性
+      if (import.meta.env.DEV && newPath.length > 0 && !isPathValid(newPath)) {
+        console.error('[ChatContainer] 路径不连通');
+      }
 
-    setDag(newDag);
-    setTabsContainers(newContainers);
-    setTabsMap(newMap);
-    setPath(newPath);
-  }, []);
+      setDag(newDag);
+      setTabsContainers(finalContainers);
+      setTabsMap(newMap);
+      setPath(newPath);
+    },
+    [preserveActiveTabs],
+  );
 
   // ========================================
   // Effect: 状态构建
@@ -175,7 +275,25 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         (msg) => msg.id === savedState.dag?.rootId,
       );
 
-      if (hasRootNode) {
+      // FIX: 检查 savedState 是否包含所有当前消息（避免新消息被忽略）
+      const savedNodeCount = savedState.dag.nodes.size || 0;
+      const hasAllMessages = savedNodeCount === messages.length;
+
+      // FIX: 检查是否有临时ID消息（流式响应中），如果有则不使用 savedState
+      const hasTempIdMessage = messages.some((m) => m.id.startsWith('temp-'));
+
+      // FIX: 检查 savedState 自身是否包含 temp-ID（ID 替换后 messages 已无 temp-ID，
+      // 但 savedState 可能是在流式阶段保存的，仍含 temp-ID + 空内容）
+      const savedStateHasTempIds = Array.from(savedState.dag.nodes.keys()).some(
+        (id) => id.startsWith('temp-'),
+      );
+
+      if (
+        hasRootNode &&
+        hasAllMessages &&
+        !hasTempIdMessage &&
+        !savedStateHasTempIds
+      ) {
         // 状态恢复时的一致性校验
         const validationResult = validatePathContainerConsistency(
           savedState.path,
@@ -185,8 +303,8 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         );
 
         if (!validationResult.valid) {
-          // 不一致时，重新构建所有状态
-          buildAllStates(messages);
+          // 不一致时，重新构建所有状态（保留 activeTab）
+          buildAllStates(messages, stateRef.current.tabsContainers);
           return;
         }
 
@@ -200,7 +318,28 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
 
     // 检测是否只是内容更新（流式响应），而不是结构变化
     const prevDag = stateRef.current.dag;
-    if (prevDag && prevDag.nodes.size === messages.length) {
+
+    // FIX: 检查 prevDag 是否属于当前对话
+    // 通过检查 dag.rootId 是否在 messages 中存在来判断
+    // 这比比较 currentDialogueId 更可靠，因为 stateRef 中的 currentDialogueId 可能已经更新
+    // 但 dag 还是旧的
+    const isDagBelongsToCurrentMessages = prevDag?.rootId
+      ? messages.some((m) => m.id === prevDag.rootId)
+      : false;
+
+    console.log('[DEBUG] Content update check:', {
+      hasPrevDag: !!prevDag,
+      prevDagSize: prevDag?.nodes.size,
+      messagesLength: messages.length,
+      rootId: prevDag?.rootId,
+      isDagBelongsToCurrentMessages,
+    });
+
+    if (
+      prevDag &&
+      prevDag.nodes.size === messages.length &&
+      isDagBelongsToCurrentMessages
+    ) {
       const prevIds = new Set(prevDag.nodes.keys());
       const newIds = new Set(messages.map((m) => m.id));
 
@@ -213,51 +352,96 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
       }
 
       if (idsMatch) {
-        // 只是内容更新，更新现有节点的属性
-        const hasContentUpdate = stateRef.current.path.some((node) => {
+        // FIX: 创建新的 path 和 dag 节点，保持引用一致性
+        const updatedNodes = new Map(prevDag.nodes);
+
+        const updatedPath = path.map((node) => {
           const msg = messages.find((m) => m.id === node.id);
-          return (
+          if (
             msg &&
             (msg.content !== node.content ||
               msg.thinkingContent !== node.thinkingContent ||
-              msg.isWaitingForFirstToken !== node.isWaitingForFirstToken ||
-              msg.isThinkingExpanded !== node.isThinkingExpanded)
-          );
-        });
-
-        // 更新 path 中节点的属性
-        stateRef.current.path.forEach((node) => {
-          const msg = messages.find((m) => m.id === node.id);
-          if (msg) {
-            node.content = msg.content;
-            node.thinkingContent = msg.thinkingContent;
-            node.isWaitingForFirstToken = msg.isWaitingForFirstToken;
-            node.isThinkingExpanded = msg.isThinkingExpanded;
-            node.deepThinkingEnabled = msg.deepThinkingEnabled;
+              msg.isWaitingForFirstToken !== node.isWaitingForFirstToken)
+          ) {
+            // 创建新节点对象
+            const updatedNode = {
+              ...node,
+              content: msg.content,
+              thinkingContent: msg.thinkingContent,
+              isWaitingForFirstToken: msg.isWaitingForFirstToken,
+              isThinkingExpanded: msg.isThinkingExpanded,
+              deepThinkingEnabled: msg.deepThinkingEnabled,
+            };
+            // 同步更新 dag.nodes
+            updatedNodes.set(node.id, updatedNode);
+            return updatedNode;
           }
+          return node;
         });
 
-        // 同时更新 DAG 中所有节点的属性
-        prevDag.nodes.forEach((node, id) => {
-          const msg = messages.find((m) => m.id === id);
-          if (msg) {
-            node.content = msg.content;
-            node.thinkingContent = msg.thinkingContent;
-            node.isWaitingForFirstToken = msg.isWaitingForFirstToken;
-            node.isThinkingExpanded = msg.isThinkingExpanded;
-            node.deepThinkingEnabled = msg.deepThinkingEnabled;
-          }
-        });
-
-        if (hasContentUpdate) {
-          setPath([...stateRef.current.path]);
+        // 如果 path 有变化，更新状态
+        const pathChanged = updatedPath.some((node, i) => node !== path[i]);
+        if (pathChanged) {
+          setPath(updatedPath);
+          setDag({ ...prevDag, nodes: updatedNodes });
         }
         return;
       }
     }
 
-    // 构建所有状态
-    buildAllStates(messages);
+    // ========================================
+    // 新增：增量更新逻辑
+    // ========================================
+    // 检测是否是新增节点（结构变化）
+    // FIX: 同样需要检查 DAG 是否属于当前消息
+    if (
+      prevDag &&
+      messages.length > prevDag.nodes.size &&
+      isDagBelongsToCurrentMessages
+    ) {
+      // 识别新增的节点
+      const newMessageIds = messages
+        .filter((m) => !prevDag.nodes.has(m.id))
+        .map((m) => m.id);
+
+      if (newMessageIds.length >= 2) {
+        // 获取新增的消息
+        const newMessages = messages.filter((m) =>
+          newMessageIds.includes(m.id),
+        );
+
+        // 推断提问类型
+        const questionType = inferQuestionType(newMessages, prevDag);
+        console.log(
+          `[ChatContainer] 检测到新增节点，尝试增量更新，提问类型: ${questionType}`,
+        );
+
+        // 尝试增量更新
+        const result = incrementallyUpdateDag(
+          prevDag,
+          stateRef.current.tabsContainers,
+          stateRef.current.tabsMap,
+          stateRef.current.path,
+          newMessages,
+          questionType,
+        );
+
+        if (result.success && result.dag) {
+          console.log('[ChatContainer] 增量更新成功');
+          setDag(result.dag);
+          setTabsContainers(result.containers);
+          setTabsMap(result.tabsMap);
+          setPath(result.path);
+          return;
+        } else {
+          console.warn('[ChatContainer] 增量更新失败，回退到完全重建');
+        }
+      }
+    }
+
+    // 构建所有状态（保留 activeTab）
+    buildAllStates(messages, stateRef.current.tabsContainers);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, currentDialogueId, buildAllStates]);
 
   // ========================================
@@ -565,14 +749,9 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   }, [path, shouldShowWelcome]);
 
   // ========================================
-  // 智能 Spacer：消息少时撑开空间，将内容推到底部
-  // ========================================
-  const MESSAGES_THRESHOLD = 3; // 少于3条视为"少量消息"
-  const hasFewMessages = path.length < MESSAGES_THRESHOLD;
-
-  // ========================================
   // 渲染
   // ========================================
+
   return (
     <main
       className={`chat-container ${shouldShowWelcome ? 'welcome-mode' : ''}`}
@@ -582,10 +761,6 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         welcomeScreen
       ) : (
         <div className="chat-messages">
-          {/* 智能 Spacer：消息少时撑开空间，将内容推到底部 */}
-          <div
-            className={`messages-spacer ${hasFewMessages ? '' : 'collapsed'}`}
-          />
           {path.map((node, index) => {
             // 获取父消息（对于用户消息，获取上一个AI消息）
             const parentMessage: DagNode | null =

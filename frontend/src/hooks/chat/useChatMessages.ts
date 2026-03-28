@@ -14,6 +14,23 @@ import { Message, DialogueHistoryResponse } from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
 import { Citation } from './useChatSettings';
 
+// 定义提问类型
+export type QuestionType = 'normal' | 'branch' | 'merge';
+
+/**
+ * 判断提问类型
+ *
+ * @param citations - 当前引用列表
+ * @returns 提问类型
+ */
+export function determineQuestionType(citations: Citation[]): QuestionType {
+  if (citations.length === 0) {
+    return 'normal';
+  }
+  // 根据 citations[0].type 判断（同一批 citation 类型一致）
+  return citations[0].type;
+}
+
 // 定义创建对话响应接口
 interface CreateConversationResponse {
   conversation_id: string;
@@ -50,6 +67,7 @@ interface UseChatMessagesProps {
   searchEnabled: boolean;
   citations: Citation[];
   clearAllCitations: () => void;
+  pathLastAssistantId: string | null;
 }
 
 interface UseChatMessagesReturn {
@@ -74,6 +92,7 @@ export const useChatMessages = ({
   searchEnabled,
   citations,
   clearAllCitations,
+  pathLastAssistantId,
 }: UseChatMessagesProps): UseChatMessagesReturn => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -303,12 +322,8 @@ export const useChatMessages = ({
     if (citations.length > 0) {
       parentIds = citations.map((c) => c.id);
     } else {
-      // 使用历史对话中最后一条assistant消息的id
-      const lastAssistantMessage = messages
-        .filter((msg) => msg.role === 'assistant' && msg.id)
-        .pop();
-      const mongoId = lastAssistantMessage?.id;
-      parentIds = mongoId ? [mongoId] : [];
+      // 使用当前 path 中最后一个 assistant 消息的 ID
+      parentIds = pathLastAssistantId ? [pathLastAssistantId] : [];
     }
 
     const newUserMessage: Message = {
@@ -318,7 +333,8 @@ export const useChatMessages = ({
       parent_ids: parentIds,
     };
 
-    setMessages([...messages, newUserMessage]);
+    // 使用函数式更新避免闭包问题
+    setMessages((prev) => [...prev, newUserMessage]);
     setInputMessage('');
     setIsLoading(true);
 
@@ -364,6 +380,10 @@ export const useChatMessages = ({
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
       // 发送聊天请求并处理流式响应
+      console.log(
+        '[DEBUG] Sending chat request, conversationId:',
+        conversationId,
+      );
       const response = await fetch(buildApiUrl(API_ENDPOINTS.CHAT), {
         method: 'POST',
         headers: {
@@ -381,11 +401,24 @@ export const useChatMessages = ({
         signal: abortControllerRef.current.signal, // 添加中止信号
       });
 
+      console.log(
+        '[DEBUG] Response status:',
+        response.status,
+        'ok:',
+        response.ok,
+      );
       if (!response.ok) {
         throw new Error('聊天请求失败');
       }
 
+      console.log(
+        '[DEBUG] Response body:',
+        !!response.body,
+        'bodyUsed:',
+        response.bodyUsed,
+      );
       const reader = response.body?.getReader();
+      console.log('[DEBUG] Got reader:', !!reader);
       if (!reader) {
         throw new Error('无法获取响应流');
       }
@@ -430,10 +463,19 @@ export const useChatMessages = ({
         );
       };
 
+      console.log('[DEBUG] Starting SSE read loop');
+      let chunkCount = 0;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('[DEBUG] SSE read done, total chunks:', chunkCount);
+          break;
+        }
+        chunkCount++;
+        if (chunkCount % 10 === 0) {
+          console.log('[DEBUG] Read chunk #', chunkCount);
+        }
 
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');

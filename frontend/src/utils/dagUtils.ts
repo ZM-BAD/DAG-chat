@@ -69,6 +69,14 @@ export {
   predictPathAfterTabSwitch,
 } from './tabSwitchHandler';
 
+// ============ 增量更新相关 ============
+export {
+  incrementallyUpdateDag,
+  type IncrementalUpdateResult,
+  type NewMessageInfo,
+  type QuestionType,
+} from './incrementallyUpdateDag';
+
 // ============ 类型导出 ============
 export type {
   DagNode,

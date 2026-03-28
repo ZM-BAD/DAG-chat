@@ -85,18 +85,6 @@
   box-sizing: border-box;
 }
 
-/* 智能 Spacer：消息少时撑开空间，将内容推到底部 */
-.messages-spacer {
-  flex: 1;
-  min-height: 0;
-  transition: flex 0.3s ease;
-}
-
-/* 消息多时，spacer 收缩 */
-.messages-spacer.collapsed {
-  flex: 0;
-}
-
 .footer-wrapper {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
