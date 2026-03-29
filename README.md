@@ -140,6 +140,31 @@ AI: [explanation C]  ──┘    AI: [comparison]
 - **MongoDB** on `localhost:27017`
 - **MySQL** on `localhost:3306`
 
+### Database Setup
+
+1. **MySQL** — Create the database and table:
+
+   ```bash
+   mysql -u root -p
+   ```
+
+   ```sql
+   CREATE DATABASE IF NOT EXISTS dag_chat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   SOURCE sql/t_conversations.sql;
+   ```
+
+2. **MongoDB** — Ensure MongoDB is running on `localhost:27017`. The `dag_chat` database will be created automatically on first use.
+
+### Configuration
+
+Copy the example environment file and fill in your API keys:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Edit `backend/.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek) and MySQL password.
+
 ### Launch
 
 ```bash

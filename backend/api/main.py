@@ -1,12 +1,12 @@
-import logging.config
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.router import router as api_router
-from backend.logging_config import LOGGING_CONFIG
+from backend.logging_config import setup_logging
 
 # 配置日志
-logging.config.dictConfig(LOGGING_CONFIG)
+setup_logging()
 
 description = """
 DAG-chat API 为您的应用提供统一的大型语言模型接口。

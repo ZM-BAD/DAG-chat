@@ -138,6 +138,31 @@ AI：[解释 C] ──┘    AI：[对比分析]
 - **MongoDB** 运行于 `localhost:27017`
 - **MySQL** 运行于 `localhost:3306`
 
+### 数据库准备
+
+1. **MySQL** — 创建数据库和表：
+
+   ```bash
+   mysql -u root -p
+   ```
+
+   ```sql
+   CREATE DATABASE IF NOT EXISTS dag_chat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   SOURCE sql/t_conversations.sql;
+   ```
+
+2. **MongoDB** — 确保 MongoDB 运行于 `localhost:27017`。`dag_chat` 数据库会在首次使用时自动创建。
+
+### 配置
+
+复制环境变量模板并填入你的 API Key：
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+编辑 `backend/.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek）和 MySQL 密码。
+
 ### 启动
 
 ```bash
