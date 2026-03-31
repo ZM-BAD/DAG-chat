@@ -56,6 +56,7 @@ export const useModelSelection = (): UseModelSelectionReturn => {
         { value: 'qwen', label: 'Qwen' },
         { value: 'kimi', label: 'Kimi' },
         { value: 'glm', label: 'GLM' },
+        { value: 'minimax', label: 'MiniMax' },
       ];
       setAvailableModels(defaultModels);
     }

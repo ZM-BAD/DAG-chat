@@ -3,10 +3,10 @@ from typing import List, Dict, AsyncGenerator
 
 from openai import OpenAI
 
+from backend.config import GLM_API_KEY, GLM_API_BASE_URL, GLM_MODEL
+
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
-
-from backend.config import GLM_API_KEY, GLM_API_BASE_URL
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -44,12 +44,12 @@ class GLMService(BaseModelService):
         """
         try:
             logger.info(
-                f"Sending request to GLM API with deep_thinking={deep_thinking}"
+                "Sending request to GLM API with deep_thinking=%s", deep_thinking
             )
 
             # 构建请求参数
             request_params = {
-                "model": "glm-5",
+                "model": GLM_MODEL,
                 "messages": messages,
                 "stream": True,
                 "max_tokens": 65536,
@@ -90,10 +90,10 @@ class GLMService(BaseModelService):
                             "reasoning": "",
                         }
 
-            logger.info("GLM API调用成功")
+            logger.info("GLM API call successful")
 
         except Exception as e:
-            logger.error(f"GLM API调用失败: {str(e)}")
+            logger.error("GLM API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
     def generate_title(self, user_input: str, full_response: str) -> str:
@@ -111,7 +111,7 @@ class GLMService(BaseModelService):
             ]
 
             response = self.client.chat.completions.create(
-                model="glm-5",
+                model=GLM_MODEL,
                 messages=messages,
                 max_tokens=20,
                 extra_body={"thinking": {"type": "disabled"}},
@@ -125,10 +125,18 @@ class GLMService(BaseModelService):
                 message = response.choices[0].message
                 if hasattr(message, "content") and message.content:
                     title = message.content.strip("。\n")
+                    if len(title) > 20:
+                        logger.warning(
+                            "GLM生成的标题超过20字被截断, 原始标题(%d字): %s",
+                            len(title),
+                            title,
+                        )
+                    else:
+                        logger.info("GLM标题生成正常(%d字): %s", len(title), title)
                     return title[:20]
 
             # 如果API返回异常，使用默认方式生成标题
             return full_response[:20]
         except Exception as e:
-            logger.error(f"标题生成失败: {str(e)}")
+            logger.error("Title generation failed: %s", str(e))
             return full_response[:20]

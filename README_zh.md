@@ -44,7 +44,8 @@
 ## 功能特性
 
 - **DAG 对话结构** — 自由地分支与合并对话。每条回复是一个节点，每个问题都可以衍生新路径或汇聚已有路径。
-- **多模型支持** — 通过统一接口在 GLM、Kimi、Qwen、DeepSeek 等模型之间无缝切换。
+- **多模型支持** — 通过统一接口在 GLM、Kimi、Qwen、DeepSeek、MiniMax 等模型之间无缝切换。
+- **本地模型 (Ollama)** — 通过 Ollama 在本地运行大模型，零 API 费用，自动检测已安装的本地模型。
 - **深度思考模式** — 可开关的深度推理模式，支持展开/折叠思考过程展示。
 - **流式响应** — LLM 响应实时流式输出，支持交互式渲染。
 - **Markdown 与代码** — 富文本渲染，支持语法高亮、LaTeX 数学公式、GFM 表格和 Emoji。
@@ -161,7 +162,9 @@ AI：[解释 C] ──┘    AI：[对比分析]
 cp backend/.env.example backend/.env
 ```
 
-编辑 `backend/.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek）和 MySQL 密码。
+编辑 `backend/.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek、MiniMax）和 MySQL 密码。
+
+**没有 API Key？** 没关系 — 参见下方 [使用 Ollama（免费，无需 API Key）](#使用-ollama免费无需-api-key) 章节。
 
 ### 启动
 
@@ -195,6 +198,64 @@ npm run dev
 停止所有服务：`./start.sh --stop`
 
 </details>
+
+## 使用 Ollama（免费，无需 API Key）
+
+DAG-chat 支持通过 [Ollama](https://ollama.com) 在本地运行大模型 — **完全免费，无需任何 API Key**。这是最简单的上手方式。
+
+### 1. 安装 Ollama
+
+```bash
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# 或从 https://ollama.com/download 下载
+```
+
+### 2. 拉取模型
+
+```bash
+# 推荐中英文通用（8B，约 5GB）
+ollama pull qwen3:8b
+
+# 其他选择：
+ollama pull llama3.2          # 偏英文，体积更小
+ollama pull deepseek-r1:8b    # 支持推理
+ollama pull glm4:9b           # 偏中文
+```
+
+### 3. 启动 Ollama
+
+```bash
+ollama serve
+```
+
+Ollama 默认运行在 `http://localhost:11434`。DAG-chat 会自动检测已安装的模型并显示在模型选择器中。
+
+### 4. 启动 DAG-chat
+
+```bash
+./start.sh --all
+```
+
+就这么简单 — 无需 API Key。在下拉菜单中选择任意 `Ollama - ...` 模型即可开始对话。
+
+### 配置默认模型（可选）
+
+如需设置默认 Ollama 模型，在 `backend/.env` 中添加：
+
+```bash
+OLLAMA_MODEL=qwen3:8b
+```
+
+### 硬件要求
+
+- **内存**：7-8B 模型需 8GB+，13B 模型需 16GB+
+- **GPU**：非必需，但有 GPU 会显著提速（CUDA、Metal 或 Vulkan）
+- **磁盘**：每个模型约 4-10GB
 
 ## 许可证
 

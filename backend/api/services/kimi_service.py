@@ -3,10 +3,16 @@ from typing import List, Dict, AsyncGenerator
 
 from openai import OpenAI
 
+from backend.config import (
+    KIMI_API_KEY,
+    KIMI_API_BASE_URL,
+    KIMI_MODEL_THINKING,
+    KIMI_MODEL,
+    KIMI_TITLE_MODEL,
+)
+
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
-
-from backend.config import KIMI_API_KEY, KIMI_API_BASE_URL
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -43,15 +49,15 @@ class KimiService(BaseModelService):
             包含content和reasoning字段的异步生成器
         """
         try:
-            logger.info(f"Sending request to Kimi API, deep_thinking: {deep_thinking}")
+            logger.info("Sending request to Kimi API, deep_thinking: %s", deep_thinking)
 
             # 根据deep_thinking参数选择不同的模型
             if deep_thinking:
-                model_name = "kimi-k2-thinking-turbo"
-                logger.info("使用思考模型: kimi-k2-thinking-turbo")
+                model_name = KIMI_MODEL_THINKING
+                logger.info("使用思考模型: %s", KIMI_MODEL_THINKING)
             else:
-                model_name = "kimi-k2-turbo-preview"
-                logger.info("使用非思考模型: kimi-k2-turbo-preview")
+                model_name = KIMI_MODEL
+                logger.info("使用非思考模型: %s", KIMI_MODEL)
 
             # 使用OpenAI SDK调用
             response = self.client.chat.completions.create(
@@ -83,16 +89,16 @@ class KimiService(BaseModelService):
                             "reasoning": "",
                         }
 
-            logger.info("Kimi API调用成功")
+            logger.info("Kimi API call successful")
 
         except Exception as e:
-            logger.error(f"Kimi API调用失败: {str(e)}")
+            logger.error("Kimi API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
     def generate_title(self, user_input: str, full_response: str) -> str:
         """
         根据用户输入和完整响应生成对话标题
-        使用moonshot-v1-8k模型专门用于生成标题
+        使用KIMI_TITLE_MODEL模型专门用于生成标题
         """
         try:
             messages = [
@@ -103,7 +109,7 @@ class KimiService(BaseModelService):
             ]
 
             response = self.client.chat.completions.create(
-                model="moonshot-v1-8k",
+                model=KIMI_TITLE_MODEL,
                 messages=messages,
                 temperature=0.3,
                 max_tokens=20,
@@ -117,10 +123,18 @@ class KimiService(BaseModelService):
                 message = response.choices[0].message
                 if hasattr(message, "content") and message.content:
                     title = message.content.strip("。\n")
+                    if len(title) > 20:
+                        logger.warning(
+                            "Kimi生成的标题超过20字被截断, 原始标题(%d字): %s",
+                            len(title),
+                            title,
+                        )
+                    else:
+                        logger.info("Kimi标题生成正常(%d字): %s", len(title), title)
                     return title[:20]
 
             # 如果API返回异常，使用默认方式生成标题
             return full_response[:20]
         except Exception as e:
-            logger.error(f"标题生成失败: {str(e)}")
+            logger.error("Title generation failed: %s", str(e))
             return full_response[:20]

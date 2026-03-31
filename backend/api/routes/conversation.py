@@ -1,11 +1,11 @@
 import logging
 import uuid
-import pymongo
-from backend.database.mongodb_connection import MongoDBConnection
 from datetime import datetime
 
+import pymongo
 from fastapi import APIRouter, Query
 
+from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
 from backend.models.requests import CreateConversationRequest
 
@@ -47,12 +47,12 @@ def create_conversation(request: CreateConversationRequest):
             if mysql_db.execute_query(query, params):
                 logger.info(f"Create conversation with id: {conversation_id}")
                 return {"conversation_id": conversation_id}
-            else:
-                logger.error("创建对话失败：数据库插入失败")
-                return {"error": "创建对话失败：数据库插入失败"}
-        else:
-            logger.error("创建对话失败: 无法连接到MySQL数据库")
-            return {"error": "创建对话失败: 无法连接到MySQL数据库"}
+
+            logger.error("创建对话失败：数据库插入失败")
+            return {"error": "创建对话失败：数据库插入失败"}
+
+        logger.error("创建对话失败: 无法连接到MySQL数据库")
+        return {"error": "创建对话失败: 无法连接到MySQL数据库"}
     except Exception as e:
         logger.error(f"创建对话失败: {str(e)}", exc_info=True)
         return {"error": f"创建对话失败: {str(e)}"}
@@ -88,10 +88,10 @@ def get_dialogue_list(
             offset = (page - 1) * page_size
 
             # 查询对话列表
-            query = """SELECT id, user_id, title, model, create_time, update_time 
-                      FROM t_conversations 
-                      WHERE user_id = %s 
-                      ORDER BY update_time DESC 
+            query = """SELECT id, user_id, title, model, create_time, update_time
+                      FROM t_conversations
+                      WHERE user_id = %s
+                      ORDER BY update_time DESC
                       LIMIT %s OFFSET %s"""
             params = (user_id, page_size, offset)
 
@@ -125,9 +125,9 @@ def get_dialogue_list(
                     "page_size": page_size,
                 },
             }
-        else:
-            logger.error("无法连接到MySQL数据库")
-            return {"code": 500, "message": "数据库连接失败", "data": {}}
+
+        logger.error("无法连接到MySQL数据库")
+        return {"code": 500, "message": "数据库连接失败", "data": {}}
     except Exception as e:
         logger.error(f"获取对话列表失败: {str(e)}", exc_info=True)
         return {"code": 500, "message": f"获取对话列表失败: {str(e)}", "data": {}}
@@ -163,8 +163,6 @@ def delete_conversation(
     try:
         if mysql_db.connect():
             # 先删除MongoDB中的消息记录
-            from backend.database.mongodb_connection import MongoDBConnection
-
             mongo_db = MongoDBConnection()
             try:
                 if mongo_db.connect():
@@ -185,16 +183,16 @@ def delete_conversation(
             if mysql_db.execute_query(query, params):
                 logger.info(f"成功删除对话 {conversation_id}")
                 return {"code": 0, "message": "对话删除成功", "data": {}}
-            else:
-                logger.error("删除对话失败：数据库删除失败")
-                return {
-                    "code": 500,
-                    "message": "删除对话失败：数据库删除失败",
-                    "data": {},
-                }
-        else:
-            logger.error("无法连接到MySQL数据库")
-            return {"code": 500, "message": "数据库连接失败", "data": {}}
+
+            logger.error("删除对话失败：数据库删除失败")
+            return {
+                "code": 500,
+                "message": "删除对话失败：数据库删除失败",
+                "data": {},
+            }
+
+        logger.error("无法连接到MySQL数据库")
+        return {"code": 500, "message": "数据库连接失败", "data": {}}
     except Exception as e:
         logger.error(f"删除对话失败: {str(e)}", exc_info=True)
         return {"code": 500, "message": f"删除对话失败: {str(e)}", "data": {}}
@@ -250,16 +248,16 @@ def rename_conversation(
             if mysql_db.execute_query(query, params):
                 logger.info(f"成功重命名对话 {conversation_id} 为 {new_title}")
                 return {"code": 0, "message": "对话重命名成功", "data": {}}
-            else:
-                logger.error("重命名对话失败：数据库更新失败")
-                return {
-                    "code": 500,
-                    "message": "重命名对话失败：数据库更新失败",
-                    "data": {},
-                }
-        else:
-            logger.error("无法连接到MySQL数据库")
-            return {"code": 500, "message": "数据库连接失败", "data": {}}
+
+            logger.error("重命名对话失败：数据库更新失败")
+            return {
+                "code": 500,
+                "message": "重命名对话失败：数据库更新失败",
+                "data": {},
+            }
+
+        logger.error("无法连接到MySQL数据库")
+        return {"code": 500, "message": "数据库连接失败", "data": {}}
     except Exception as e:
         logger.error(f"重命名对话失败: {str(e)}", exc_info=True)
         return {"code": 500, "message": f"重命名对话失败: {str(e)}", "data": {}}

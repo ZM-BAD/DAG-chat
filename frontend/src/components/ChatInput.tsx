@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import ModelLogo from './common/ModelLogo';
+import { useToast } from '../contexts/ToastContext';
 import { Citation } from '../hooks/chat/useChatSettings';
 
 // 自定义模型选择器组件
@@ -153,11 +154,17 @@ const ChatInput: FC<ChatInputProps> = ({
   onClearAllCitations,
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const isInputEmpty = inputMessage.trim() === '';
   const [deepThinkingEnabled, setDeepThinkingEnabled] =
     useState(initialDeepThinking);
   const [searchEnabled, setSearchEnabled] = useState(initialSearch);
   const [selectedModel, setSelectedModel] = useState(initialModel);
+
+  // 同步 hook 层的状态变化到组件本地状态
+  useEffect(() => {
+    setDeepThinkingEnabled(initialDeepThinking);
+  }, [initialDeepThinking]);
 
   // 检查是否所有引用都是 merge 类型
   const isAllMergeCitations =
@@ -177,6 +184,14 @@ const ChatInput: FC<ChatInputProps> = ({
   };
 
   const handleDeepThinkingToggle = () => {
+    // MiniMax 强制开启思考，禁止关闭
+    if (
+      deepThinkingEnabled &&
+      selectedModel.toLowerCase().includes('minimax')
+    ) {
+      toast.showToast(t('chat.minimaxThinkingLocked'), 'info', 2000);
+      return;
+    }
     const newValue = !deepThinkingEnabled;
     setDeepThinkingEnabled(newValue);
     if (onDeepThinkingChange) {
@@ -198,6 +213,7 @@ const ChatInput: FC<ChatInputProps> = ({
     if (onModelChange) {
       onModelChange(newModel);
     }
+    // MiniMax 深度思考联动逻辑统一在 useChat.handleModelChangeWithDeepThinking 中处理
   };
 
   return (

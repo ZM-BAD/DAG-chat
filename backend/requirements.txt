@@ -12,3 +12,6 @@ sqlalchemy==2.0.48
 fastapi==0.135.2
 uvicorn==0.42.0
 openai==2.30.0
+
+# Development dependencies
+pylint==4.0.5

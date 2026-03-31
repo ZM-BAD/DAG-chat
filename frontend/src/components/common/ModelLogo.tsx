@@ -15,6 +15,8 @@ const MODEL_LOGO_MAP: Record<string, string> = {
   kimi: 'kimi',
   qwen: 'qwen',
   glm: 'zai', // GLM 模型对应 zai.svg
+  ollama: 'ollama',
+  minimax: 'minimax',
 };
 
 /**
@@ -23,7 +25,11 @@ const MODEL_LOGO_MAP: Record<string, string> = {
  * @returns Logo 文件路径
  */
 const getLogoPath = (modelName: string): string => {
-  const normalizedModel = modelName.toLowerCase();
+  let normalizedModel = modelName.toLowerCase();
+  // 处理 ollama/model-name 格式，统一映射到 ollama logo
+  if (normalizedModel.startsWith('ollama/')) {
+    normalizedModel = 'ollama';
+  }
   const logoName = MODEL_LOGO_MAP[normalizedModel] || 'deepseek'; // 默认使用 deepseek logo
   return `/assets/logo/${logoName}.svg`;
 };

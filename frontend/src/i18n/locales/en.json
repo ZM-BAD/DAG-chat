@@ -22,7 +22,8 @@
     "networkError": "Network connection failed, please check your network and try again",
     "sendFailed": "Failed to send message, please try again later",
     "abortMessage": "Message sending aborted",
-    "clearAllCitations": "Clear All"
+    "clearAllCitations": "Clear All",
+    "minimaxThinkingLocked": "MiniMax forces thinking mode on"
   },
   "dialogue": {
     "defaultTitle": "Untitled Dialogue",

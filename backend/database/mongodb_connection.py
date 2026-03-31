@@ -1,13 +1,13 @@
 #!/usr/bin/env python3.13
 
 import logging
+import uuid
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
 from backend import logging_config
 from backend.config import MONGODB_CONFIG
-import uuid
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)

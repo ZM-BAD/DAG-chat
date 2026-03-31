@@ -11,6 +11,8 @@ from .deepseek_service import DeepSeekService
 from .qwen_service import QwenService
 from .kimi_service import KimiService
 from .glm_service import GLMService
+from .ollama_service import OllamaService
+from .minimax_service import MiniMaxService
 
 # 导出主要接口
 __all__ = [
@@ -20,4 +22,6 @@ __all__ = [
     "QwenService",
     "KimiService",
     "GLMService",
+    "OllamaService",
+    "MiniMaxService",
 ]

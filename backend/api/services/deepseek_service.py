@@ -1,9 +1,15 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from backend.config import DEEPSEEK_API_KEY, DEEPSEEK_API_BASE_URL
 from openai import OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
+
+from backend.config import (
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_API_BASE_URL,
+    DEEPSEEK_MODEL_THINKING,
+    DEEPSEEK_MODEL,
+)
 
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
@@ -44,11 +50,11 @@ class DeepSeekService(BaseModelService):
         """
         try:
             logger.info(
-                f"Sending request to DeepSeek API, deep_thinking: {deep_thinking}"
+                "Sending request to DeepSeek API, deep_thinking: %s", deep_thinking
             )
 
             # 根据deep_thinking参数选择模型
-            model_name = "deepseek-reasoner" if deep_thinking else "deepseek-chat"
+            model_name = DEEPSEEK_MODEL_THINKING if deep_thinking else DEEPSEEK_MODEL
 
             response = self.client.chat.completions.create(
                 model=model_name, messages=messages, stream=True
@@ -69,10 +75,10 @@ class DeepSeekService(BaseModelService):
 
                 yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
-            logger.info(f"DeepSeek API调用成功，模型: {model_name}")
+            logger.info("DeepSeek API call successful, model: %s", model_name)
 
         except Exception as e:
-            logger.error(f"DeepSeek API调用失败: {str(e)}")
+            logger.error("DeepSeek API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
     def generate_title(self, user_input: str, full_response: str) -> str:
@@ -89,7 +95,7 @@ class DeepSeekService(BaseModelService):
                 )
             ]
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=DEEPSEEK_MODEL,
                 messages=messages,
                 temperature=0.3,
                 max_tokens=20,
@@ -97,7 +103,15 @@ class DeepSeekService(BaseModelService):
 
             # 清理响应中的多余符号和空格
             title = response.choices[0].message.content.strip("。\n")
+            if len(title) > 20:
+                logger.warning(
+                    "DeepSeek生成的标题超过20字被截断, 原始标题(%d字): %s",
+                    len(title),
+                    title,
+                )
+            else:
+                logger.info("DeepSeek标题生成正常(%d字): %s", len(title), title)
             return title[:20]
         except Exception as e:
-            logger.error(f"标题生成失败: {str(e)}")
+            logger.error("Title generation failed: %s", str(e))
             return full_response[:20]

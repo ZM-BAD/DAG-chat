@@ -46,7 +46,8 @@ Traditional chat applications force conversations into a single, linear thread. 
 ## Features
 
 - **DAG Conversation Structure** — Branch and merge conversations freely. Every response is a node; every question can spawn new paths or converge existing ones.
-- **Multi-LLM Support** — Seamlessly switch between GLM, Kimi, Qwen, DeepSeek, and more through a unified interface.
+- **Multi-LLM Support** — Seamlessly switch between GLM, Kimi, Qwen, DeepSeek, MiniMax, and more through a unified interface.
+- **Local LLM via Ollama** — Run models locally with zero API costs. Automatically detects installed Ollama models.
 - **Deep Thinking Mode** — Toggle deep reasoning with expandable/collapsible thinking process display.
 - **Streaming Responses** — Real-time streaming of LLM responses with interactive rendering.
 - **Markdown & Code** — Rich rendering with syntax highlighting, LaTeX math, GFM tables, and emoji support.
@@ -163,7 +164,9 @@ Copy the example environment file and fill in your API keys:
 cp backend/.env.example backend/.env
 ```
 
-Edit `backend/.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek) and MySQL password.
+Edit `backend/.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek, MiniMax) and MySQL password.
+
+**Don't have API keys?** No problem — see [Using Ollama (Free, No API Keys)](#using-ollama-free-no-api-keys) below.
 
 ### Launch
 
@@ -197,6 +200,64 @@ npm run dev
 Stop all services: `./start.sh --stop`
 
 </details>
+
+## Using Ollama (Free, No API Keys)
+
+DAG-chat supports [Ollama](https://ollama.com) for running LLMs locally — **completely free, no API keys required**. This is the easiest way to get started.
+
+### 1. Install Ollama
+
+```bash
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Or download from https://ollama.com/download
+```
+
+### 2. Pull a Model
+
+```bash
+# Recommended for Chinese & English (8B, ~5GB)
+ollama pull qwen3:8b
+
+# Other good options:
+ollama pull llama3.2          # English-focused, smaller
+ollama pull deepseek-r1:8b    # Supports reasoning
+ollama pull glm4:9b           # Chinese-focused
+```
+
+### 3. Start Ollama
+
+```bash
+ollama serve
+```
+
+Ollama runs on `http://localhost:11434` by default. DAG-chat will automatically detect it and list your installed models in the model selector.
+
+### 4. Launch DAG-chat
+
+```bash
+./start.sh --all
+```
+
+That's it — no API keys needed. Select any `Ollama - ...` model from the dropdown and start chatting.
+
+### Configure Default Model (Optional)
+
+If you want to set a default Ollama model, add to `backend/.env`:
+
+```bash
+OLLAMA_MODEL=qwen3:8b
+```
+
+### Requirements
+
+- **RAM**: 8GB+ for 7-8B models, 16GB+ for 13B models
+- **GPU**: Optional but significantly faster (CUDA, Metal, or Vulkan)
+- **Disk**: 4-10GB per model
 
 ## License
 

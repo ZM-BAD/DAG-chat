@@ -13,9 +13,12 @@ class ModelFactory:
     """
 
     # 存储模型服务类的注册表
+    # key 为 service_name（如 "ollama", "deepseek"），由 get_service_name() 返回
     _registry: Dict[str, Type[BaseModelService]] = {}
 
     # 服务实例缓存
+    # key 为 normalized_model（如 "ollama/qwen3:8b", "deepseek"），即完整模型名的小写形式
+    # 注意：对于 Ollama 等多模型服务，每种模型名都有独立的缓存实例
     _instances: Dict[str, BaseModelService] = {}
 
     @classmethod
@@ -31,13 +34,18 @@ class ModelFactory:
         """
         service_name = service_class.get_service_name()
         cls._registry[service_name] = service_class
-        logger.info(f"注册模型服务: {service_name}")
+        logger.info("注册模型服务: %s", service_name)
         return service_class
 
     @classmethod
     def get_service(cls, model_name: str) -> Optional[BaseModelService]:
         """
         根据模型名称获取服务实例
+
+        缓存策略：
+        - 使用 normalized_model（完整模型名小写）作为缓存 key
+        - 通过 service_name in normalized_model 匹配注册表中的服务类
+        - 支持可选的 model_name 构造参数（如 OllamaService 需要知道具体模型）
 
         参数:
             model_name: 模型名称
@@ -62,15 +70,19 @@ class ModelFactory:
         if service_class:
             # 创建服务实例
             try:
-                instance = service_class()
+                # 尝试传递model_name参数（支持Ollama等多模型服务）
+                try:
+                    instance = service_class(model_name=normalized_model)
+                except TypeError:
+                    instance = service_class()
                 cls._instances[normalized_model] = instance
-                logger.info(f"创建模型服务实例: {normalized_model}")
+                logger.info("创建模型服务实例: %s", normalized_model)
                 return instance
             except Exception as e:
-                logger.error(f"创建模型服务实例失败: {e}")
+                logger.error("创建模型服务实例失败: %s", e)
                 return None
 
-        logger.warning(f"未找到对应模型服务: {model_name}")
+        logger.warning("未找到对应模型服务: %s", model_name)
         return None
 
     @classmethod

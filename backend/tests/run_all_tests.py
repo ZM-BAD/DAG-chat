@@ -205,7 +205,7 @@ def main():
         ("集成测试", run_integration_test),
     ]
 
-    for name, run_func in scenarios:
+    for name, run_func in scenarios:  # pylint: disable=unused-variable
         passed, failed = run_func()
         total_passed += passed
         total_failed += failed
@@ -222,10 +222,10 @@ def main():
         print("\n✓ 所有测试通过！")
         print("=" * 60)
         return 0
-    else:
-        print(f"\n✗ {total_failed}个测试失败")
-        print("=" * 60)
-        return 1
+
+    print(f"\n✗ {total_failed}个测试失败")
+    print("=" * 60)
+    return 1
 
 
 if __name__ == "__main__":

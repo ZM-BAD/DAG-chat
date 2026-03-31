@@ -25,7 +25,6 @@ class BaseModelService(metaclass=abc.ABCMeta):
         返回:
             包含content和reasoning字段的异步生成器
         """
-        pass
 
     @abc.abstractmethod
     def generate_title(self, user_input: str, full_response: str) -> str:
@@ -39,7 +38,6 @@ class BaseModelService(metaclass=abc.ABCMeta):
         返回:
             生成的标题字符串
         """
-        pass
 
     @classmethod
     def get_service_name(cls) -> str:

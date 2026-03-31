@@ -49,6 +49,21 @@ export const useChat = ({
     getCitationMode,
   } = useChatSettings();
 
+  // 模型切换联动：MiniMax 强制开启深度思考
+  const handleModelChangeWithDeepThinking = useCallback(
+    (model: string) => {
+      handleModelChange(model);
+      // MiniMax 强制开启思考，切换到其他模型时恢复关闭
+      if (model.toLowerCase().includes('minimax')) {
+        handleDeepThinkingChange(true);
+      } else if (deepThinkingEnabled) {
+        // 从 MiniMax 切换到其他模型时，关闭深度思考
+        handleDeepThinkingChange(false);
+      }
+    },
+    [handleModelChange, handleDeepThinkingChange, deepThinkingEnabled],
+  );
+
   // 从当前对话的 path 中提取最后一个 assistant 消息的 ID
   const currentSavedState = dialogueStates.get(currentDialogueId);
   const pathLastAssistantId =
@@ -111,7 +126,7 @@ export const useChat = ({
     availableModels,
     handleDeepThinkingChange,
     handleSearchChange,
-    handleModelChange,
+    handleModelChange: handleModelChangeWithDeepThinking,
     // 新的引用系统
     citations,
     handleBranchClick,

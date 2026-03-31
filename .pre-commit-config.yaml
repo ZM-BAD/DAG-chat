@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.1
+    rev: v0.15.8
     hooks:
       - id: ruff
         args: [--fix]
@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: pylint
         name: pylint (backend)
-        entry: bash -c 'python3 -m pylint --fail-under=8 $(git ls-files "*.py")'
+        entry: bash -c 'python3 -m pylint --fail-under=9 $(git ls-files "*.py")'
         language: system
         pass_filenames: false
         files: \.py$

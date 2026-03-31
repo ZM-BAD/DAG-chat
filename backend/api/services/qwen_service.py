@@ -1,10 +1,15 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from backend.config import QWEN_API_KEY, QWEN_API_BASE_URL
-
 from openai import OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
+
+from backend.config import (
+    QWEN_API_KEY,
+    QWEN_API_BASE_URL,
+    QWEN_MODEL_THINKING,
+    QWEN_MODEL,
+)
 
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
@@ -44,15 +49,15 @@ class QwenService(BaseModelService):
             包含content和reasoning字段的异步生成器
         """
         try:
-            logger.info(f"Sending request to Qwen API, deep_thinking: {deep_thinking}")
+            logger.info("Sending request to Qwen API, deep_thinking: %s", deep_thinking)
 
             # 根据deep_thinking参数选择模型
             if deep_thinking:
-                model_name = "qwen-plus"  # 深度思考模型
-                logger.info("使用深度思考模型: qwen-plus")
+                model_name = QWEN_MODEL_THINKING
+                logger.info("使用深度思考模型: %s", QWEN_MODEL_THINKING)
             else:
-                model_name = "qwen3-max"  # 非深度思考模型
-                logger.info("使用非深度思考模型: qwen3-max")
+                model_name = QWEN_MODEL
+                logger.info("使用非深度思考模型: %s", QWEN_MODEL)
 
             # 构建请求参数
             request_params = {"model": model_name, "messages": messages, "stream": True}
@@ -79,17 +84,17 @@ class QwenService(BaseModelService):
 
                 yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
-            logger.info(f"Qwen API调用成功，模型: {model_name}")
+            logger.info("Qwen API call successful, model: %s", model_name)
 
         except Exception as e:
-            logger.error(f"Qwen API调用失败: {str(e)}")
+            logger.error("Qwen API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
     def generate_title(self, user_input: str, full_response: str) -> str:
         """
         根据用户输入和完整响应生成对话标题
 
-        使用qwen3-max模型生成不超过20个字的简洁标题
+        使用QWEN_MODEL生成不超过20个字的简洁标题
         """
         try:
             messages = [
@@ -99,7 +104,7 @@ class QwenService(BaseModelService):
                 )
             ]
             response = self.client.chat.completions.create(
-                model="qwen3-max",
+                model=QWEN_MODEL,
                 messages=messages,
                 temperature=0.3,
                 max_tokens=20,
@@ -109,9 +114,16 @@ class QwenService(BaseModelService):
             content = response.choices[0].message.content
             if content:
                 title = content.strip("。\n")
+                if len(title) > 20:
+                    logger.warning(
+                        "Qwen生成的标题超过20字被截断, 原始标题(%d字): %s",
+                        len(title),
+                        title,
+                    )
+                else:
+                    logger.info("Qwen标题生成正常(%d字): %s", len(title), title)
                 return title[:20]
-            else:
-                return full_response[:20]
+            return full_response[:20]
         except Exception as e:
-            logger.error(f"标题生成失败: {str(e)}")
+            logger.error("Title generation failed: %s", str(e))
             return full_response[:20]
