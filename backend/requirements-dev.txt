@@ -10,7 +10,7 @@ ruff==0.15.1
 pylint==3.3.4
 
 # 测试工具
-pytest==8.3.5
+pytest==8.4.2
 pytest-asyncio==0.25.3
 
 # pre-commit (可选,用于 git hooks)
