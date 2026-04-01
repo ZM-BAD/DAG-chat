@@ -3,6 +3,7 @@
   "extends": ["config:recommended"],
   "timezone": "Asia/Shanghai",
   "schedule": ["at any time"],
+  "dependencyDashboard": true,
   "dependencyDashboardApproval": false,
   "labels": ["dependencies"],
   "assignees": ["ZM-BAD"],
@@ -13,12 +14,27 @@
   },
   "packageRules": [
     {
+      "description": "All updates auto-create PR, no dashboard approval needed",
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
+      "dependencyDashboardApproval": false
+    },
+    {
       "description": "Python production dependencies",
       "matchFileNames": ["backend/requirements.txt"],
       "groupName": "Python dependencies"
     },
     {
-      "description": "Frontend production dependencies",
+      "description": "Python development dependencies",
+      "matchFileNames": ["backend/requirements-dev.txt"],
+      "groupName": "Python dev dependencies"
+    },
+    {
+      "description": "Pre-commit hooks",
+      "matchManagers": ["pre-commit"],
+      "groupName": "Pre-commit hooks"
+    },
+    {
+      "description": "Frontend dependencies",
       "matchFileNames": ["frontend/package.json"],
       "groupName": "Frontend dependencies"
     },
@@ -26,11 +42,16 @@
       "description": "GitHub Actions",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Node.js version",
+      "matchManagers": ["node"],
+      "groupName": "Node.js"
     }
   ],
   "automerge": false,
-  "prConcurrentLimit": 3,
-  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 5,
   "constraints": {
     "python": ">=3.14",
     "node": ">=20"
