@@ -7,7 +7,7 @@ debugpy==1.8.20
 
 # 代码质量工具 (与 .pre-commit-config.yaml 保持一致)
 ruff==0.15.1
-pylint==3.3.4
+pylint==4.0.5
 
 # 测试工具
 pytest==8.3.5
