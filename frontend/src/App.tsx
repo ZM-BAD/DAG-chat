@@ -30,9 +30,8 @@ function AppContent() {
   // 对话状态管理
   // ========================================
   // 为每个对话保存独立的 DAG/Tabs/Path 状态
-  const [dialogueStates, setDialogueStates] = useState<
-    Map<string | null, DialogueState>
-  >(new Map());
+  const emptyDialogueStates: Map<string | null, DialogueState> = new Map();
+  const [dialogueStates, setDialogueStates] = useState(emptyDialogueStates);
 
   // 处理对话状态变化（使用 useCallback 稳定引用）
   const handleStateChange = useCallback(

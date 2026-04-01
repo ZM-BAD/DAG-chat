@@ -91,12 +91,13 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   // State
   // ========================================
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [isAtBottom, setIsAtBottom] = useState<boolean>(false);
+  const [isAtBottom, setIsAtBottom] = useState(false);
 
   // DAG 相关 state
   const [dag, setDag] = useState<Dag | null>(null);
   const [tabsContainers, setTabsContainers] = useState<TabsContainer[]>([]);
-  const [tabsMap, setTabsMap] = useState<MessageToTabsMap>(new Map());
+  const emptyTabsMap: MessageToTabsMap = new Map();
+  const [tabsMap, setTabsMap] = useState(emptyTabsMap);
   const [path, setPath] = useState<ConversationPath>([]);
 
   // 使用 ref 保存最新的状态，用于在 useCallback 回调中访问最新值

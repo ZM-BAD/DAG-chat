@@ -100,14 +100,14 @@ const Sidebar: FC<SidebarProps> = ({
   onToggleCollapse,
 }) => {
   const { t } = useTranslation();
-  const [loading] = useState<boolean>(false);
-  const [loadingMore, setLoadingMore] = useState<boolean>(false);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [loading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<'bottom' | 'top'>('bottom');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState<string>('');
+  const [editingTitle, setEditingTitle] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
 
   // 获取更多对话列表（用于滚动加载）
