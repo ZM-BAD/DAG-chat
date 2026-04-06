@@ -466,18 +466,6 @@
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
-/* 下拉箭头 */
-.model-selector::after {
-  content: '▼';
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 8px;
-  color: #64748b;
-  pointer-events: none;
-}
-
 /* 响应式调整 */
 @media (max-width: 768px) {
   .input-controls {

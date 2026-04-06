@@ -26,13 +26,7 @@ export default defineConfig({
   },
   build: {
     target: 'es2024',
-    minify: 'esbuild',
     sourcemap: true,
-  },
-  esbuild: {
-    target: 'es2024',
-    // Enable JSX automatic runtime for React 19
-    jsx: 'automatic',
   },
   optimizeDeps: {
     include: [
