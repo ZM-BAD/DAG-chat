@@ -6,12 +6,12 @@
 debugpy==1.8.20
 
 # 代码质量工具 (与 .pre-commit-config.yaml 保持一致)
-ruff==0.15.8
+ruff==0.15.9
 pylint==4.0.5
 
 # 测试工具
-pytest==8.3.5
-pytest-asyncio==0.25.3
+pytest==8.4.2
+pytest-asyncio==0.26.0
 
 # pre-commit (可选,用于 git hooks)
-pre-commit==4.2.1
+pre-commit==4.5.1
