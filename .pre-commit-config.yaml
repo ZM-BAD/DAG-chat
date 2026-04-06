@@ -17,6 +17,20 @@ repos:
         pass_filenames: false
         files: \.py$
 
+      - id: pip-audit
+        name: pip-audit (backend)
+        entry: bash -c 'pip-audit -r backend/requirements.txt'
+        language: system
+        pass_filenames: false
+        files: ^backend/requirements\.txt$
+
+      - id: backend-tests
+        name: backend tests (DAG)
+        entry: bash -c 'cd backend && python3 tests/run_all_tests.py'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
       - id: eslint-frontend
         name: eslint (frontend)
         entry: bash -c 'cd frontend && npm run lint -- --fix'
@@ -37,3 +51,17 @@ repos:
         language: system
         pass_filenames: false
         files: ^(frontend/).*\.(ts|tsx)$
+
+      - id: npm-ci-check
+        name: npm ci check (frontend)
+        entry: bash -c 'cd frontend && rm -rf node_modules && npm ci'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/)(package\.json|package-lock\.json)$
+
+      - id: build-frontend
+        name: build (frontend)
+        entry: bash -c 'cd frontend && npm run build'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/).*\.(ts|tsx|js|jsx|css|html)$
