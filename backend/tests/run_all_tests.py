@@ -11,7 +11,9 @@ DAG对话结构测试运行器
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from backend.tests.test_dag_chat import (
     TestLinkedListScenario,
