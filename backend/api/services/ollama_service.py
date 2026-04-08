@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
 
 from backend.config import OLLAMA_API_BASE_URL, OLLAMA_MODEL
@@ -29,7 +29,9 @@ class OllamaService(BaseModelService):
         else:
             self.ollama_model = OLLAMA_MODEL
 
-        # Ollama不需要真实的API Key，使用占位符即可
+        # 异步客户端用于流式生成（可被 CancelledError 中断）
+        self.async_client = AsyncOpenAI(api_key="ollama", base_url=OLLAMA_API_BASE_URL)
+        # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(api_key="ollama", base_url=OLLAMA_API_BASE_URL)
         logger.info("OllamaService initialized with model: %s", self.ollama_model)
 
@@ -56,11 +58,11 @@ class OllamaService(BaseModelService):
         try:
             logger.info("Sending request to Ollama API, model: %s", self.ollama_model)
 
-            response = self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=self.ollama_model, messages=messages, stream=True
             )
 
-            for chunk in response:
+            async for chunk in response:
                 content_chunk = chunk.choices[0].delta.content or ""
                 if content_chunk:
                     yield {"content": content_chunk, "reasoning": ""}

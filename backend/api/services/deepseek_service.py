@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
 
 from backend.config import (
@@ -25,7 +25,11 @@ class DeepSeekService(BaseModelService):
     """
 
     def __init__(self):
-        # 初始化OpenAI客户端
+        # 异步客户端用于流式生成（可被 CancelledError 中断）
+        self.async_client = AsyncOpenAI(
+            api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_API_BASE_URL
+        )
+        # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_API_BASE_URL)
 
     @classmethod
@@ -56,11 +60,11 @@ class DeepSeekService(BaseModelService):
             # 根据deep_thinking参数选择模型
             model_name = DEEPSEEK_MODEL_THINKING if deep_thinking else DEEPSEEK_MODEL
 
-            response = self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=model_name, messages=messages, stream=True
             )
 
-            for chunk in response:
+            async for chunk in response:
                 # 非思考模型没有reasoning_content字段，确保兼容性
                 reasoning_chunk = ""
                 content_chunk = ""

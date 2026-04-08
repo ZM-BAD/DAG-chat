@@ -20,7 +20,7 @@ from fastapi.responses import StreamingResponse
 
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
-from backend.models.requests import ChatRequest
+from backend.models.requests import ChatRequest, PlaceholderRequest
 from backend.models.schemas import MessageNode
 
 # 导入模型工厂以支持多模型调用
@@ -266,6 +266,114 @@ def build_history_from_parent_ids(
     return ordered_messages
 
 
+def create_message_placeholders(
+    mongo_db: MongoDBConnection,
+    conversation_id: str,
+    message: str,
+    model: str,
+    parent_ids: list[str] | None = None,
+) -> tuple[str, str]:
+    """
+    创建消息占位符文档，返回 (user_message_id, assistant_message_id)
+
+    Placeholder 模式：先在 MongoDB 中创建文档拿到 realId，
+    后续 chat 端点通过 update 而非 insert 更新内容。
+    不做 MySQL 操作，保持快速响应。
+    """
+    # 保存用户消息
+    user_message_kwargs = {
+        "conversation_id": conversation_id,
+        "role": "user",
+        "content": message,
+        "model": model,
+    }
+    if parent_ids:
+        user_message_kwargs["parent_ids"] = parent_ids
+
+    user_message = MessageNode(**user_message_kwargs)
+    user_message_id = mongo_db.insert(
+        "message_node", user_message.model_dump(exclude_none=True)
+    )
+
+    # 创建空的助手消息占位符
+    ai_message_kwargs = {
+        "conversation_id": conversation_id,
+        "role": "assistant",
+        "content": "",
+        "model": model,
+        "parent_ids": [str(user_message_id)],
+    }
+    ai_message = MessageNode(**ai_message_kwargs)
+    ai_message_id = mongo_db.insert(
+        "message_node", ai_message.model_dump(exclude_none=True)
+    )
+
+    # 建立双向关联：user.children = [assistant_id]
+    user_message_dict = user_message.model_dump(exclude_none=True)
+    ai_message_id_str = str(ai_message_id)
+    user_message_dict["children"] = [ai_message_id_str]
+    mongo_db.update("message_node", {"_id": user_message_id}, user_message_dict)
+
+    # 更新父节点的 children
+    if parent_ids:
+        parent_ids_object_ids = [ObjectId(pid) for pid in parent_ids]
+        parent_message_nodes = mongo_db.find(
+            "message_node", {"_id": {"$in": parent_ids_object_ids}}
+        )
+        for parent_message_node in parent_message_nodes:
+            child_id_str = str(user_message_id)
+            if child_id_str not in parent_message_node.get("children", []):
+                parent_message_node["children"].append(child_id_str)
+                mongo_db.update(
+                    "message_node",
+                    {"_id": parent_message_node["_id"]},
+                    parent_message_node,
+                )
+
+    return str(user_message_id), str(ai_message_id)
+
+
+@router.post("/create-message-placeholders")
+async def create_placeholders(request: PlaceholderRequest):
+    """
+    创建消息占位符接口
+
+    在发送聊天请求前调用，预先在 MongoDB 中创建 user 和 assistant 消息文档，
+    返回真实的 MongoDB ID，前端从此使用 realId，消除 tempId 概念。
+    """
+    logger.info(
+        "Create placeholders - conversation_id: %s, parent_ids: %s",
+        request.conversation_id,
+        request.parent_ids,
+    )
+
+    mongo_db = MongoDBConnection()
+    try:
+        if not mongo_db.connect():
+            return {"error": "数据库连接失败"}
+
+        user_msg_id, assistant_msg_id = create_message_placeholders(
+            mongo_db,
+            request.conversation_id,
+            request.message,
+            request.model,
+            request.parent_ids,
+        )
+
+        logger.info(
+            "Placeholders created - user: %s, assistant: %s",
+            user_msg_id,
+            assistant_msg_id,
+        )
+
+        return {
+            "user_message_id": user_msg_id,
+            "assistant_message_id": assistant_msg_id,
+        }
+    finally:
+        mongo_db.disconnect()
+
+
 @router.post("/chat")
 async def chat(request: ChatRequest):
     """
@@ -280,13 +388,18 @@ async def chat(request: ChatRequest):
         model: 使用的模型，默认 deepseek
         deep_thinking: 是否开启深度思考
         search_enabled: 是否开启搜索
+        user_message_id: placeholder 模式下的用户消息 MongoDB ID
+        assistant_message_id: placeholder 模式下的助手消息 MongoDB ID
     """
     logger.info(
-        "Chat endpoint accessed with user_id: %s, conversation_id: %s, parent_ids: %s, model: %s",
+        "Chat endpoint accessed with user_id: %s, conversation_id: %s, "
+        "parent_ids: %s, model: %s, user_msg_id: %s, assistant_msg_id: %s",
         request.user_id,
         request.conversation_id,
         request.parent_ids,
         request.model,
+        request.user_message_id,
+        request.assistant_message_id,
     )
 
     mysql_db = MySQLConnection()
@@ -330,7 +443,13 @@ async def chat(request: ChatRequest):
         chat_messages.append({"role": "user", "content": request.message})
 
         return StreamingResponse(
-            generate(chat_messages, request, mysql_db, mongo_db, first_ask),
+            generate(
+                chat_messages,
+                request,
+                mysql_db,
+                mongo_db,
+                first_ask,
+            ),
             media_type="text/event-stream; charset=utf-8",
         )
 
@@ -396,12 +515,12 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
             # 实时返回内容
             yield f"data: {json.dumps({'content': content, 'reasoning': reasoning}, ensure_ascii=False)}\n\n"
 
-        # 最终保存完整响应并获取用户消息和助手消息的MongoDB ID
+        # 保存完整响应并获取消息ID
         user_message_id, ai_message_id = await save_conversation_to_database(
             request, full_content, full_reasoning, mysql_db, mongo_db, first_ask
         )
 
-        # 返回用户消息和助手消息的MongoDB ID给前端
+        # 返回消息ID给前端（placeholder 模式下前端已有，保持兼容）
         if user_message_id and ai_message_id:
             final_data = {
                 "user_message_id": str(user_message_id),
@@ -410,10 +529,38 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
             }
             yield f"data: {json.dumps(final_data, ensure_ascii=False)}\n\n"
 
-    except (ConnectionError, asyncio.CancelledError, BrokenPipeError, OSError) as e:
-        # 客户端正常中断连接，不记录为错误
-        logger.info("客户端中断连接: %s: %s", type(e).__name__, str(e))
-        return  # 正常结束，不返回任何错误信息
+    except asyncio.CancelledError:
+        # 用户手动停止：自建新的DB连接保存部分内容
+        logger.info(
+            "用户手动停止对话 - conversation_id: %s, content长度: %d, reasoning长度: %d",
+            request.conversation_id,
+            len(full_content),
+            len(full_reasoning),
+        )
+        try:
+            # 自建连接，不依赖 chat() 中已被 finally 关闭的连接
+            abort_mongo_db = MongoDBConnection()
+            abort_mysql_db = MySQLConnection()
+            try:
+                await save_conversation_to_database(
+                    request,
+                    full_content,
+                    full_reasoning,
+                    abort_mysql_db,
+                    abort_mongo_db,
+                    first_ask,
+                    skip_title_generation=True,
+                )
+                logger.info(
+                    "Abort落库成功 - conversation_id: %s",
+                    request.conversation_id,
+                )
+            finally:
+                abort_mysql_db.disconnect()
+                abort_mongo_db.disconnect()
+        except Exception as save_err:
+            logger.error("Abort落库失败: %s", save_err)
+        raise
 
     except Exception as e:
         # 真正的错误，需要记录日志并返回错误信息
@@ -498,9 +645,16 @@ async def save_conversation_to_database(
     mysql_db,
     mongo_db,
     first_ask: bool,
+    skip_title_generation: bool = False,
 ):
     """
     保存对话内容到MySQL和MongoDB数据库
+
+    支持两种模式：
+    1. Placeholder 模式（request 中有 user_message_id 和 assistant_message_id）：
+       直接 update 已有的 MongoDB 文档，不重新 insert
+    2. 传统模式（无 placeholder IDs）：
+       insert 新文档到 MongoDB
 
     参数:
         request: ChatRequest对象, 包含对话ID、用户ID等信息
@@ -509,24 +663,31 @@ async def save_conversation_to_database(
         mysql_db: MySQL数据库连接对象
         mongo_db: MongoDB数据库连接对象
         first_ask: 是否是第一次问
+        skip_title_generation: 是否跳过标题生成（abort路径使用）
 
     返回:
         tuple: (用户消息的MongoDB ID, 助手消息的MongoDB ID)
     """
+    # MySQL 操作（两种模式都需要）
     if mysql_db.connect():
         try:
             # 新对话
             if first_ask:
-                # 获取当前请求的模型服务，并调用其generate_title方法
-                model_service = ModelFactory.get_service(request.model)
-                if model_service:
-                    generated_title = model_service.generate_title(
-                        request.message, full_content
-                    )
-                    logger.info("Generated title: %s", generated_title)
+                if skip_title_generation:
+                    # abort路径：跳过LLM标题生成，直接用用户消息前20字
+                    generated_title = request.message[:20]
+                    logger.info("Abort路径使用fallback标题: %s", generated_title)
                 else:
-                    # 如果获取不到模型服务，使用默认方式生成标题
-                    generated_title = full_content[:20]
+                    # 正常路径：调用LLM生成标题
+                    model_service = ModelFactory.get_service(request.model)
+                    if model_service:
+                        generated_title = model_service.generate_title(
+                            request.message, full_content
+                        )
+                        logger.info("Generated title: %s", generated_title)
+                    else:
+                        # 如果获取不到模型服务，使用默认方式生成标题
+                        generated_title = full_content[:20]
 
                 # 更新对话标题
                 success = mysql_db.execute_query(
@@ -565,7 +726,35 @@ async def save_conversation_to_database(
         except Exception as e:
             logger.error("MySQL operation failed: %s", str(e), exc_info=True)
 
+    # MongoDB 操作
     if mongo_db.connect():
+        # === Placeholder 模式：update 已有文档 ===
+        if request.user_message_id and request.assistant_message_id:
+            user_message_id = request.user_message_id
+            ai_message_id = request.assistant_message_id
+
+            # 更新助手消息的内容
+            update_fields = {
+                "content": full_content,
+                "update_time": datetime.now(),
+            }
+            if full_reasoning:
+                update_fields["reasoning"] = full_reasoning
+            mongo_db.update(
+                "message_node",
+                {"_id": ObjectId(ai_message_id)},
+                update_fields,
+            )
+
+            logger.info(
+                "Placeholder模式更新助手消息: %s, content长度: %d",
+                ai_message_id,
+                len(full_content),
+            )
+
+            return user_message_id, ai_message_id
+
+        # === 传统模式：insert 新文档 ===
         # 保存用户提问
         user_message_kwargs = {
             "conversation_id": request.conversation_id,

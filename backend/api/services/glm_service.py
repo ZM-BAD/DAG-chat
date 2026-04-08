@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from backend.config import GLM_API_KEY, GLM_API_BASE_URL, GLM_MODEL
 
@@ -19,7 +19,9 @@ class GLMService(BaseModelService):
     """
 
     def __init__(self):
-        # 初始化OpenAI客户端，使用智谱AI的base_url
+        # 异步客户端用于流式生成（可被 CancelledError 中断）
+        self.async_client = AsyncOpenAI(api_key=GLM_API_KEY, base_url=GLM_API_BASE_URL)
+        # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(api_key=GLM_API_KEY, base_url=GLM_API_BASE_URL)
 
     @classmethod
@@ -62,11 +64,11 @@ class GLMService(BaseModelService):
             else:
                 request_params["extra_body"] = {"thinking": {"type": "disabled"}}
 
-            # 使用OpenAI SDK调用
-            response = self.client.chat.completions.create(**request_params)
+            # 使用异步OpenAI SDK调用
+            response = await self.async_client.chat.completions.create(**request_params)
 
             # 处理流式响应
-            for chunk in response:
+            async for chunk in response:
                 if chunk.choices and len(chunk.choices) > 0:
                     delta = chunk.choices[0].delta
 

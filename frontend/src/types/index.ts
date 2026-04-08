@@ -59,6 +59,14 @@ export interface DialogueHistoryResponse {
 }
 
 /**
+ * 创建消息占位符的响应接口
+ */
+export interface PlaceholderResponse {
+  user_message_id: string;
+  assistant_message_id: string;
+}
+
+/**
  * 对话列表API响应接口
  */
 export interface DialogueListResponse {

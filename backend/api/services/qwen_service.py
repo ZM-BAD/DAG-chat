@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
 
 from backend.config import (
@@ -25,7 +25,11 @@ class QwenService(BaseModelService):
     """
 
     def __init__(self):
-        # 初始化OpenAI客户端
+        # 异步客户端用于流式生成（可被 CancelledError 中断）
+        self.async_client = AsyncOpenAI(
+            api_key=QWEN_API_KEY, base_url=QWEN_API_BASE_URL
+        )
+        # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(api_key=QWEN_API_KEY, base_url=QWEN_API_BASE_URL)
 
     @classmethod
@@ -66,9 +70,9 @@ class QwenService(BaseModelService):
             if deep_thinking:
                 request_params["extra_body"] = {"enable_thinking": True}
 
-            response = self.client.chat.completions.create(**request_params)
+            response = await self.async_client.chat.completions.create(**request_params)
 
-            for chunk in response:
+            async for chunk in response:
                 # 非思考模型没有reasoning_content字段，确保兼容性
                 reasoning_chunk = ""
                 content_chunk = ""

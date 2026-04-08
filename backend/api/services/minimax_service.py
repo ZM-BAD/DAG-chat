@@ -7,7 +7,7 @@ MiniMax M2系列模型强制开启思考（reasoning），无法关闭
 import logging
 from typing import List, Dict, AsyncGenerator
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
 
 from backend.config import MINIMAX_API_KEY, MINIMAX_API_BASE_URL, MINIMAX_MODEL
@@ -25,6 +25,11 @@ class MiniMaxService(BaseModelService):
     """
 
     def __init__(self):
+        # 异步客户端用于流式生成（可被 CancelledError 中断）
+        self.async_client = AsyncOpenAI(
+            api_key=MINIMAX_API_KEY, base_url=MINIMAX_API_BASE_URL
+        )
+        # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(api_key=MINIMAX_API_KEY, base_url=MINIMAX_API_BASE_URL)
         self.model_name = MINIMAX_MODEL
 
@@ -51,14 +56,14 @@ class MiniMaxService(BaseModelService):
         try:
             logger.info("Sending request to MiniMax API (reasoning always enabled)")
 
-            response = self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=self.model_name,
                 messages=messages,
                 stream=True,
                 extra_body={"reasoning_split": True},
             )
 
-            for chunk in response:
+            async for chunk in response:
                 reasoning_chunk = ""
                 content_chunk = ""
 

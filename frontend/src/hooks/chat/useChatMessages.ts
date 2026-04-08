@@ -10,7 +10,11 @@ import {
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
-import { Message, DialogueHistoryResponse } from '../../types';
+import {
+  Message,
+  DialogueHistoryResponse,
+  PlaceholderResponse,
+} from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
 import { Citation } from './useChatSettings';
 
@@ -303,21 +307,16 @@ export const useChatMessages = ({
   const handleSendMessage = async (): Promise<void> => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // 在清空前保存发送内容
+    const sentMessageContent = inputMessage;
+
     // 如果有未完成的请求，先清理
     cleanupInterruptedState();
 
     // 创建新的AbortController用于这次请求
     abortControllerRef.current = new AbortController();
 
-    // 生成临时ID，用于前端临时标识消息
-    const generateTempId = () =>
-      `temp-${String(Date.now())}-${Math.random().toString(36).substring(2, 9)}`;
-    const userMessageTempId = generateTempId();
-    const assistantMessageTempId = generateTempId();
-
     // 获取上一条已保存的助手消息的ID作为parent_ids
-    // 如果有引用状态（branch 或 merge），使用引用的 parent_ids
-    // 否则使用默认逻辑（最后一条 assistant 消息）
     let parentIds: string[] = [];
     if (citations.length > 0) {
       parentIds = citations.map((c) => c.id);
@@ -326,15 +325,6 @@ export const useChatMessages = ({
       parentIds = pathLastAssistantId ? [pathLastAssistantId] : [];
     }
 
-    const newUserMessage: Message = {
-      id: userMessageTempId,
-      content: inputMessage,
-      role: 'user',
-      parent_ids: parentIds,
-    };
-
-    // 使用函数式更新避免闭包问题
-    setMessages((prev) => [...prev, newUserMessage]);
     setInputMessage('');
     setIsLoading(true);
 
@@ -348,14 +338,13 @@ export const useChatMessages = ({
           {
             user_id: API_CONFIG.defaultUserId,
             model: selectedModel,
-            message: inputMessage,
+            message: sentMessageContent,
           },
         );
         conversationId = createResponse.data.conversation_id;
 
         // 触发侧边栏刷新，显示新创建的对话
         setTimeout(() => {
-          // 通过触发window事件通知侧边栏刷新
           window.dispatchEvent(
             new CustomEvent('dialogueCreated', {
               detail: {
@@ -367,23 +356,57 @@ export const useChatMessages = ({
         }, 100);
       }
 
-      // 创建助手的消息占位符
+      // === Placeholder 模式：先创建消息占位符，拿到 realId ===
+      const placeholderResponse = await axios.post<PlaceholderResponse>(
+        buildApiUrl(API_ENDPOINTS.CREATE_MESSAGE_PLACEHOLDERS),
+        {
+          conversation_id: conversationId,
+          message: sentMessageContent,
+          parent_ids: parentIds,
+          model: selectedModel,
+        },
+      );
+
+      const userMessageRealId = placeholderResponse.data.user_message_id;
+      const assistantMessageRealId =
+        placeholderResponse.data.assistant_message_id;
+
+      // 用 realId 构造消息对象，添加到前端状态
+      const newUserMessage: Message = {
+        id: userMessageRealId,
+        content: sentMessageContent,
+        role: 'user',
+        parent_ids: parentIds,
+        children: [assistantMessageRealId],
+      };
+
+      // 更新父节点的 children
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (parentIds.includes(msg.id)) {
+            return {
+              ...msg,
+              children: [...(msg.children || []), userMessageRealId],
+            };
+          }
+          return msg;
+        }),
+      );
+      setMessages((prev) => [...prev, newUserMessage]);
+
+      // 创建助手的消息占位符（使用 realId）
       const assistantMessage: Message = {
-        id: assistantMessageTempId,
+        id: assistantMessageRealId,
         content: '',
         role: 'assistant',
-        model: selectedModel, // 添加模型信息
-        isWaitingForFirstToken: true, // 设置等待首token状态
-        deepThinkingEnabled: deepThinkingEnabled, // 记录是否启用了深度思考
-        parent_ids: [userMessageTempId], // 临时设置为user消息的临时ID
+        model: selectedModel,
+        isWaitingForFirstToken: true,
+        deepThinkingEnabled: deepThinkingEnabled,
+        parent_ids: [userMessageRealId],
       };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
       // 发送聊天请求并处理流式响应
-      console.log(
-        '[DEBUG] Sending chat request, conversationId:',
-        conversationId,
-      );
       const response = await fetch(buildApiUrl(API_ENDPOINTS.CHAT), {
         method: 'POST',
         headers: {
@@ -393,32 +416,21 @@ export const useChatMessages = ({
           conversation_id: conversationId,
           user_id: API_CONFIG.defaultUserId,
           model: selectedModel,
-          message: inputMessage,
+          message: sentMessageContent,
           parent_ids: parentIds,
           deep_thinking: deepThinkingEnabled,
           search_enabled: searchEnabled,
+          user_message_id: userMessageRealId,
+          assistant_message_id: assistantMessageRealId,
         }),
-        signal: abortControllerRef.current.signal, // 添加中止信号
+        signal: abortControllerRef.current.signal,
       });
 
-      console.log(
-        '[DEBUG] Response status:',
-        response.status,
-        'ok:',
-        response.ok,
-      );
       if (!response.ok) {
         throw new Error('聊天请求失败');
       }
 
-      console.log(
-        '[DEBUG] Response body:',
-        !!response.body,
-        'bodyUsed:',
-        response.bodyUsed,
-      );
       const reader = response.body?.getReader();
-      console.log('[DEBUG] Got reader:', !!reader);
       if (!reader) {
         throw new Error('无法获取响应流');
       }
@@ -426,13 +438,13 @@ export const useChatMessages = ({
       const decoder = new TextDecoder();
       let fullContent = '';
       let fullReasoning = '';
-      let isThinkingPhase = true; // 标记是否处于思考阶段
+      let isThinkingPhase = true;
 
-      // 创建安全的更新函数来避免循环中的不安全引用
+      // 创建安全的更新函数
       const updateThinkingContent = (currentReasoning: string): void => {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
-            msg.id === assistantMessageTempId
+            msg.id === assistantMessageRealId
               ? {
                   ...msg,
                   thinkingContent: currentReasoning,
@@ -451,7 +463,7 @@ export const useChatMessages = ({
       ): void => {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
-            msg.id === assistantMessageTempId
+            msg.id === assistantMessageRealId
               ? {
                   ...msg,
                   content: currentContent,
@@ -463,19 +475,10 @@ export const useChatMessages = ({
         );
       };
 
-      console.log('[DEBUG] Starting SSE read loop');
-      let chunkCount = 0;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-          console.log('[DEBUG] SSE read done, total chunks:', chunkCount);
-          break;
-        }
-        chunkCount++;
-        if (chunkCount % 10 === 0) {
-          console.log('[DEBUG] Read chunk #', chunkCount);
-        }
+        if (done) break;
 
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
@@ -484,77 +487,33 @@ export const useChatMessages = ({
           if (line.startsWith('data: ')) {
             try {
               const dataStr = line.slice(6).trim();
-              if (!dataStr) continue; // 跳过空数据行
+              if (!dataStr) continue;
 
               const data = JSON.parse(dataStr) as SSEData;
 
-              // 处理思考内容（优先显示思考过程）
+              // 处理思考内容
               if (data.reasoning) {
                 fullReasoning += data.reasoning;
-                isThinkingPhase = true; // 还在思考阶段
-
-                // 立即更新思考内容，实现逐token打字机效果
+                isThinkingPhase = true;
                 updateThinkingContent(fullReasoning);
               }
 
               // 处理正式回答内容
               if (data.content) {
-                // 第一次收到正文内容时，标记思考阶段结束
                 if (fullContent === '') {
                   isThinkingPhase = false;
                 }
-
                 fullContent += data.content;
-
-                // 立即更新内容，实现逐token打字机效果
                 updateContent(fullContent, isThinkingPhase);
               }
 
-              // 处理消息ID（在流式响应结束时）
+              // 处理完成事件（placeholder 模式下前端已有 realId，跳过替换）
               if (
                 data.user_message_id &&
                 data.assistant_message_id &&
                 data.complete
               ) {
-                const userMessageRealId = data.user_message_id;
-                const assistantMessageRealId = data.assistant_message_id;
-
-                // 更新消息：
-                // 1. 更新user.message.id为真实ID
-                // 2. 更新user.message.children为assistant.message.id
-                // 3. 更新assistant.message.id为真实ID
-                // 4. 更新assistant.message.parent_ids为user.message.id
-                // 5. 根据请求入参的parent_ids，将parent的children加上本次user.message.id
-                setMessages((prevMessages) => {
-                  return prevMessages.map((msg) => {
-                    // 更新用户消息：替换临时ID为真实ID，并设置children
-                    if (msg.id === userMessageTempId) {
-                      return {
-                        ...msg,
-                        id: userMessageRealId,
-                        children: msg.children
-                          ? [...msg.children, assistantMessageRealId]
-                          : [assistantMessageRealId],
-                      };
-                    }
-                    // 更新助手消息：替换临时ID为真实ID，并更新parent_ids
-                    if (msg.id === assistantMessageTempId) {
-                      return {
-                        ...msg,
-                        id: assistantMessageRealId,
-                        parent_ids: [userMessageRealId],
-                      };
-                    }
-                    // 更新父消息的children：如果当前消息是parent_ids中的某一个，添加user消息ID到其children
-                    if (parentIds.includes(msg.id)) {
-                      return {
-                        ...msg,
-                        children: [...(msg.children || []), userMessageRealId],
-                      };
-                    }
-                    return msg;
-                  });
-                });
+                // realId 已通过 placeholder 获取，无需替换
               }
 
               // 处理错误响应
@@ -562,9 +521,7 @@ export const useChatMessages = ({
                 throw new Error(data.error);
               }
             } catch (parseError) {
-              // 记录解析错误，生产环境也需要知道发生了错误
               console.warn('解析SSE数据失败:', parseError, '原始数据:', line);
-              // 继续处理下一行，不中断整个流
             }
           }
         }
@@ -572,11 +529,9 @@ export const useChatMessages = ({
 
       // 如果是新对话，AI回答完成后检查标题是否已更新
       if (!currentDialogueId && conversationId) {
-        // 延迟检查标题更新，给后端生成标题的时间
         setTimeout(() => {
           const checkTitleUpdate = async (): Promise<void> => {
             try {
-              // 刷新对话列表获取最新标题
               const response = await axios.get<DialogueListApiResponse>(
                 buildApiUrl(API_ENDPOINTS.DIALOGUE_LIST),
                 {
@@ -598,7 +553,6 @@ export const useChatMessages = ({
                   updatedDialogue.title &&
                   updatedDialogue.title !== t('dialogue.defaultTitle')
                 ) {
-                  // 触发标题更新事件
                   window.dispatchEvent(
                     new CustomEvent('titleUpdated', {
                       detail: {
@@ -615,31 +569,51 @@ export const useChatMessages = ({
           };
 
           void checkTitleUpdate();
-        }, 2000); // 2秒后检查标题更新
+        }, 2000);
       }
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        // 请求被中止，这是预期的行为
-        console.log('聊天请求被中止');
-        // 移除未完成的助手消息，并显示中止提示
+        // 用户手动中止：保留已累积的内容
+        console.log('聊天请求被用户中止');
+        // 只需清除等待状态，realId 已通过 placeholder 获取
         setMessages((prevMessages) =>
-          prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
+          prevMessages.map((msg) =>
+            msg.isWaitingForFirstToken
+              ? { ...msg, isWaitingForFirstToken: false }
+              : msg,
+          ),
         );
-        const abortMessage: Message = {
-          id: `msg-${String(Date.now() + 2)}`,
-          content: t('chat.abortMessage'),
-          role: 'assistant',
-        };
-        setMessages((prevMessages) => [...prevMessages, abortMessage]);
+
+        // 中止时后端用 fallback 标题落库，通知侧边栏更新
+        if (!currentDialogueId && conversationId) {
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent('titleUpdated', {
+                detail: {
+                  conversationId,
+                  newTitle: sentMessageContent.slice(0, 20),
+                },
+              }),
+            );
+          }, 500);
+        }
       } else if (
         error instanceof TypeError &&
         error.message.includes('fetch')
       ) {
-        // 网络连接错误，可能是网络问题
         console.error('网络连接错误:', error);
-        setMessages((prevMessages) =>
-          prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
-        );
+        setMessages((prevMessages) => {
+          // 找到 waiting 状态的 assistant 消息并移除
+          const assistantToRemove = prevMessages.find(
+            (msg) => msg.isWaitingForFirstToken,
+          );
+          if (assistantToRemove) {
+            return prevMessages.filter(
+              (msg) => msg.id !== assistantToRemove.id,
+            );
+          }
+          return prevMessages;
+        });
         const errorMessage: Message = {
           id: `msg-${String(Date.now() + 2)}`,
           content: t('chat.networkError'),
@@ -648,10 +622,17 @@ export const useChatMessages = ({
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
       } else {
         console.error('发送消息时发生未知错误:', error);
-        // 移除助手消息并显示错误
-        setMessages((prevMessages) =>
-          prevMessages.filter((msg) => msg.id !== assistantMessageTempId),
-        );
+        setMessages((prevMessages) => {
+          const assistantToRemove = prevMessages.find(
+            (msg) => msg.isWaitingForFirstToken,
+          );
+          if (assistantToRemove) {
+            return prevMessages.filter(
+              (msg) => msg.id !== assistantToRemove.id,
+            );
+          }
+          return prevMessages;
+        });
         const errorMessage: Message = {
           id: `msg-${String(Date.now() + 2)}`,
           content: t('chat.sendFailed'),
@@ -661,10 +642,8 @@ export const useChatMessages = ({
       }
     } finally {
       setIsLoading(false);
-      abortControllerRef.current = null; // 清理AbortController
-      // 发送消息后重置输入框高度
+      abortControllerRef.current = null;
       resetTextareaHeight();
-      // 清除引用状态
       clearAllCitations();
 
       // 触发侧边栏刷新，更新对话的模型信息

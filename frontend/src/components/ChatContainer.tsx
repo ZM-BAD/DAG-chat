@@ -306,7 +306,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
           return;
         }
 
-        // 从 savedState 恢复时，同步 messages 中的动态属性（如 isThinkingExpanded）
+        // 从 savedState 恢复时，同步 messages 中的动态属性和内容（如 content, thinkingContent）
         const syncDynamicProps = (
           savedDag: Dag,
           savedPath: ConversationPath,
@@ -317,12 +317,16 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
             const msg = messages.find((m) => m.id === node.id);
             if (
               msg &&
-              (msg.isThinkingExpanded !== node.isThinkingExpanded ||
+              (msg.content !== node.content ||
+                msg.thinkingContent !== node.thinkingContent ||
+                msg.isThinkingExpanded !== node.isThinkingExpanded ||
                 msg.isWaitingForFirstToken !== node.isWaitingForFirstToken ||
                 msg.deepThinkingEnabled !== node.deepThinkingEnabled)
             ) {
               const updatedNode = {
                 ...node,
+                content: msg.content,
+                thinkingContent: msg.thinkingContent,
                 isThinkingExpanded: msg.isThinkingExpanded,
                 isWaitingForFirstToken: msg.isWaitingForFirstToken,
                 deepThinkingEnabled: msg.deepThinkingEnabled,
@@ -362,20 +366,9 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
     const prevDag = stateRef.current.dag;
 
     // FIX: 检查 prevDag 是否属于当前对话
-    // 通过检查 dag.rootId 是否在 messages 中存在来判断
-    // 这比比较 currentDialogueId 更可靠，因为 stateRef 中的 currentDialogueId 可能已经更新
-    // 但 dag 还是旧的
     const isDagBelongsToCurrentMessages = prevDag?.rootId
       ? messages.some((m) => m.id === prevDag.rootId)
       : false;
-
-    console.log('[DEBUG] Content update check:', {
-      hasPrevDag: !!prevDag,
-      prevDagSize: prevDag?.nodes.size,
-      messagesLength: messages.length,
-      rootId: prevDag?.rootId,
-      isDagBelongsToCurrentMessages,
-    });
 
     if (
       prevDag &&
