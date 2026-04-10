@@ -20,13 +20,13 @@ if _env_file.exists():
 
 # Database Configuration
 MONGODB_CONFIG = {
-    "uri": "mongodb://localhost:27017",
+    "host": os.getenv("MONGODB_HOST", "localhost"),
+    "port": int(os.getenv("MONGODB_PORT", "27017")),
     "database": "dag_chat",
     "username": None,
     "password": None,
-    "host": "localhost",
-    "port": 27017,
 }
+MONGODB_CONFIG["uri"] = f"mongodb://{MONGODB_CONFIG['host']}:{MONGODB_CONFIG['port']}"
 
 MYSQL_CONFIG = {
     "host": os.getenv("MYSQL_HOST", "localhost"),

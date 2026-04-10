@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: pylint
         name: pylint (backend)
-        entry: bash -c 'python3 -m pylint --fail-under=9 $(git ls-files "*.py")'
+        entry: bash -c '.venv/bin/python -m pylint --fail-under=9 $(git ls-files "*.py")'
         language: system
         pass_filenames: false
         files: \.py$
@@ -26,7 +26,7 @@ repos:
 
       - id: backend-tests
         name: backend tests (DAG)
-        entry: bash -c 'cd backend && python3 tests/run_all_tests.py'
+        entry: bash -c 'cd backend && ../.venv/bin/python tests/run_all_tests.py'
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$

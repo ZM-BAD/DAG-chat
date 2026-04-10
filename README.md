@@ -53,6 +53,34 @@ Traditional chat applications force conversations into a single, linear thread. 
 - **Markdown & Code** — Rich rendering with syntax highlighting, LaTeX math, GFM tables, and emoji support.
 - **Internationalization** — Full i18n support with English and Chinese.
 
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Frontend ["Frontend — React + TypeScript + Vite"]
+        UI[Chat UI & DAG Renderer]
+        i18n[i18n — EN / ZH]
+    end
+    subgraph Backend ["Backend — FastAPI + Python 3.14"]
+        API[REST API]
+        Factory[Model Factory]
+        DAGLogic[DAG Builder & Path Engine]
+    end
+    subgraph LLM ["LLM Providers"]
+        GLM & Kimi & Qwen & DS[DeepSeek] & MM[MiniMax] & Ollama
+    end
+    subgraph Storage ["Databases"]
+        MongoDB[(MongoDB — Messages & DAG)]
+        MySQL[(MySQL — Dialogue Metadata)]
+    end
+
+    UI --> API
+    API --> Factory
+    Factory --> GLM & Kimi & Qwen & DS & MM & Ollama
+    API --> DAGLogic --> MongoDB
+    API --> MySQL
+```
+
 ## How It Works
 
 Every message in DAG-chat is a **node** with bidirectional references, forming a Directed Acyclic Graph:
@@ -142,6 +170,17 @@ AI: [explanation C]  ──┘    AI: [comparison]
 - **MySQL** on `localhost:3306`
 
 ### Database Setup
+
+**Option A: Docker (recommended)**
+
+All dependencies (MongoDB, MySQL, backend, frontend) start with one command:
+
+```bash
+cp backend/.env.example backend/.env   # edit API keys
+docker compose up --build
+```
+
+**Option B: Local setup**
 
 1. **MySQL** — Create the database and table:
 

@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "timezone": "Asia/Shanghai",
-  "schedule": ["at any time"],
+  "schedule": ["every weekend"],
   "dependencyDashboard": true,
   "dependencyDashboardApproval": false,
   "labels": ["dependencies"],
@@ -15,8 +15,7 @@
   "packageRules": [
     {
       "description": "All updates auto-create PR, no dashboard approval needed",
-      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
-      "dependencyDashboardApproval": false
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"]
     },
     {
       "description": "Python production dependencies",
@@ -39,6 +38,12 @@
       "groupName": "Frontend dependencies"
     },
     {
+      "description": "Docker images (Dockerfile + docker-compose)",
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "groupName": "Docker images",
+      "pinDigests": false
+    },
+    {
       "description": "GitHub Actions",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions"
@@ -49,9 +54,10 @@
       "groupName": "Node.js"
     }
   ],
+  "minimumReleaseAge": "3 days",
   "automerge": false,
-  "prConcurrentLimit": 10,
-  "prHourlyLimit": 5,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
   "constraints": {
     "python": ">=3.14",
     "node": ">=20"

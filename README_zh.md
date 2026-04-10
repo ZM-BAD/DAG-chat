@@ -51,6 +51,34 @@
 - **Markdown 与代码** — 富文本渲染，支持语法高亮、LaTeX 数学公式、GFM 表格和 Emoji。
 - **国际化** — 完整的中英文双语支持。
 
+## 架构
+
+```mermaid
+graph TB
+    subgraph Frontend ["前端 — React + TypeScript + Vite"]
+        UI[聊天界面 & DAG 渲染器]
+        i18n[i18n — 中文 / 英文]
+    end
+    subgraph Backend ["后端 — FastAPI + Python 3.14"]
+        API[REST API]
+        Factory[模型工厂]
+        DAGLogic[DAG 构建器 & 路径引擎]
+    end
+    subgraph LLM ["大模型服务"]
+        GLM & Kimi & Qwen & DS[DeepSeek] & MM[MiniMax] & Ollama
+    end
+    subgraph Storage ["数据库"]
+        MongoDB[(MongoDB — 消息与 DAG 结构)]
+        MySQL[(MySQL — 对话元数据)]
+    end
+
+    UI --> API
+    API --> Factory
+    Factory --> GLM & Kimi & Qwen & DS & MM & Ollama
+    API --> DAGLogic --> MongoDB
+    API --> MySQL
+```
+
 ## 工作原理
 
 DAG-chat 中的每条消息都是一个具有双向引用的**节点**，构成有向无环图：
@@ -140,6 +168,17 @@ AI：[解释 C] ──┘    AI：[对比分析]
 - **MySQL** 运行于 `localhost:3306`
 
 ### 数据库准备
+
+**方式 A：Docker（推荐）**
+
+所有依赖（MongoDB、MySQL、后端、前端）一条命令启动：
+
+```bash
+cp backend/.env.example backend/.env   # 编辑 API Key
+docker compose up --build
+```
+
+**方式 B：本地安装**
 
 1. **MySQL** — 创建数据库和表：
 
