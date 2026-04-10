@@ -54,7 +54,7 @@
 ## 架构
 
 ```mermaid
-graph TB
+graph LR
     subgraph Frontend ["前端 — React + TypeScript + Vite"]
         UI[聊天界面 & DAG 渲染器]
         i18n[i18n — 中文 / 英文]
@@ -73,8 +73,7 @@ graph TB
     end
 
     UI --> API
-    API --> Factory
-    Factory --> GLM & Kimi & Qwen & DS & MM & Ollama
+    API --> Factory --> GLM & Kimi & Qwen & DS & MM & Ollama
     API --> DAGLogic --> MongoDB
     API --> MySQL
 ```
@@ -163,7 +162,7 @@ AI：[解释 C] ──┘    AI：[对比分析]
 ### 环境要求
 
 - **Python** >= 3.14
-- **Node.js** >= 22
+- **Node.js** >= 24
 - **MongoDB** 运行于 `localhost:27017`
 - **MySQL** 运行于 `localhost:3306`
 

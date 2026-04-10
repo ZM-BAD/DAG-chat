@@ -56,7 +56,7 @@ Traditional chat applications force conversations into a single, linear thread. 
 ## Architecture
 
 ```mermaid
-graph TB
+graph LR
     subgraph Frontend ["Frontend — React + TypeScript + Vite"]
         UI[Chat UI & DAG Renderer]
         i18n[i18n — EN / ZH]
@@ -75,8 +75,7 @@ graph TB
     end
 
     UI --> API
-    API --> Factory
-    Factory --> GLM & Kimi & Qwen & DS & MM & Ollama
+    API --> Factory --> GLM & Kimi & Qwen & DS & MM & Ollama
     API --> DAGLogic --> MongoDB
     API --> MySQL
 ```
@@ -165,7 +164,7 @@ AI: [explanation C]  ──┘    AI: [comparison]
 ### Prerequisites
 
 - **Python** >= 3.14
-- **Node.js** >= 22
+- **Node.js** >= 24
 - **MongoDB** on `localhost:27017`
 - **MySQL** on `localhost:3306`
 

@@ -60,6 +60,6 @@
   "prHourlyLimit": 2,
   "constraints": {
     "python": ">=3.14",
-    "node": ">=20"
+    "node": ">=24"
   }
 }
