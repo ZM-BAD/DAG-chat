@@ -8,10 +8,21 @@ from fastapi import APIRouter, Query
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
 from backend.models.requests import CreateConversationRequest
+from backend.models.error_codes import (
+    make_error_response,
+    EMPTY_CONVERSATION_ID,
+    EMPTY_USER_ID,
+    EMPTY_TITLE,
+    TITLE_TOO_LONG,
+    CREATE_CONVERSATION_FAILED,
+    DELETE_CONVERSATION_FAILED,
+    RENAME_CONVERSATION_FAILED,
+    FETCH_HISTORY_FAILED,
+    DB_CONNECTION_FAILED,
+)
 
 # 常量定义
 MAX_TITLE_LENGTH = 64
-DEFAULT_TITLE = "未命名对话"
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -33,8 +44,10 @@ def create_conversation(request: CreateConversationRequest):
                 INSERT INTO t_conversations (id, user_id, title, model, create_time, update_time)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
-            # 创建对话的时候, 标题默认为"未命名对话"
-            title = DEFAULT_TITLE
+            # Convention: 新建对话 title 存为空字符串，前端通过
+            # dialogue.title || t('dialogue.defaultTitle') 显示本地化默认标题。
+            # 后端判断是否需要自动生成标题的逻辑依赖 title 是否为空。
+            title = ""
             params = (
                 conversation_id,
                 request.user_id,
@@ -45,17 +58,17 @@ def create_conversation(request: CreateConversationRequest):
             )
 
             if mysql_db.execute_query(query, params):
-                logger.info(f"Create conversation with id: {conversation_id}")
+                logger.info("Create conversation with id: %s", conversation_id)
                 return {"conversation_id": conversation_id}
 
-            logger.error("创建对话失败：数据库插入失败")
-            return {"error": "创建对话失败：数据库插入失败"}
+            logger.error("Failed to create conversation: database insert failed")
+            return make_error_response(500, CREATE_CONVERSATION_FAILED)
 
-        logger.error("创建对话失败: 无法连接到MySQL数据库")
-        return {"error": "创建对话失败: 无法连接到MySQL数据库"}
+        logger.error("Failed to create conversation: cannot connect to MySQL")
+        return make_error_response(500, DB_CONNECTION_FAILED)
     except Exception as e:
-        logger.error(f"创建对话失败: {str(e)}", exc_info=True)
-        return {"error": f"创建对话失败: {str(e)}"}
+        logger.error("Failed to create conversation: %s", str(e), exc_info=True)
+        return make_error_response(500, CREATE_CONVERSATION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -78,7 +91,10 @@ def get_dialogue_list(
         对话列表及分页信息
     """
     logger.info(
-        f"获取对话列表, user_id: {user_id}, page: {page}, page_size: {page_size}"
+        "Fetch dialogue list, user_id: %s, page: %s, page_size: %s",
+        user_id,
+        page,
+        page_size,
     )
 
     mysql_db = MySQLConnection()
@@ -126,11 +142,11 @@ def get_dialogue_list(
                 },
             }
 
-        logger.error("无法连接到MySQL数据库")
-        return {"code": 500, "message": "数据库连接失败", "data": {}}
+        logger.error("Cannot connect to MySQL database")
+        return make_error_response(500, DB_CONNECTION_FAILED)
     except Exception as e:
-        logger.error(f"获取对话列表失败: {str(e)}", exc_info=True)
-        return {"code": 500, "message": f"获取对话列表失败: {str(e)}", "data": {}}
+        logger.error("Failed to fetch dialogue list: %s", str(e), exc_info=True)
+        return make_error_response(500, FETCH_HISTORY_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -152,12 +168,16 @@ def delete_conversation(
     """
     # 参数验证
     if not conversation_id or not conversation_id.strip():
-        return {"code": 400, "message": "对话ID不能为空", "data": {}}
+        return make_error_response(400, EMPTY_CONVERSATION_ID)
 
     if not user_id or not user_id.strip():
-        return {"code": 400, "message": "用户ID不能为空", "data": {}}
+        return make_error_response(400, EMPTY_USER_ID)
 
-    logger.info(f"删除对话, conversation_id: {conversation_id}, user_id: {user_id}")
+    logger.info(
+        "Delete dialogue, conversation_id: %s, user_id: %s",
+        conversation_id,
+        user_id,
+    )
 
     mysql_db = MySQLConnection()
     try:
@@ -170,9 +190,9 @@ def delete_conversation(
                     mongo_db.delete_many(
                         "message_node", {"conversation_id": conversation_id}
                     )
-                    logger.info(f"删除对话 {conversation_id} 的消息记录")
+                    logger.info("Deleted messages for dialogue %s", conversation_id)
             except Exception as e:
-                logger.error(f"删除MongoDB消息记录失败: {str(e)}")
+                logger.error("Failed to delete MongoDB messages: %s", str(e))
             finally:
                 mongo_db.disconnect()
 
@@ -181,21 +201,17 @@ def delete_conversation(
             params = (conversation_id, user_id)
 
             if mysql_db.execute_query(query, params):
-                logger.info(f"成功删除对话 {conversation_id}")
-                return {"code": 0, "message": "对话删除成功", "data": {}}
+                logger.info("Successfully deleted dialogue %s", conversation_id)
+                return {"code": 0, "message": "success", "data": {}}
 
-            logger.error("删除对话失败：数据库删除失败")
-            return {
-                "code": 500,
-                "message": "删除对话失败：数据库删除失败",
-                "data": {},
-            }
+            logger.error("Failed to delete dialogue: database delete failed")
+            return make_error_response(500, DELETE_CONVERSATION_FAILED)
 
-        logger.error("无法连接到MySQL数据库")
-        return {"code": 500, "message": "数据库连接失败", "data": {}}
+        logger.error("Cannot connect to MySQL database")
+        return make_error_response(500, DB_CONNECTION_FAILED)
     except Exception as e:
-        logger.error(f"删除对话失败: {str(e)}", exc_info=True)
-        return {"code": 500, "message": f"删除对话失败: {str(e)}", "data": {}}
+        logger.error("Failed to delete dialogue: %s", str(e), exc_info=True)
+        return make_error_response(500, DELETE_CONVERSATION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -219,23 +235,24 @@ def rename_conversation(
     """
     # 参数验证
     if not conversation_id or not conversation_id.strip():
-        return {"code": 400, "message": "对话ID不能为空", "data": {}}
+        return make_error_response(400, EMPTY_CONVERSATION_ID)
 
     if not user_id or not user_id.strip():
-        return {"code": 400, "message": "用户ID不能为空", "data": {}}
+        return make_error_response(400, EMPTY_USER_ID)
 
     if not new_title or not new_title.strip():
-        return {"code": 400, "message": "新标题不能为空", "data": {}}
+        return make_error_response(400, EMPTY_TITLE)
 
     if len(new_title) > MAX_TITLE_LENGTH:
-        return {
-            "code": 400,
-            "message": f"标题长度不能超过{MAX_TITLE_LENGTH}个字符",
-            "data": {},
-        }
+        return make_error_response(
+            400, TITLE_TOO_LONG, params={"maxLength": str(MAX_TITLE_LENGTH)}
+        )
 
     logger.info(
-        f"重命名对话, conversation_id: {conversation_id}, user_id: {user_id}, new_title: {new_title}"
+        "Rename dialogue, conversation_id: %s, user_id: %s, new_title: %s",
+        conversation_id,
+        user_id,
+        new_title,
     )
 
     mysql_db = MySQLConnection()
@@ -246,21 +263,21 @@ def rename_conversation(
             params = (new_title, datetime.now(), conversation_id, user_id)
 
             if mysql_db.execute_query(query, params):
-                logger.info(f"成功重命名对话 {conversation_id} 为 {new_title}")
-                return {"code": 0, "message": "对话重命名成功", "data": {}}
+                logger.info(
+                    "Successfully renamed dialogue %s to %s",
+                    conversation_id,
+                    new_title,
+                )
+                return {"code": 0, "message": "success", "data": {}}
 
-            logger.error("重命名对话失败：数据库更新失败")
-            return {
-                "code": 500,
-                "message": "重命名对话失败：数据库更新失败",
-                "data": {},
-            }
+            logger.error("Failed to rename dialogue: database update failed")
+            return make_error_response(500, RENAME_CONVERSATION_FAILED)
 
-        logger.error("无法连接到MySQL数据库")
-        return {"code": 500, "message": "数据库连接失败", "data": {}}
+        logger.error("Cannot connect to MySQL database")
+        return make_error_response(500, DB_CONNECTION_FAILED)
     except Exception as e:
-        logger.error(f"重命名对话失败: {str(e)}", exc_info=True)
-        return {"code": 500, "message": f"重命名对话失败: {str(e)}", "data": {}}
+        logger.error("Failed to rename dialogue: %s", str(e), exc_info=True)
+        return make_error_response(500, RENAME_CONVERSATION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -276,7 +293,7 @@ def get_dialogue_history(dialogue_id: str = Query(..., description="对话ID")):
     返回:
         对话历史消息列表
     """
-    logger.info(f"获取对话历史, dialogue_id: {dialogue_id}")
+    logger.info("Fetch dialogue history, dialogue_id: %s", dialogue_id)
 
     mongo_db = MongoDBConnection()
     try:
@@ -311,10 +328,10 @@ def get_dialogue_history(dialogue_id: str = Query(..., description="对话ID")):
 
             return {"code": 0, "message": "success", "data": message_list}
         else:
-            logger.error("无法连接到MongoDB数据库")
-            return {"code": 500, "message": "数据库连接失败", "data": []}
+            logger.error("Cannot connect to MongoDB database")
+            return make_error_response(500, DB_CONNECTION_FAILED, data=[])
     except Exception as e:
-        logger.error(f"获取对话历史失败: {str(e)}", exc_info=True)
-        return {"code": 500, "message": f"获取对话历史失败: {str(e)}", "data": []}
+        logger.error("Failed to fetch dialogue history: %s", str(e), exc_info=True)
+        return make_error_response(500, FETCH_HISTORY_FAILED, data=[])
     finally:
         mongo_db.disconnect()

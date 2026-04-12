@@ -16,6 +16,7 @@ import {
   PlaceholderResponse,
 } from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
+import { resolveApiError } from '../../utils/apiError';
 import { Citation } from './useChatSettings';
 
 // 定义提问类型
@@ -518,7 +519,7 @@ export const useChatMessages = ({
 
               // 处理错误响应
               if (data.error) {
-                throw new Error(data.error);
+                throw new Error(resolveApiError(data.error));
               }
             } catch (parseError) {
               console.warn('解析SSE数据失败:', parseError, '原始数据:', line);

@@ -25,6 +25,32 @@
     "clearAllCitations": "Clear All",
     "minimaxThinkingLocked": "MiniMax forces thinking mode on"
   },
+  "chatMessage": {
+    "createBranch": "Create branch question",
+    "createMerge": "Create merge question",
+    "copy": "Copy message"
+  },
+  "chatInput": {
+    "interrupt": "Interrupt",
+    "sending": "Sending...",
+    "clearCitations": "Clear all citations",
+    "clearCitation": "Clear citation"
+  },
+  "chatCommon": {
+    "branch": "Branch",
+    "merge": "Merge",
+    "unknown": "Unknown"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "The application encountered an error",
+    "errorMessage": "Error Message:",
+    "componentStack": "Component Stack:",
+    "refresh": "Refresh Page"
+  },
+  "common": {
+    "loading": "Loading..."
+  },
   "dialogue": {
     "defaultTitle": "Untitled Dialogue",
     "newDialogue": "New Dialogue",
@@ -47,5 +73,18 @@
     "loadingMore": "Loading more...",
     "collapse": "Collapse Sidebar",
     "expand": "Expand Sidebar"
+  },
+  "apiError": {
+    "DB_CONNECTION_FAILED": "Database connection failed",
+    "UNSUPPORTED_MODEL": "Unsupported model: {{model}}",
+    "STREAM_RESPONSE_FAILED": "Stream response failed",
+    "CREATE_CONVERSATION_FAILED": "Failed to create conversation",
+    "DELETE_CONVERSATION_FAILED": "Failed to delete conversation",
+    "RENAME_CONVERSATION_FAILED": "Failed to rename conversation",
+    "FETCH_HISTORY_FAILED": "Failed to fetch conversation history",
+    "EMPTY_CONVERSATION_ID": "Conversation ID cannot be empty",
+    "EMPTY_USER_ID": "User ID cannot be empty",
+    "EMPTY_TITLE": "Title cannot be empty",
+    "TITLE_TOO_LONG": "Title cannot exceed {{maxLength}} characters"
   }
 }

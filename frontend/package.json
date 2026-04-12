@@ -49,6 +49,7 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 5",
     "lint:fix": "eslint src --ext ts,tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "i18n:check": "node scripts/check-i18n-sync.mjs"
   }
 }

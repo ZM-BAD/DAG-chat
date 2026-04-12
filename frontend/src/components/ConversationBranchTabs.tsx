@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Message } from '../types';
 import { DagNode } from '../utils/conversationDag';
 
@@ -15,6 +16,7 @@ const ConversationBranchTabs: FC<ConversationBranchTabsProps> = ({
   selectedBranchId,
   iconType = 'branch',
 }) => {
+  const { t } = useTranslation();
   // 生成标签显示文本，最少显示6个字符，如果超长则截断并添加...
   const getTabLabel = (content: string, _index: number) => {
     const maxLength = 15;
@@ -47,7 +49,11 @@ const ConversationBranchTabs: FC<ConversationBranchTabsProps> = ({
             <span className="tab-label">
               <img
                 src={`/assets/${iconType}.svg`}
-                alt={iconType === 'merge' ? '合并' : '分支'}
+                alt={
+                  iconType === 'merge'
+                    ? t('chatCommon.merge')
+                    : t('chatCommon.branch')
+                }
                 className="branch-icon"
               />
               {getTabLabel(branch.content, index)}

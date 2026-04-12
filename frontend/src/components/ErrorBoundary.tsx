@@ -1,7 +1,8 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { withTranslation, WithTranslation } from 'react-i18next';
 import '../styles/ErrorBoundary.css';
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode;
 }
 
@@ -52,15 +53,17 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="error-boundary">
           <div className="error-boundary-content">
-            <h1>出错了</h1>
-            <p>应用程序遇到了一个错误</p>
+            <h1>{this.props.t('errorBoundary.title')}</h1>
+            <p>{this.props.t('errorBoundary.description')}</p>
             {this.state.error && (
               <div className="error-details">
-                <strong>错误信息:</strong>
+                <strong>{this.props.t('errorBoundary.errorMessage')}</strong>
                 <pre>{this.state.error.toString()}</pre>
                 {this.state.errorInfo && (
                   <>
-                    <strong>组件堆栈:</strong>
+                    <strong>
+                      {this.props.t('errorBoundary.componentStack')}
+                    </strong>
                     <pre>{this.state.errorInfo.componentStack}</pre>
                   </>
                 )}
@@ -70,7 +73,7 @@ class ErrorBoundary extends Component<Props, State> {
               onClick={this.handleReset}
               className="error-boundary-button"
             >
-              刷新页面
+              {this.props.t('errorBoundary.refresh')}
             </button>
           </div>
         </div>
@@ -81,4 +84,4 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ErrorBoundary;
+export default withTranslation()(ErrorBoundary);

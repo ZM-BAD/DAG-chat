@@ -227,7 +227,7 @@ const ChatInput: FC<ChatInputProps> = ({
             <button
               className="citation-clear-all"
               onClick={() => onClearAllCitations?.()}
-              aria-label="清除所有引用"
+              aria-label={t('chatInput.clearCitations')}
             >
               {t('chat.clearAllCitations')}
             </button>
@@ -239,14 +239,18 @@ const ChatInput: FC<ChatInputProps> = ({
             >
               <img
                 src={`/assets/${citation.type}.svg`}
-                alt={citation.type === 'branch' ? '分支' : '合并'}
+                alt={
+                  citation.type === 'branch'
+                    ? t('chatCommon.branch')
+                    : t('chatCommon.merge')
+                }
                 className="citation-icon"
               />
               <span className="citation-text">{citation.content}</span>
               <button
                 className="citation-close"
                 onClick={() => onRemoveCitation?.(citation.id)}
-                aria-label="清除引用"
+                aria-label={t('chatInput.clearCitation')}
               >
                 ✕
               </button>
@@ -268,7 +272,7 @@ const ChatInput: FC<ChatInputProps> = ({
         onClick={handleButtonClick}
         disabled={isInputEmpty && !isLoading}
         className={`send-button ${isLoading ? 'loading' : ''}`}
-        aria-label={isLoading ? '中断回答' : '发送'}
+        aria-label={isLoading ? t('chatInput.interrupt') : t('chat.send')}
       >
         {/* 按钮内容由CSS伪元素控制 */}
       </button>

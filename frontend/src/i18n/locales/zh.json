@@ -25,6 +25,32 @@
     "clearAllCitations": "清除全部",
     "minimaxThinkingLocked": "MiniMax 强制开启思考模式"
   },
+  "chatMessage": {
+    "createBranch": "创建分支问",
+    "createMerge": "创建合并问",
+    "copy": "复制消息"
+  },
+  "chatInput": {
+    "interrupt": "中断回答",
+    "sending": "发送中",
+    "clearCitations": "清除所有引用",
+    "clearCitation": "清除引用"
+  },
+  "chatCommon": {
+    "branch": "分支",
+    "merge": "合并",
+    "unknown": "未知"
+  },
+  "errorBoundary": {
+    "title": "出错了",
+    "description": "应用程序遇到了一个错误",
+    "errorMessage": "错误信息:",
+    "componentStack": "组件堆栈:",
+    "refresh": "刷新页面"
+  },
+  "common": {
+    "loading": "正在加载..."
+  },
   "dialogue": {
     "defaultTitle": "未命名对话",
     "newDialogue": "新对话",
@@ -47,5 +73,18 @@
     "loadingMore": "加载更多...",
     "collapse": "收起侧边栏",
     "expand": "展开侧边栏"
+  },
+  "apiError": {
+    "DB_CONNECTION_FAILED": "数据库连接失败",
+    "UNSUPPORTED_MODEL": "不支持的模型: {{model}}",
+    "STREAM_RESPONSE_FAILED": "流式响应失败",
+    "CREATE_CONVERSATION_FAILED": "创建对话失败",
+    "DELETE_CONVERSATION_FAILED": "删除对话失败",
+    "RENAME_CONVERSATION_FAILED": "重命名对话失败",
+    "FETCH_HISTORY_FAILED": "获取对话历史失败",
+    "EMPTY_CONVERSATION_ID": "对话ID不能为空",
+    "EMPTY_USER_ID": "用户ID不能为空",
+    "EMPTY_TITLE": "标题不能为空",
+    "TITLE_TOO_LONG": "标题长度不能超过{{maxLength}}个字符"
   }
 }

@@ -22,9 +22,14 @@ from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
 from backend.models.requests import ChatRequest, PlaceholderRequest
 from backend.models.schemas import MessageNode
-
-# 导入模型工厂以支持多模型调用
 from backend.api.services.model_factory import ModelFactory
+from backend.models.error_codes import (
+    DB_CONNECTION_FAILED,
+    UNSUPPORTED_MODEL,
+    STREAM_RESPONSE_FAILED,
+    make_error_response,
+    make_sse_error,
+)
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -350,7 +355,7 @@ async def create_placeholders(request: PlaceholderRequest):
     mongo_db = MongoDBConnection()
     try:
         if not mongo_db.connect():
-            return {"error": "数据库连接失败"}
+            return make_error_response(500, DB_CONNECTION_FAILED)
 
         user_msg_id, assistant_msg_id = create_message_placeholders(
             mongo_db,
@@ -479,7 +484,7 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         # 通过模型工厂获取对应的模型服务
         model_service = ModelFactory.get_service(request.model)
         if not model_service:
-            yield f"data: {json.dumps({'error': f'不支持的模型: {request.model}'})}\n\n"
+            yield make_sse_error(UNSUPPORTED_MODEL, {"model": request.model})
             return
 
         # 打印传给大模型的messages信息
@@ -565,7 +570,7 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
     except Exception as e:
         # 真正的错误，需要记录日志并返回错误信息
         logger.error("流式处理错误: %s", str(e), exc_info=True)
-        yield f"data: {json.dumps({'error': '流式响应失败'})}\n\n"
+        yield make_sse_error(STREAM_RESPONSE_FAILED)
 
 
 def update_conversation_models(

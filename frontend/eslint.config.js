@@ -46,6 +46,14 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
       'no-console': 'off',
+      // Prevent hardcoded Chinese in JSX attributes (title, aria-label, alt, placeholder)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'JSXAttribute > StringLiteral[value=/[\\u4e00-\\u9fff]/]',
+          message: 'JSX attribute values must not contain hardcoded Chinese text. Use i18n (t() function) instead.',
+        },
+      ],
     },
   }
 )

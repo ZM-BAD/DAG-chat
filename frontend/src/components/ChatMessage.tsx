@@ -52,10 +52,14 @@ const ChatMessage: FC<ChatMessageProps> = ({
         <button
           className="branch-button"
           onClick={handleBranchClick}
-          title="创建分支问"
-          aria-label="创建分支问"
+          title={t('chatMessage.createBranch')}
+          aria-label={t('chatMessage.createBranch')}
         >
-          <img src="/assets/branch.svg" alt="分支" className="branch-icon" />
+          <img
+            src="/assets/branch.svg"
+            alt={t('chatCommon.branch')}
+            className="branch-icon"
+          />
         </button>
       )}
       {/* assistant 消息的 avatar */}
@@ -130,10 +134,14 @@ const ChatMessage: FC<ChatMessageProps> = ({
         <button
           className="merge-button"
           onClick={handleMergeClick}
-          title="创建合并问"
-          aria-label="创建合并问"
+          title={t('chatMessage.createMerge')}
+          aria-label={t('chatMessage.createMerge')}
         >
-          <img src="/assets/merge.svg" alt="合并" className="merge-icon" />
+          <img
+            src="/assets/merge.svg"
+            alt={t('chatCommon.merge')}
+            className="merge-icon"
+          />
         </button>
       )}
       <div className="message-actions">
@@ -142,8 +150,8 @@ const ChatMessage: FC<ChatMessageProps> = ({
           onClick={() => {
             copyMessageToClipboard(message.content);
           }}
-          title="复制消息"
-          aria-label="复制消息"
+          title={t('chatMessage.copy')}
+          aria-label={t('chatMessage.copy')}
         >
           <svg
             width="14"

@@ -6,6 +6,7 @@
  */
 
 import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   TabsContainer,
   ChildrenTabsContainer,
@@ -38,7 +39,7 @@ export const TabsComponent: FC<TabsComponentProps> = ({
     );
   }
 
-  console.warn('未知的 container 类型:', container);
+  console.warn('Unknown container type:', container);
   return null;
 };
 
@@ -64,6 +65,7 @@ const ChildrenTabsComponent: FC<{
   container: ChildrenTabsContainer;
   onTabClick: (containerId: string, tabId: string) => void;
 }> = ({ container, onTabClick }) => {
+  const { t } = useTranslation();
   // 如果只有一个分支，不显示 tabs
   if (container.userMessages.length <= 1) {
     return null;
@@ -90,7 +92,7 @@ const ChildrenTabsComponent: FC<{
             <span className="tab-label">
               <img
                 src="/assets/branch.svg"
-                alt="分支"
+                alt={t('chatCommon.branch')}
                 className="branch-icon"
               />
               {getTabLabel(userNode.content)}
@@ -112,6 +114,7 @@ const ParentTabsComponent: FC<{
   container: ParentTabsContainer;
   onTabClick: (containerId: string, tabId: string) => void;
 }> = ({ container, onTabClick }) => {
+  const { t } = useTranslation();
   // 如果只有一个来源，不显示 tabs
   if (container.assistantMessages.length <= 1) {
     return null;
@@ -137,10 +140,16 @@ const ParentTabsComponent: FC<{
               );
               onTabClick(container.id, assistantNode.id);
             }}
-            title={`模型: ${assistantNode.model || '未知'}`}
+            title={t('chat.model', {
+              model: assistantNode.model || t('chatCommon.unknown'),
+            })}
           >
             <span className="tab-label">
-              <img src="/assets/merge.svg" alt="合并" className="branch-icon" />
+              <img
+                src="/assets/merge.svg"
+                alt={t('chatCommon.merge')}
+                className="branch-icon"
+              />
               {getTabLabel(assistantNode.content)}
             </span>
           </button>

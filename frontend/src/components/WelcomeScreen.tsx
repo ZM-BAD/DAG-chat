@@ -211,7 +211,7 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({
             onClick={handleSendMessage}
             disabled={isLoading}
             className="send-button"
-            aria-label={isLoading ? '发送中' : '发送'}
+            aria-label={isLoading ? t('chatInput.sending') : t('chat.send')}
           >
             {/* 按钮内容由CSS伪元素控制 */}
           </button>

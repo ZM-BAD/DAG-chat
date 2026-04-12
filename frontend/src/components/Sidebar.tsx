@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { API_CONFIG } from '../config/api';
 import ModelLogo from './common/ModelLogo';
+import { resolveResponseError } from '../utils/apiError';
 import '../styles/Sidebar.css';
 
 // 解析多模型字符串并返回模型数组
@@ -140,10 +141,10 @@ const Sidebar: FC<SidebarProps> = ({
         // 更新当前页码
         setCurrentPage(page);
       } else {
-        console.error('获取对话列表失败:', response.data.message);
+        console.error('Failed to fetch dialogue list:', response.data.message);
       }
     } catch (error) {
-      console.error('获取对话列表时发生错误:', error);
+      console.error('Error fetching dialogue list:', error);
     } finally {
       setLoadingMore(false);
     }
@@ -209,11 +210,13 @@ const Sidebar: FC<SidebarProps> = ({
           setOpenMenuId(null);
           onDialogueDeleted?.();
         } else {
-          alert(t('dialogue.deleteFailed') + response.data.message);
+          alert(
+            t('dialogue.deleteFailed') + resolveResponseError(response.data),
+          );
         }
       } catch (error) {
         const err = error as Error & { code?: string };
-        console.error('删除对话失败:', err);
+        console.error('Failed to delete dialogue:', err);
         alert(t('dialogue.deleteFailedRetry'));
       }
     },
@@ -255,11 +258,13 @@ const Sidebar: FC<SidebarProps> = ({
           setOpenMenuId(null);
           onDialogueRenamed?.();
         } else {
-          alert(t('dialogue.renameFailed') + response.data.message);
+          alert(
+            t('dialogue.renameFailed') + resolveResponseError(response.data),
+          );
         }
       } catch (error) {
         const err = error as Error & { code?: string };
-        console.error('重命名对话失败:', err);
+        console.error('Failed to rename dialogue:', err);
         alert(t('dialogue.renameFailedRetry'));
       }
     },
@@ -391,7 +396,10 @@ const Sidebar: FC<SidebarProps> = ({
                             if (e.key === 'Enter') {
                               finishEditing(dialogue.id).catch(
                                 (err: unknown) => {
-                                  console.error('完成编辑失败:', err);
+                                  console.error(
+                                    'Failed to finish editing:',
+                                    err,
+                                  );
                                 },
                               );
                             } else if (e.key === 'Escape') {
