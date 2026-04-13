@@ -2,7 +2,6 @@ import logging
 from typing import List, Dict, AsyncGenerator
 
 from openai import AsyncOpenAI, OpenAI
-from openai.types.chat import ChatCompletionUserMessageParam
 
 from backend.config import (
     QWEN_API_KEY,
@@ -94,40 +93,5 @@ class QwenService(BaseModelService):
             logger.error("Qwen API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
-    def generate_title(self, user_input: str, full_response: str) -> str:
-        """
-        根据用户输入和完整响应生成对话标题
-
-        使用QWEN_MODEL生成不超过20个字的简洁标题
-        """
-        try:
-            messages = [
-                ChatCompletionUserMessageParam(
-                    role="user",
-                    content=f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}",
-                )
-            ]
-            response = self.client.chat.completions.create(
-                model=QWEN_MODEL,
-                messages=messages,
-                temperature=0.3,
-                max_tokens=20,
-            )
-
-            # 清理响应中的多余符号和空格
-            content = response.choices[0].message.content
-            if content:
-                title = content.strip("。\n")
-                if len(title) > 20:
-                    logger.warning(
-                        "Qwen生成的标题超过20字被截断, 原始标题(%d字): %s",
-                        len(title),
-                        title,
-                    )
-                else:
-                    logger.info("Qwen标题生成正常(%d字): %s", len(title), title)
-                return title[:20]
-            return full_response[:20]
-        except Exception as e:
-            logger.error("Title generation failed: %s", str(e))
-            return full_response[:20]
+    def _get_title_model(self) -> str:
+        return QWEN_MODEL

@@ -98,47 +98,8 @@ class GLMService(BaseModelService):
             logger.error("GLM API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
-    def generate_title(self, user_input: str, full_response: str) -> str:
-        """
-        根据用户输入和完整响应生成对话标题
-        """
-        try:
-            logger.info("Generating title using GLM API")
+    # GLM 需要禁用 thinking 模式
+    _title_extra_params = {"thinking": {"type": "disabled"}}
 
-            messages = [
-                {
-                    "role": "user",
-                    "content": f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}",
-                }
-            ]
-
-            response = self.client.chat.completions.create(
-                model=GLM_MODEL,
-                messages=messages,
-                max_tokens=20,
-                extra_body={"thinking": {"type": "disabled"}},
-            )
-
-            if (
-                hasattr(response, "choices")
-                and response.choices
-                and len(response.choices) > 0
-            ):
-                message = response.choices[0].message
-                if hasattr(message, "content") and message.content:
-                    title = message.content.strip("。\n")
-                    if len(title) > 20:
-                        logger.warning(
-                            "GLM生成的标题超过20字被截断, 原始标题(%d字): %s",
-                            len(title),
-                            title,
-                        )
-                    else:
-                        logger.info("GLM标题生成正常(%d字): %s", len(title), title)
-                    return title[:20]
-
-            # 如果API返回异常，使用默认方式生成标题
-            return full_response[:20]
-        except Exception as e:
-            logger.error("Title generation failed: %s", str(e))
-            return full_response[:20]
+    def _get_title_model(self) -> str:
+        return GLM_MODEL

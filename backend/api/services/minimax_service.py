@@ -8,7 +8,6 @@ import logging
 from typing import List, Dict, AsyncGenerator
 
 from openai import AsyncOpenAI, OpenAI
-from openai.types.chat import ChatCompletionUserMessageParam
 
 from backend.config import MINIMAX_API_KEY, MINIMAX_API_BASE_URL, MINIMAX_MODEL
 from .base_service import BaseModelService
@@ -88,42 +87,9 @@ class MiniMaxService(BaseModelService):
             logger.error("MiniMax API call failed: %s", str(e))
             yield {"error": "模型服务暂不可用", "details": str(e)}
 
-    def generate_title(self, user_input: str, full_response: str) -> str:
-        """
-        根据用户输入和完整响应生成对话标题
+    # MiniMax 强制开启推理，max_tokens 需留足空间给推理+正文
+    _title_max_tokens = 200
+    _title_extra_params = {"reasoning_split": True}
 
-        使用MiniMax接口生成不超过20个字的简洁标题
-        注意：MiniMax强制开启推理，reasoning_split分离思考内容后提取正文
-        max_tokens需要留足空间给推理+正文
-        """
-        try:
-            messages = [
-                ChatCompletionUserMessageParam(
-                    role="user",
-                    content=f"根据以下对话生成20字内标题（只需返回标题）：\n用户：{user_input}\nAI：{full_response}",
-                )
-            ]
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                temperature=0.3,
-                max_tokens=200,
-                extra_body={"reasoning_split": True},
-            )
-
-            content = response.choices[0].message.content
-            if content:
-                title = content.strip("。\n")
-                if len(title) > 20:
-                    logger.warning(
-                        "MiniMax生成的标题超过20字被截断, 原始标题(%d字): %s",
-                        len(title),
-                        title,
-                    )
-                else:
-                    logger.info("MiniMax标题生成正常(%d字): %s", len(title), title)
-                return title[:20]
-            return full_response[:20]
-        except Exception as e:
-            logger.error("Title generation failed: %s", str(e))
-            return full_response[:20]
+    def _get_title_model(self) -> str:
+        return self.model_name
