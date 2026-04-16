@@ -31,7 +31,7 @@ const getLogoPath = (modelName: string): string => {
     normalizedModel = 'ollama';
   }
   const logoName = MODEL_LOGO_MAP[normalizedModel] || 'deepseek'; // 默认使用 deepseek logo
-  return `/assets/logo/${logoName}.svg`;
+  return `/assets/llm-logo/${logoName}.svg`;
 };
 
 interface ModelLogoProps {
