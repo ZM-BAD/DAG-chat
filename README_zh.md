@@ -15,18 +15,11 @@
 
 ---
 
-## 应用截图
+## 效果展示
 
-<table>
-  <tr>
-    <td align="center"><b>对话总览</b></td>
-    <td align="center"><b>DAG 分支与合并</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/chat-overview.png" alt="对话总览" width="480" /></td>
-    <td><img src="docs/screenshots/dag-branching.png" alt="DAG 分支与合并" width="480" /></td>
-  </tr>
-</table>
+<div align="center">
+  <img src="docs/media/zh_1920x1036_15fps_q75_1.2x.webp" alt="DAG-chat 演示" width="720" />
+</div>
 
 ## 为什么选择 DAG-chat？
 
@@ -125,7 +118,7 @@ DAG-chat 中的每条消息都是一个具有双向引用的**节点**，构成�
 3. 输入你的新问题并发送
 4. 对话中会出现**标签栏**，可以在所有分支之间切换
 
-<img src="docs/screenshots/branch-hover.png" alt="悬浮显示分支图标" width="560" />
+<img src="docs/media/branch-hover.png" alt="悬浮显示分支图标" width="560" />
 
 ```
 你："解释一下快排"
@@ -143,12 +136,12 @@ DAG-chat 中的每条消息都是一个具有双向引用的**节点**，构成�
 3. 继续悬浮并点击其他助手消息的合并图标，可以引用多条消息
 4. 输入你的追问并发送 — 所有引用的消息都会作为上下文
 
-<img src="docs/screenshots/merge-hover.png" alt="悬浮显示合并图标" width="560" />
+<img src="docs/media/merge-hover.png" alt="悬浮显示合并图标" width="560" />
 
 ```
 AI：[解释 A] ──┐
 AI：[解释 B] ──┼── 你："对比一下 A 和 B，哪个更好？"
-AI：[解释 C] ──┘    AI：[对比分析]
+AI：[解释 C]       AI：[对比分析]
 ```
 
 ### 小提示

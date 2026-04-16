@@ -17,18 +17,11 @@
 
 ---
 
-## Screenshots
+## Showcase
 
-<table>
-  <tr>
-    <td align="center"><b>Chat Overview</b></td>
-    <td align="center"><b>DAG Branching & Merging</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/chat-overview.png" alt="Chat Overview" width="480" /></td>
-    <td><img src="docs/screenshots/dag-branching.png" alt="DAG Branching" width="480" /></td>
-  </tr>
-</table>
+<div align="center">
+  <img src="docs/media/en_1600x864_15fps_q75_1.25x.webp" alt="DAG-chat Demo" width="720" />
+</div>
 
 ## Why DAG-chat?
 
@@ -127,7 +120,7 @@ Not satisfied with one answer? Want to try a different angle?
 3. Type your new question and send
 4. A **tab bar** appears, letting you switch between all branches
 
-<img src="docs/screenshots/branch-hover.png" alt="Branch icon on hover" width="560" />
+<img src="docs/media/branch-hover.png" alt="Branch icon on hover" width="560" />
 
 ```
 You: "Explain quicksort"
@@ -145,12 +138,12 @@ Want to cross-reference answers from different branches?
 3. Click more merge icons to quote additional assistant messages
 4. Type your follow-up question and send — all quoted messages become the context
 
-<img src="docs/screenshots/merge-hover.png" alt="Merge icon on hover" width="560" />
+<img src="docs/media/merge-hover.png" alt="Merge icon on hover" width="560" />
 
 ```
 AI: [explanation A]  ──┐
 AI: [explanation B]  ──┼── You: "Compare A and B, which is better?"
-AI: [explanation C]  ──┘    AI: [comparison]
+AI: [explanation C]        AI: [comparison]
 ```
 
 ### Quick Tips
