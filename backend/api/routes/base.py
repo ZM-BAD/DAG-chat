@@ -18,20 +18,17 @@ router = APIRouter()
 
 @router.get("/hello")
 def read_hello():
-    logger.info("Hello endpoint accessed")
     return {"message": "Hello World from DAG-chat!"}
 
 
 @router.get("/info")
 def get_info():
-    logger.info("Info endpoint accessed")
     return {"app": "DAG-chat", "version": "1.0.0", "framework": "FastAPI"}
 
 
 @router.get("/health")
 def health_check():
-    """健康检查接口"""
-    logger.info("Health check endpoint accessed")
+    """Health check endpoint"""
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
@@ -41,12 +38,12 @@ def health_check():
 
 @router.get("/models")
 def get_available_models():
-    """获取所有可用的模型列表
+    """Get all available models
 
-    返回当前系统支持的所有大语言模型，以便前端动态加载模型选择列表。
-    对于Ollama，会动态检测本地可用的模型。
+    Returns all large language models supported by the current system,
+    so the frontend can dynamically load the model selection list.
+    For Ollama, locally available models are detected dynamically.
     """
-    logger.info("Models endpoint accessed")
 
     # 使用ModelFactory获取所有已注册的服务
     available_models = ModelFactory.get_available_services()
@@ -79,10 +76,10 @@ def get_available_models():
 
 
 def _fetch_ollama_models() -> list:
-    """从本地Ollama服务获取可用模型列表
+    """Fetch available model list from local Ollama service
 
     Returns:
-        模型信息列表，每个元素包含name和display_name
+        List of model info, each element containing name and display_name
     """
     models = []
     try:
@@ -105,17 +102,8 @@ def _fetch_ollama_models() -> list:
                     }
                 )
 
-        if models:
-            logger.info(
-                "Detected %d Ollama models: %s",
-                len(models),
-                [m["name"] for m in models],
-            )
-        else:
-            logger.info("Ollama is running but no models found")
-
     except URLError:
-        logger.info("Ollama service not detected, skipping Ollama models")
+        pass  # Ollama not detected, skip
     except Exception as e:
         logger.warning("Failed to fetch Ollama models: %s", str(e))
 

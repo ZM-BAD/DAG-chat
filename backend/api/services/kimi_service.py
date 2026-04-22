@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @ModelFactory.register
 class KimiService(BaseModelService):
     """
-    Kimi模型服务实现 - 使用 OpenAI SDK
+    Kimi model service implementation - using OpenAI SDK
     """
 
     def __init__(self):
@@ -35,7 +35,7 @@ class KimiService(BaseModelService):
     @classmethod
     def get_service_name(cls) -> str:
         """
-        获取服务名称
+        Get service name
         """
         return "kimi"
 
@@ -43,25 +43,21 @@ class KimiService(BaseModelService):
         self, messages: List[Dict[str, str]], deep_thinking: bool = False
     ) -> AsyncGenerator[Dict[str, str], None]:
         """
-        调用Kimi API生成流式响应
+        Call Kimi API to generate streaming response
 
-        参数:
-            messages: 消息历史列表
-            deep_thinking: 是否使用思考模型
+        Args:
+            messages: List of message history
+            deep_thinking: Whether to use thinking model
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
         try:
-            logger.info("Sending request to Kimi API, deep_thinking: %s", deep_thinking)
-
             # 根据deep_thinking参数选择不同的模型
             if deep_thinking:
                 model_name = KIMI_MODEL_THINKING
-                logger.info("使用思考模型: %s", KIMI_MODEL_THINKING)
             else:
                 model_name = KIMI_MODEL
-                logger.info("使用非思考模型: %s", KIMI_MODEL)
 
             # 使用异步OpenAI SDK调用
             response = await self.async_client.chat.completions.create(
@@ -93,11 +89,9 @@ class KimiService(BaseModelService):
                             "reasoning": "",
                         }
 
-            logger.info("Kimi API call successful")
-
         except Exception as e:
             logger.error("Kimi API call failed: %s", str(e))
-            yield {"error": "模型服务暂不可用", "details": str(e)}
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     def _get_title_model(self) -> str:
         return KIMI_TITLE_MODEL

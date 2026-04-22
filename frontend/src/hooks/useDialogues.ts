@@ -58,7 +58,7 @@ export const useDialogues = () => {
         } catch (error) {
           retryCount++;
           console.error(
-            `获取对话列表失败 (尝试 ${String(retryCount)}/${String(maxRetries)}):`,
+            `Failed to fetch dialogue list (attempt ${String(retryCount)}/${String(maxRetries)}):`,
             error,
           );
 
@@ -66,7 +66,7 @@ export const useDialogues = () => {
             // 等待一段时间后重试，使用指数退避
             await waitForRetry(1000 * retryCount);
           } else {
-            console.error('获取对话列表失败，使用模拟数据');
+            console.error('Failed to fetch dialogue list, using empty data');
             // 如果所有重试都失败，使用模拟数据
             setDialogues([]);
           }
@@ -102,7 +102,7 @@ export const useDialogues = () => {
         setDialogues(response.data.data.list);
       }
     } catch (error) {
-      console.error('获取对话列表失败:', error);
+      console.error('Failed to fetch dialogue list:', error);
     }
   };
 

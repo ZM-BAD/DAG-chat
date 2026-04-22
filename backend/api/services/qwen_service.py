@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @ModelFactory.register
 class QwenService(BaseModelService):
     """
-    Qwen模型服务实现
+    Qwen model service implementation
     """
 
     def __init__(self):
@@ -34,7 +34,7 @@ class QwenService(BaseModelService):
     @classmethod
     def get_service_name(cls) -> str:
         """
-        获取服务名称
+        Get service name
         """
         return "qwen"
 
@@ -42,25 +42,21 @@ class QwenService(BaseModelService):
         self, messages: List[Dict[str, str]], deep_thinking: bool = False
     ) -> AsyncGenerator[Dict[str, str], None]:
         """
-        调用Qwen API生成流式响应
+        Call Qwen API to generate streaming response
 
-        参数:
-            messages: 消息历史列表
-            deep_thinking: 是否使用思考模型
+        Args:
+            messages: List of message history
+            deep_thinking: Whether to use thinking model
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
         try:
-            logger.info("Sending request to Qwen API, deep_thinking: %s", deep_thinking)
-
             # 根据deep_thinking参数选择模型
             if deep_thinking:
                 model_name = QWEN_MODEL_THINKING
-                logger.info("使用深度思考模型: %s", QWEN_MODEL_THINKING)
             else:
                 model_name = QWEN_MODEL
-                logger.info("使用非深度思考模型: %s", QWEN_MODEL)
 
             # 构建请求参数
             request_params = {"model": model_name, "messages": messages, "stream": True}
@@ -87,11 +83,9 @@ class QwenService(BaseModelService):
 
                 yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
-            logger.info("Qwen API call successful, model: %s", model_name)
-
         except Exception as e:
             logger.error("Qwen API call failed: %s", str(e))
-            yield {"error": "模型服务暂不可用", "details": str(e)}
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     def _get_title_model(self) -> str:
         return QWEN_MODEL

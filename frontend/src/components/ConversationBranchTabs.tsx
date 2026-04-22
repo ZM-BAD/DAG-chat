@@ -41,7 +41,6 @@ const ConversationBranchTabs: FC<ConversationBranchTabsProps> = ({
             key={branch.id}
             className={`branch-tab ${selectedBranchId === branch.id ? 'active' : ''}`}
             onClick={() => {
-              console.log('Branch tab clicked:', branch.id, branch.content);
               onBranchSelect(branch.id);
             }}
             title={branch.content}

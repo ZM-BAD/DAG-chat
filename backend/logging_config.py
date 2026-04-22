@@ -4,7 +4,7 @@ import os
 
 
 def setup_logging():
-    """设置日志配置"""
+    """Set up logging configuration"""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     log_dir = os.path.join(base_dir, "logs")
 

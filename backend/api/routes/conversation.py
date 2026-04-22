@@ -33,7 +33,7 @@ router = APIRouter()
 @router.post("/create-conversation")
 def create_conversation(request: CreateConversationRequest):
     """
-    创建新的对话
+    Create a new conversation
     """
 
     conversation_id = str(uuid.uuid4())
@@ -58,7 +58,6 @@ def create_conversation(request: CreateConversationRequest):
             )
 
             if mysql_db.execute_query(query, params):
-                logger.info("Create conversation with id: %s", conversation_id)
                 return {"conversation_id": conversation_id}
 
             logger.error("Failed to create conversation: database insert failed")
@@ -75,28 +74,21 @@ def create_conversation(request: CreateConversationRequest):
 
 @router.get("/dialogue/list")
 def get_dialogue_list(
-    user_id: str = Query(default="zm-bad", description="用户ID"),
-    page: int = Query(default=1, ge=1, description="页码"),
-    page_size: int = Query(default=20, ge=1, le=100, description="每页条数"),
+    user_id: str = Query(default="zm-bad", description="User ID"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
 ):
     """
-    获取用户的对话列表
+    Get the user's dialogue list
 
-    参数:
-        user_id: 用户ID
-        page: 页码
-        page_size: 每页条数
+    Args:
+        user_id: User ID
+        page: Page number
+        page_size: Items per page
 
-    返回:
-        对话列表及分页信息
+    Returns:
+        Dialogue list with pagination info
     """
-    logger.info(
-        "Fetch dialogue list, user_id: %s, page: %s, page_size: %s",
-        user_id,
-        page,
-        page_size,
-    )
-
     mysql_db = MySQLConnection()
     try:
         if mysql_db.connect():
@@ -153,18 +145,18 @@ def get_dialogue_list(
 
 @router.delete("/dialogue/delete")
 def delete_conversation(
-    conversation_id: str = Query(..., description="对话ID", min_length=1),
-    user_id: str = Query(default="zm-bad", description="用户ID", min_length=1),
+    conversation_id: str = Query(..., description="Conversation ID", min_length=1),
+    user_id: str = Query(default="zm-bad", description="User ID", min_length=1),
 ):
     """
-    删除对话
+    Delete a conversation
 
-    参数:
-        conversation_id: 对话ID
-        user_id: 用户ID
+    Args:
+        conversation_id: Conversation ID
+        user_id: User ID
 
-    返回:
-        删除结果
+    Returns:
+        Deletion result
     """
     # 参数验证
     if not conversation_id or not conversation_id.strip():
@@ -172,12 +164,6 @@ def delete_conversation(
 
     if not user_id or not user_id.strip():
         return make_error_response(400, EMPTY_USER_ID)
-
-    logger.info(
-        "Delete dialogue, conversation_id: %s, user_id: %s",
-        conversation_id,
-        user_id,
-    )
 
     mysql_db = MySQLConnection()
     try:
@@ -190,7 +176,6 @@ def delete_conversation(
                     mongo_db.delete_many(
                         "message_node", {"conversation_id": conversation_id}
                     )
-                    logger.info("Deleted messages for dialogue %s", conversation_id)
             except Exception as e:
                 logger.error("Failed to delete MongoDB messages: %s", str(e))
             finally:
@@ -201,7 +186,6 @@ def delete_conversation(
             params = (conversation_id, user_id)
 
             if mysql_db.execute_query(query, params):
-                logger.info("Successfully deleted dialogue %s", conversation_id)
                 return {"code": 0, "message": "success", "data": {}}
 
             logger.error("Failed to delete dialogue: database delete failed")
@@ -218,20 +202,20 @@ def delete_conversation(
 
 @router.put("/dialogue/rename")
 def rename_conversation(
-    conversation_id: str = Query(..., description="对话ID", min_length=1),
-    user_id: str = Query(default="zm-bad", description="用户ID", min_length=1),
-    new_title: str = Query(..., description="新标题", min_length=1),
+    conversation_id: str = Query(..., description="Conversation ID", min_length=1),
+    user_id: str = Query(default="zm-bad", description="User ID", min_length=1),
+    new_title: str = Query(..., description="New title", min_length=1),
 ):
     """
-    重命名对话
+    Rename a conversation
 
-    参数:
-        conversation_id: 对话ID
-        user_id: 用户ID
-        new_title: 新标题
+    Args:
+        conversation_id: Conversation ID
+        user_id: User ID
+        new_title: New title
 
-    返回:
-        重命名结果
+    Returns:
+        Rename result
     """
     # 参数验证
     if not conversation_id or not conversation_id.strip():
@@ -248,13 +232,6 @@ def rename_conversation(
             400, TITLE_TOO_LONG, params={"maxLength": str(MAX_TITLE_LENGTH)}
         )
 
-    logger.info(
-        "Rename dialogue, conversation_id: %s, user_id: %s, new_title: %s",
-        conversation_id,
-        user_id,
-        new_title,
-    )
-
     mysql_db = MySQLConnection()
     try:
         if mysql_db.connect():
@@ -263,11 +240,6 @@ def rename_conversation(
             params = (new_title, datetime.now(), conversation_id, user_id)
 
             if mysql_db.execute_query(query, params):
-                logger.info(
-                    "Successfully renamed dialogue %s to %s",
-                    conversation_id,
-                    new_title,
-                )
                 return {"code": 0, "message": "success", "data": {}}
 
             logger.error("Failed to rename dialogue: database update failed")
@@ -283,18 +255,16 @@ def rename_conversation(
 
 
 @router.get("/dialogue/history")
-def get_dialogue_history(dialogue_id: str = Query(..., description="对话ID")):
+def get_dialogue_history(dialogue_id: str = Query(..., description="Dialogue ID")):
     """
-    获取指定对话的历史消息
+    Get history messages for a specified dialogue
 
-    参数:
-        dialogue_id: 对话ID
+    Args:
+        dialogue_id: Dialogue ID
 
-    返回:
-        对话历史消息列表
+    Returns:
+        List of dialogue history messages
     """
-    logger.info("Fetch dialogue history, dialogue_id: %s", dialogue_id)
-
     mongo_db = MongoDBConnection()
     try:
         if mongo_db.connect():

@@ -1,57 +1,57 @@
-# DAG对话结构测试文档
+# DAG Conversation Structure Test Documentation
 
-## 测试目标
+## Test Objectives
 
-本测试模块用于验证大模型问答应用的后端DAG（有向无环图）对话结构处理逻辑的正确性。
+This test module verifies the correctness of the backend DAG (Directed Acyclic Graph) conversation structure processing logic for the LLM Q&A application.
 
-## 核心概念
+## Core Concepts
 
-### 1. 问答对（Q&A Pair）
-- 最小对话单元，由一个用户提问（user.message）和一个助手回答（assistant.message）组成
-- 在逻辑上不可分割
+### 1. Q&A Pair
+- The smallest conversation unit, consisting of a user question (user.message) and an assistant answer (assistant.message)
+- Logically indivisible
 
-### 2. 消息关联关系
-- `parent_ids`: 指向父消息（回答）的ID列表
-- `children`: 指向子消息（提问）的ID列表
-- user.message的children是assistant.message
-- assistant.message的parent_ids是user.message
+### 2. Message Relationships
+- `parent_ids`: List of parent message (answer) IDs
+- `children`: List of child message (question) IDs
+- user.message's children are assistant.messages
+- assistant.message's parent_ids are user.messages
 
-### 3. 特殊关系
-- **首个提问**: user.message的parent_ids为空
-- **分支提问**: 多个user.message的parent_ids包含同一个assistant.message.id
-- **合并提问**: 一个user.message的parent_ids包含多个不同的assistant.message.id
+### 3. Special Relationships
+- **First question**: user.message's parent_ids is empty
+- **Branching question**: Multiple user.messages' parent_ids contain the same assistant.message.id
+- **Merging question**: A single user.message's parent_ids contains multiple distinct assistant.message.ids
 
-### 4. DAG结构
-- 整个对话构成一个有向无环图（DAG）
-- 有且仅有一个根节点（第一次问答）
-- 支持分支和合并
+### 4. DAG Structure
+- The entire conversation forms a directed acyclic graph (DAG)
+- Exactly one root node (the first Q&A pair)
+- Supports branching and merging
 
-## 测试场景
+## Test Scenarios
 
-### 场景1: 链表（线性对话）
+### Scenario 1: Linked List (Linear Conversation)
 
-#### 结构说明
+#### Structure
 ```
 user_a → assistant_a → user_b → assistant_b → user_c → assistant_c → ...
 ```
 
-#### 特点
-- 无分支提问（每个assistant最多一个child）
-- 无合并提问（每个user只有一个parent）
-- 对话结构退化为链表
+#### Characteristics
+- No branching questions (each assistant has at most one child)
+- No merging questions (each user has only one parent)
+- Conversation structure degenerates into a linked list
 
-#### 预期拓扑排序
+#### Expected Topological Sort
 ```
 ['user_a', 'assistant_a', 'user_b', 'assistant_b', 'user_c', 'assistant_c', ...]
 ```
 
-与插入顺序完全一致。
+Matches insertion order exactly.
 
 ---
 
-### 场景2: 树（有分支，无合并）
+### Scenario 2: Tree (Branching, No Merging)
 
-#### 结构说明
+#### Structure
 ```
               user_a
                 ↓
@@ -64,23 +64,23 @@ user_a → assistant_a → user_b → assistant_b → user_c → assistant_c →
   user_e   user_f
 ```
 
-#### 特点
-- 有分支提问（assistant_a有3个子节点）
-- 无合并提问（每个节点只有一个父节点）
-- 对话结构退化为树
+#### Characteristics
+- Has branching questions (assistant_a has 3 child nodes)
+- No merging questions (each node has only one parent)
+- Conversation structure degenerates into a tree
 
-#### 从叶子节点e构建SubDAG的拓扑排序
+#### Topological Sort of SubDAG Built from Leaf Node e
 ```
 ['user_a', 'assistant_a', 'user_b', 'assistant_b', 'user_e', 'assistant_e']
 ```
 
-只包含从根到叶子e的路径，不包含c和d分支。
+Only includes the path from root to leaf e, excluding the c and d branches.
 
 ---
 
-### 场景3: 复杂DAG（分支+合并）
+### Scenario 3: Complex DAG (Branching + Merging)
 
-#### 完整结构
+#### Full Structure
 ```
                         user_a
                           ↓
@@ -95,9 +95,9 @@ user_a → assistant_a → user_b → assistant_b → user_c → assistant_c →
  user_f user_g user_h user_i user_j user_k user_l user_m
 ```
 
-#### 合并点示例
+#### Merge Point Example
 ```
-                    user_n (合并提问)
+                    user_n (merge point)
                      ↓
                assistant_n
                      │
@@ -108,31 +108,31 @@ user_a → assistant_a → user_b → assistant_b → user_c → assistant_c →
      user_i        user_j       user_q
 ```
 
-节点n（用户提问）的parent_ids同时包含assistant_i和assistant_j，这是一个合并点。
+Node n (user question) has parent_ids containing both assistant_i and assistant_j — this is a merge point.
 
-#### 新增节点u的SubDAG
-当用户新增节点u，parent_ids为[h, s]时：
+#### SubDAG for New Node u
+When a new node u is added with parent_ids [h, s]:
 
-**包含的路径：**
+**Included paths:**
 - a → c → h
 - a → d → j → s
 - a → c → i → n → s
 - a → d → j → n → s
 - a → d → j → o → q → s
 
-**拓扑排序结果：**
+**Topological sort result:**
 ```
 ['a', 'c', 'h', 'd', 'j', 'o', 'q', 'i', 'n', 's']
 ```
 
-**注意：**
-- o和q保持连续（链不切割）
-- a始终在第一位（根节点）
-- 所有父子关系约束都满足
+**Notes:**
+- o and q remain consecutive (chain not split)
+- a is always first (root node)
+- All parent-child relationship constraints are satisfied
 
 ---
 
-## DAG节点关系定义（完整）
+## DAG Node Relationship Definitions (Complete)
 
 ```
 a←b, a←c, a←d, a←e
@@ -140,35 +140,35 @@ b←f, b←g
 c←h, c←i
 d←j, d←k
 e←l, e←m
-i←n, j←n        (n是合并点：两个父节点i和j)
+i←n, j←n        (n is a merge point: two parent nodes i and j)
 j←o
 k←p
 o←q
-j←s, n←s, q←s   (s是合并点：三个父节点j、n、q)
+j←s, n←s, q←s   (s is a merge point: three parent nodes j, n, q)
 p←r
-k←t, q←t, r←t   (t是合并点：三个父节点k、q、r)
-h←u, s←u        (u是合并点：两个父节点h和s)
+k←t, q←t, r←t   (t is a merge point: three parent nodes k, q, r)
+h←u, s←u        (u is a merge point: two parent nodes h and s)
 ```
 
-符号说明：`父←子` 表示在SubDAG中子节点依赖于父节点
+Notation: `parent←child` means the child node depends on the parent node in the SubDAG
 
 ---
 
-## 运行测试
+## Running Tests
 
-### 方式1: 使用测试运行器（推荐）
+### Method 1: Using the test runner (recommended)
 ```bash
 cd backend
 python tests/run_all_tests.py
 ```
 
-### 方式2: 使用pytest
+### Method 2: Using pytest
 ```bash
 cd backend
 python -m pytest tests/test_dag_chat.py -v
 ```
 
-### 方式3: 直接运行测试文件
+### Method 3: Running test file directly
 ```bash
 cd backend
 python tests/test_dag_chat.py
@@ -176,100 +176,100 @@ python tests/test_dag_chat.py
 
 ---
 
-## 测试覆盖
+## Test Coverage
 
-### 核心功能测试
-| 测试项 | 描述 |
-|--------|------|
-| DAG构建 | `build_dag_from_parents()` - 从parent_ids向上追溯构建SubDAG |
-| 拓扑排序 | `topological_sort_subdag()` - 对SubDAG进行拓扑排序，保持链不切割 |
-| 历史构建 | `build_history_from_parent_ids()` - 生成符合大模型API格式的历史消息列表 |
+### Core Functionality Tests
+| Test Item | Description |
+|-----------|-------------|
+| DAG construction | `build_dag_from_parents()` - Build SubDAG by tracing upward from parent_ids |
+| Topological sort | `topological_sort_subdag()` - Topologically sort SubDAG while preserving chains |
+| History construction | `build_history_from_parent_ids()` - Generate history message list in LLM API format |
 
-### 场景测试
-| 场景 | 测试内容 |
+### Scenario Tests
+| Scenario | Test Content |
+|----------|--------------|
+| Linked list | Linear conversation structure validation, topological sort consistency, conversation history construction |
+| Tree | Tree structure validation, no-merge-point verification, SubDAG from leaf node, SubDAG from multiple leaf nodes |
+| Complex DAG | DAG structure validation, merge point identification, SubDAG construction, topological sort constraint verification |
+
+### Edge Case Tests
+| Test Item | Description |
+|-----------|-------------|
+| Empty parent_ids | First question scenario |
+| Non-existent parent_ids | Error handling |
+| Single node | Minimum conversation unit |
+
+---
+
+## Conversation Content Description
+
+### User Questions (USER_QUESTIONS)
+| Node | Question |
 |------|----------|
-| 链表 | 线性对话结构验证、拓扑排序一致性、对话历史构建 |
-| 树 | 树结构验证、无合并点验证、从叶子节点构建SubDAG、从多叶子节点构建SubDAG |
-| 复杂DAG | DAG结构验证、合并点识别、SubDAG构建、拓扑排序约束验证 |
+| a | What are the four major cities in China? |
+| b-h | City introductions and local food/tourism |
+| n | Shanghai + Guangzhou travel guide |
+| o-q | Food-related follow-up questions |
+| s-t | Social media post requests |
+| u | Transportation recommendations based on social media post |
 
-### 边界情况测试
-| 测试项 | 描述 |
-|--------|------|
-| 空parent_ids | 首次提问场景 |
-| 不存在的parent_ids | 错误处理 |
-| 单节点 | 最小对话单元 |
-
----
-
-## 对话内容说明
-
-### 用户提问（USER_QUESTIONS）
-| 节点 | 问题 |
-|------|------|
-| a | 中国四大城市分别是？ |
-| b-h | 各城市介绍及美食/旅游 |
-| n | 上海+广州旅游攻略 |
-| o-q | 美食相关追问 |
-| s-t | 朋友圈文案请求 |
-| u | 基于朋友圈的交通推荐 |
-
-### 助手回答（ASSISTANT_ANSWERS）
-使用预设的模拟回答，不代表真实的AI生成内容。
+### Assistant Answers (ASSISTANT_ANSWERS)
+Uses pre-defined mock answers, not actual AI-generated content.
 
 ---
 
-## 实现要点
+## Implementation Details
 
-### 1. SubDAG构建
+### 1. SubDAG Construction
 ```python
 def build_dag_from_parents(mongo_db, parent_ids):
     """
-    从parent_ids开始向上追溯，构建SubDAG
-    - 使用BFS遍历收集所有相关节点
-    - 只包含从parent_ids向上追溯能到达的节点
-    - 返回节点映射和边关系
+    Build SubDAG by tracing upward from parent_ids
+    - Uses BFS traversal to collect all related nodes
+    - Only includes nodes reachable by tracing upward from parent_ids
+    - Returns node mapping and edge relationships
     """
 ```
 
-### 2. 拓扑排序（链不切割）
+### 2. Topological Sort (Chain Preservation)
 ```python
 def topological_sort_subdag(node_map, edges):
     """
-    对SubDAG进行拓扑排序
-    - 计算入度和出度
-    - 使用改进的Kahn算法
-    - 保持链不切割：如果连续节点能形成链（出度为1且入度为1），则保持连续
+    Topologically sort the SubDAG
+    - Calculate in-degrees and out-degrees
+    - Uses modified Kahn's algorithm
+    - Preserve chains: if consecutive nodes form a chain (out-degree 1 and in-degree 1), keep them consecutive
     """
 ```
 
-### 3. 历史消息构建
+### 3. History Message Construction
 ```python
 def build_history_from_parent_ids(mongo_db, parent_ids):
     """
-    构建历史消息
-    1. 构建SubDAG
-    2. 拓扑排序
-    3. 转换为标准格式
+    Build history messages
+    1. Build SubDAG
+    2. Topological sort
+    3. Convert to standard format
     """
 ```
 
 ---
 
-## 验证要点
+## Verification Points
 
-1. **拓扑顺序正确性**：所有父子关系中，父节点必须在子节点之前
-2. **链不切割**：连续节点如果形成链（出度入度都为1），应保持连续
-3. **SubDAG完整性**：包含所有相关路径，不包含无关分支
-4. **边界情况处理**：空parent_ids、不存在的ID、单节点等
+1. **Topological order correctness**: In all parent-child relationships, parent nodes must appear before child nodes
+2. **Chain preservation**: Consecutive nodes forming a chain (both in-degree and out-degree are 1) should remain consecutive
+3. **SubDAG completeness**: Include all relevant paths, exclude irrelevant branches
+4. **Edge case handling**: Empty parent_ids, non-existent IDs, single nodes, etc.
 
 ---
 
-## 扩展建议
+## Extension Guide
 
-如需添加新的测试场景：
+To add new test scenarios:
 
-1. 在`test_dag_chat.py`中添加新的测试类或方法
-2. 使用`MockMongoDB`模拟数据库
-3. 使用`MockMessageNode`创建测试节点
-4. 调用`build_dag_from_parents`和`topological_sort_subdag`验证
-5. 在`run_all_tests.py`中添加测试运行逻辑
+1. Add new test classes or methods in `test_dag_chat.py`
+2. Use `MockMongoDB` to simulate the database
+3. Use `MockMessageNode` to create test nodes
+4. Call `build_dag_from_parents` and `topological_sort_subdag` for verification
+5. Add test runner logic in `run_all_tests.py`

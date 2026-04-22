@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class ModelFactory:
     """
-    模型服务工厂类，用于创建和管理不同的模型服务实例
+    Model service factory class, used to create and manage different model service instances
     """
 
     # 存储模型服务类的注册表
@@ -24,34 +24,33 @@ class ModelFactory:
     @classmethod
     def register(cls, service_class: Type[BaseModelService]) -> Type[BaseModelService]:
         """
-        注册模型服务类
+        Register a model service class
 
-        参数:
-            service_class: 模型服务类
+        Args:
+            service_class: Model service class
 
-        返回:
-            注册的服务类
+        Returns:
+            The registered service class
         """
         service_name = service_class.get_service_name()
         cls._registry[service_name] = service_class
-        logger.info("注册模型服务: %s", service_name)
         return service_class
 
     @classmethod
     def get_service(cls, model_name: str) -> Optional[BaseModelService]:
         """
-        根据模型名称获取服务实例
+        Get service instance by model name
 
-        缓存策略：
-        - 使用 normalized_model（完整模型名小写）作为缓存 key
-        - 通过 service_name in normalized_model 匹配注册表中的服务类
-        - 支持可选的 model_name 构造参数（如 OllamaService 需要知道具体模型）
+        Caching strategy:
+        - Uses normalized_model (full model name lowercased) as cache key
+        - Matches service class in registry via service_name in normalized_model
+        - Supports optional model_name constructor parameter (e.g., OllamaService needs to know the specific model)
 
-        参数:
-            model_name: 模型名称
+        Args:
+            model_name: Model name
 
-        返回:
-            模型服务实例
+        Returns:
+            Model service instance
         """
         # 模型名称标准化
         normalized_model = model_name.lower()
@@ -76,21 +75,20 @@ class ModelFactory:
                 except TypeError:
                     instance = service_class()
                 cls._instances[normalized_model] = instance
-                logger.info("创建模型服务实例: %s", normalized_model)
                 return instance
             except Exception as e:
-                logger.error("创建模型服务实例失败: %s", e)
+                logger.error("Failed to create model service instance: %s", e)
                 return None
 
-        logger.warning("未找到对应模型服务: %s", model_name)
+        logger.warning("No matching model service found: %s", model_name)
         return None
 
     @classmethod
     def get_available_services(cls) -> Dict[str, Type[BaseModelService]]:
         """
-        获取所有可用的模型服务
+        Get all available model services
 
-        返回:
-            服务名称和服务类的映射
+        Returns:
+            Mapping of service names to service classes
         """
         return cls._registry.copy()

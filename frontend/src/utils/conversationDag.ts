@@ -59,10 +59,12 @@ export function buildConversationDag(messages: Message[]): Dag | null {
 
   // 3. 验证根节点：每个对话应该有且仅有一个根节点
   if (rootCandidates.length === 0) {
-    console.warn('警告：没有找到根节点（没有 parent_ids 的消息）');
+    console.warn(
+      'Warning: No root node found (no messages without parent_ids)',
+    );
   } else if (rootCandidates.length > 1) {
     console.warn(
-      `警告：检测到多个根节点 (${String(rootCandidates.length)} 个)，使用第一个: ${rootCandidates[0]}`,
+      `Warning: Multiple root nodes detected (${String(rootCandidates.length)}), using first: ${rootCandidates[0]}`,
     );
     rootId = rootCandidates[0] ?? null;
   } else {
@@ -78,7 +80,7 @@ export function buildConversationDag(messages: Message[]): Dag | null {
   // 5. 验证 DAG 的完整性
   const validation = validateDag(dag);
   if (!validation.valid) {
-    console.error('DAG 验证失败:', validation.errors);
+    console.error('DAG validation failed:', validation.errors);
   }
 
   return dag;

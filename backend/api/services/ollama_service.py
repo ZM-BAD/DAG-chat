@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 @ModelFactory.register
 class OllamaService(BaseModelService):
     """
-    Ollama本地模型服务实现
+    Ollama local model service implementation
 
-    通过Ollama的OpenAI兼容接口(/v1/chat/completions)与本地模型交互，
-    无需API Key，支持用户在本地运行大模型。
+    Interacts with local models through Ollama's OpenAI-compatible interface
+    (/v1/chat/completions), no API Key required, supports running large models locally.
     """
 
     def __init__(self, model_name: str = ""):
@@ -32,12 +32,11 @@ class OllamaService(BaseModelService):
         self.async_client = AsyncOpenAI(api_key="ollama", base_url=OLLAMA_API_BASE_URL)
         # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(api_key="ollama", base_url=OLLAMA_API_BASE_URL)
-        logger.info("OllamaService initialized with model: %s", self.ollama_model)
 
     @classmethod
     def get_service_name(cls) -> str:
         """
-        获取服务名称
+        Get service name
         """
         return "ollama"
 
@@ -45,18 +44,16 @@ class OllamaService(BaseModelService):
         self, messages: List[Dict[str, str]], deep_thinking: bool = False
     ) -> AsyncGenerator[Dict[str, str], None]:
         """
-        调用Ollama API生成流式响应
+        Call Ollama API to generate streaming response
 
-        参数:
-            messages: 消息历史列表
-            deep_thinking: Ollama本地模型暂不支持深度思考，此参数被忽略
+        Args:
+            messages: List of message history
+            deep_thinking: Ollama local models do not support deep thinking yet, this parameter is ignored
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
         try:
-            logger.info("Sending request to Ollama API, model: %s", self.ollama_model)
-
             response = await self.async_client.chat.completions.create(
                 model=self.ollama_model, messages=messages, stream=True
             )
@@ -66,8 +63,6 @@ class OllamaService(BaseModelService):
                 if content_chunk:
                     yield {"content": content_chunk, "reasoning": ""}
 
-            logger.info("Ollama API call successful, model: %s", self.ollama_model)
-
         except Exception as e:
             error_msg = str(e)
             logger.error("Ollama API call failed: %s", error_msg)
@@ -75,12 +70,12 @@ class OllamaService(BaseModelService):
             # 提供更友好的错误提示
             if "Connection" in error_msg or "connect" in error_msg.lower():
                 yield {
-                    "error": "Ollama服务未运行",
-                    "details": "请确保已安装并启动Ollama (运行 `ollama serve`)",
+                    "error": "Ollama service is not running",
+                    "details": "Please ensure Ollama is installed and started (run `ollama serve`)",
                 }
             else:
                 yield {
-                    "error": "Ollama模型服务暂不可用",
+                    "error": "Ollama model service temporarily unavailable",
                     "details": error_msg,
                 }
 

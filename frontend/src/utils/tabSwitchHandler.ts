@@ -74,20 +74,11 @@ export function handleTabSwitch(
   currentTabsMap: MessageToTabsMap,
   currentPath?: ConversationPath,
 ): TabSwitchResult {
-  console.log(`[handleTabSwitch] ===== 开始处理 =====`);
-  console.log(`   containerId: ${containerId.substring(0, 8)}`);
-  console.log(`   newTabId: ${newTabId.substring(0, 8)}`);
-  console.log(`   containers 数量: ${String(containers.length)}`);
-
   // 查找 container
   const container = containers.find((c) => c.id === containerId);
   if (!container) {
     console.error(
-      `[handleTabSwitch] ❌ Container 不存在: ${containerId.substring(0, 8)}`,
-    );
-    console.log(
-      `   可用 containers:`,
-      containers.map((c) => ({ id: c.id.substring(0, 8), type: c.type })),
+      `[handleTabSwitch] Container not found: ${containerId.substring(0, 8)}`,
     );
     return {
       updatedContainers: containers,
@@ -96,28 +87,16 @@ export function handleTabSwitch(
     };
   }
 
-  console.log(`[handleTabSwitch] ✅ 找到 Container:`, {
-    id: container.id.substring(0, 8),
-    type: container.type,
-    currentActiveTab: container.activeTab.substring(0, 8),
-    newTabId: newTabId.substring(0, 8),
-  });
-
   // === 第一步：更新被点击的 container 的 activeTab ===
   let updatedContainers = updateContainerActiveTab(
     containers,
     containerId,
     newTabId,
   );
-  console.log(`[handleTabSwitch] ✅ 更新 activeTab 完成`);
-
   // === 第二步：使用原始 tabsMap（tabsMap 存储静态结构关系，不需要重建） ===
   // tabsMap 只记录 "消息属于哪些 container" 的静态关系
   // container 的 activeTab 状态通过 containers 数组获取
   const updatedTabsMap = currentTabsMap;
-  console.log(
-    `[handleTabSwitch] ✅ 使用静态 tabsMap，map size: ${String(updatedTabsMap.size)}`,
-  );
 
   // === 第三步：根据 container 类型选择路径构建策略 ===
   let newPath: ConversationPath;
@@ -125,7 +104,6 @@ export function handleTabSwitch(
 
   if (isChildrenTabsContainer(container)) {
     // ChildrenTabsContainer：向 leaf 方向重建路径
-    console.log(`[handleTabSwitch] 处理 ChildrenTabsContainer 切换`);
     const result = handleChildrenTabSwitch(
       container,
       newTabId,
@@ -136,10 +114,6 @@ export function handleTabSwitch(
     );
     newPath = result.path;
     syncInstructions = result.syncInstructions;
-    console.log(`[handleTabSwitch] handleChildrenTabSwitch 返回:`, {
-      pathLength: String(newPath.length),
-      syncInstructionsCount: String(syncInstructions.length),
-    });
   } else if (isParentTabsContainer(container)) {
     // ParentTabsContainer：向 root 方向重建路径
     const result = handleParentTabSwitch(
@@ -163,15 +137,7 @@ export function handleTabSwitch(
   // 已经是正确的，与 syncInstructions 保持一致。
   // 如果用 buildPath 重建，可能会因为未同步的 container 导致路径分歧。
   if (syncInstructions.length > 0) {
-    console.log(
-      `[handleTabSwitch] 需要同步 ${String(syncInstructions.length)} 个 Container`,
-    );
-
     for (const instruction of syncInstructions) {
-      console.log(
-        `   - 同步 ${instruction.containerId.substring(0, 8)}: activeTab -> ${instruction.newActiveTabId.substring(0, 8)}`,
-      );
-
       updatedContainers = updateContainerActiveTab(
         updatedContainers,
         instruction.containerId,
@@ -237,7 +203,9 @@ function handleChildrenTabSwitch(
     const targetParentId = container.assistantMessageId;
 
     if (!userNode.parent_ids.includes(targetParentId)) {
-      console.error(`[handleChildrenTabSwitch] ❌ assistant不是user的parent！`);
+      console.error(
+        `[handleChildrenTabSwitch] Assistant is not a parent of the user!`,
+      );
       return {
         path: buildPath(dag, tabsMap, containers),
         syncInstructions: [],
@@ -251,9 +219,6 @@ function handleChildrenTabSwitch(
       // ⚠️ 关键情况：target assistant不在currentPath中
       // 这意味着需要从完全不同的branch切换过来
       // 使用buildPath重新构建完整路径（基于更新后的containers状态）
-      console.log(
-        `[handleChildrenTabSwitch] ⚠️ MERGE点切换：assistant不在currentPath中，使用buildPath重建`,
-      );
       const newPath = buildPath(dag, tabsMap, containers);
 
       // 收集 syncInstructions（使用 Map 防止重复）
@@ -303,18 +268,7 @@ function handleChildrenTabSwitch(
         syncInstructions: Array.from(syncInstructionMap.values()),
       };
     }
-
-    // assistant在currentPath中，使用原有逻辑
-    console.log(
-      `[handleChildrenTabSwitch] ℹ️ MERGE点切换：assistant在currentPath中`,
-    );
   }
-
-  // 普通节点（非 MERGE 点）使用原有逻辑
-  console.log(`[handleChildrenTabSwitch] 查找 assistant 在 path 中的位置:`, {
-    assistantId: container.assistantMessageId.substring(0, 8),
-    currentPathLength: currentPath.length,
-  });
 
   // 找到 assistant 节点在 path 中的位置
   const assistantIndex = currentPath.findIndex(
@@ -324,29 +278,14 @@ function handleChildrenTabSwitch(
   if (assistantIndex === -1) {
     // 如果找不到 assistant 节点，使用默认路径构建
     console.warn(
-      `[handleChildrenTabSwitch] ❌ 找不到 assistant 节点在路径中的位置: ${container.assistantMessageId.substring(0, 8)}`,
-    );
-    console.log(
-      `[handleChildrenTabSwitch] currentPath 节点:`,
-      currentPath.map((n) => ({
-        id: n.id.substring(0, 8),
-        role: n.role,
-        content: n.content.substring(0, 20),
-      })),
+      `[handleChildrenTabSwitch] Cannot find assistant node position in path: ${container.assistantMessageId.substring(0, 8)}`,
     );
     const fallbackPath = buildPath(dag, tabsMap, containers);
-    console.log(
-      `[handleChildrenTabSwitch] 使用 fallback path，长度: ${String(fallbackPath.length)}`,
-    );
     return {
       path: fallbackPath,
       syncInstructions: [],
     };
   }
-
-  console.log(
-    `[handleChildrenTabSwitch] ✅ 找到 assistant 在 path 位置: ${String(assistantIndex)}`,
-  );
 
   // 保留路径前缀 [0, assistantIndex]（包含 assistant 节点）
   const prefixPath = currentPath.slice(0, assistantIndex + 1);
@@ -363,13 +302,6 @@ function handleChildrenTabSwitch(
   // - ParentTabsContainer 切换后向 root 方向重建，再向 leaf 方向
   // - ChildrenTabsContainer 切换后只向 leaf 方向构建
   // ========================================
-  console.log('[handleChildrenTabSwitch] 开始处理 tab 切换');
-  console.log(`   container.id: ${container.id.substring(0, 8)}`);
-  console.log(
-    `   container.assistantMessageId: ${container.assistantMessageId.substring(0, 8)}`,
-  );
-  console.log(`   newTabId: ${newTabId.substring(0, 8)}`);
-
   // ✅ 手动构建路径：从 newTabId (user 节点) 开始向 leaf 方向 DFS
   // 解决 buildPathToLeaf 在处理 user 节点时的架构缺陷：
   // - buildPathToLeaf 只在 assistant 节点检查 ChildrenTabsContainer
@@ -391,7 +323,7 @@ function handleChildrenTabSwitch(
     // 防止循环引用（理论上不应该发生，但作为安全防护）
     if (suffixPath.some((n) => n.id === node.id)) {
       console.warn(
-        `[handleChildrenTabSwitch] 检测到循环引用，停止构建: ${node.id.substring(0, 8)}`,
+        `[handleChildrenTabSwitch] Detected circular reference, stopping build: ${node.id.substring(0, 8)}`,
       );
       break;
     }
@@ -414,15 +346,6 @@ function handleChildrenTabSwitch(
       // user 只有一个 child（assistant）
       currentId = node.children[0].id;
     }
-  }
-
-  console.log(
-    `[handleChildrenTabSwitch] suffixPath 构建完成，长度: ${String(suffixPath.length)}`,
-  );
-  if (suffixPath.length > 0) {
-    console.log(
-      `   suffixPath[0]: ${suffixPath[0].role} - ${suffixPath[0].content.substring(0, 30)}`,
-    );
   }
 
   // 拼接路径
@@ -457,9 +380,6 @@ function handleChildrenTabSwitch(
             containerId: childrenContainer.id,
             newActiveTabId: node.id,
           });
-          console.log(
-            `[handleChildrenTabSwitch] 添加同步指令: ${childrenContainer.id.substring(0, 8)} -> ${node.id.substring(0, 8)}`,
-          );
         }
 
         // ----------------------------------------
@@ -528,12 +448,6 @@ function handleParentTabSwitch(
   containers: TabsContainer[],
   currentPath?: ConversationPath,
 ): ParentTabSwitchResult {
-  console.log('[handleParentTabSwitch] 开始处理 parent-tab 切换');
-  console.log(`   newTabId (assistant): ${newTabId.substring(0, 8)}`);
-  console.log(
-    `   container.userMessageId: ${container.userMessageId.substring(0, 8)}`,
-  );
-
   // ✅ 关键修复：优先使用 currentPath 构建 prefix
   // 避免使用 buildPathToRoot 在 MERGE 点选择错误分支
   let prefixPath: ConversationPath = [];
@@ -545,19 +459,13 @@ function handleParentTabSwitch(
     if (assistantIndex !== -1) {
       // 保留路径到该 assistant（包含）
       prefixPath = currentPath.slice(0, assistantIndex + 1);
-      console.log(`[handleParentTabSwitch] 使用 currentPath 构建 prefix`);
     }
   }
 
   // 如果 currentPath 中没有找到，回退到 buildPathToRoot
   if (prefixPath.length === 0) {
     prefixPath = buildPathToRoot(newTabId, dag, tabsMap, containers);
-    console.log(`[handleParentTabSwitch] 使用 buildPathToRoot 构建 prefix`);
   }
-  console.log(`   prefixPath 长度: ${String(prefixPath.length)}`);
-  console.log(
-    `   prefixPath 最后一个节点: ${prefixPath[prefixPath.length - 1]?.id.substring(0, 8)}`,
-  );
 
   // ✅ 第二步：从 userMessageId 向 leaf 方向构建 suffix
   // 使用手动构建路径替代 buildPathToLeaf，避免 user 节点作为起点时的架构缺陷
@@ -571,7 +479,7 @@ function handleParentTabSwitch(
     // 防止循环引用
     if (suffixPath.some((n) => n.id === node.id)) {
       console.warn(
-        `[handleParentTabSwitch] 检测到循环引用，停止构建: ${node.id.substring(0, 8)}`,
+        `[handleParentTabSwitch] Detected circular reference, stopping build: ${node.id.substring(0, 8)}`,
       );
       break;
     }
@@ -595,12 +503,9 @@ function handleParentTabSwitch(
       currentId = node.children[0].id;
     }
   }
-  console.log(`   suffixPath 长度: ${String(suffixPath.length)}`);
-  console.log(`   suffixPath 第一个节点: ${suffixPath[0]?.id.substring(0, 8)}`);
 
   // ✅ 第三步：合并路径（suffixPath 的第一个节点是 userMessageId）
   const fullPath = mergePaths(prefixPath, suffixPath);
-  console.log(`   fullPath 长度: ${String(fullPath.length)}`);
 
   // === 收集需要同步的 Container 的更新指令 ===
   // 遍历新构建的路径，同步所有容器状态
@@ -686,7 +591,7 @@ export function isValidTabSwitch(
   const container = containers.find((c) => c.id === containerId);
 
   if (!container) {
-    console.warn(`Container ${containerId} 不存在`);
+    console.warn(`Container ${containerId} not found`);
     return false;
   }
 

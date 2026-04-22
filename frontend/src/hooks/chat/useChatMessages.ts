@@ -118,7 +118,6 @@ export const useChatMessages = ({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
-      console.log('已中断大模型回答');
     }
   };
 
@@ -198,7 +197,7 @@ export const useChatMessages = ({
       } catch (error) {
         retryCount++;
         console.error(
-          `获取对话历史失败 (尝试 ${String(retryCount)}/${String(maxRetries)}):`,
+          `Failed to fetch dialogue history (attempt ${String(retryCount)}/${String(maxRetries)}):`,
           error,
         );
 
@@ -210,7 +209,7 @@ export const useChatMessages = ({
     }
 
     // 如果所有重试都失败，返回空数组
-    console.warn('获取对话历史失败，使用空数据');
+    console.warn('Failed to fetch dialogue history, using empty data');
     return [];
   };
 
@@ -222,23 +221,11 @@ export const useChatMessages = ({
         try {
           const historyMessages = await fetchDialogueHistory(currentDialogueId);
 
-          // 打印简化的DAG摘要日志
-          const nodeCount = historyMessages.length;
-          const branchCount = historyMessages.filter(
-            (msg) => (msg.children?.length ?? 0) > 1,
-          ).length;
-          const mergeCount = historyMessages.filter(
-            (msg) => (msg.parent_ids?.length ?? 0) > 1,
-          ).length;
-          console.log(
-            `[DAG] 对话 ${currentDialogueId}: ${String(nodeCount)}节点, ${String(branchCount)}分支点, ${String(mergeCount)}合并点`,
-          );
-
           setMessages(historyMessages);
           // 记录这些消息属于哪个对话
           setMessagesDialogueId(currentDialogueId);
         } catch (error) {
-          console.error('加载对话历史失败:', error);
+          console.error('Failed to load dialogue history:', error);
           setMessages([]);
           setMessagesDialogueId(null);
         }
@@ -270,9 +257,8 @@ export const useChatMessages = ({
       await navigator.clipboard.writeText(content);
       // 显示复制成功的Toast
       toast.showToast(t('chat.copySuccess'), 'success', 2000);
-      console.log('消息已复制到剪贴板');
     } catch (error) {
-      console.error('复制失败:', error);
+      console.error('Copy failed:', error);
       // 降级方案：使用document.execCommand
       const textArea = document.createElement('textarea');
       textArea.value = content;
@@ -282,10 +268,9 @@ export const useChatMessages = ({
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         document.execCommand('copy');
         toast.showToast(t('chat.copySuccess'), 'success', 2000);
-        console.log('消息已复制到剪贴板（降级方案）');
       } catch (err) {
         toast.showToast(t('chat.copyFailed'), 'error', 2000);
-        console.error('复制失败（降级方案）:', err);
+        console.error('Copy failed (fallback):', err);
       }
       document.body.removeChild(textArea);
     }
@@ -522,7 +507,12 @@ export const useChatMessages = ({
                 throw new Error(resolveApiError(data.error));
               }
             } catch (parseError) {
-              console.warn('解析SSE数据失败:', parseError, '原始数据:', line);
+              console.warn(
+                'Failed to parse SSE data:',
+                parseError,
+                'Raw data:',
+                line,
+              );
             }
           }
         }
@@ -565,7 +555,7 @@ export const useChatMessages = ({
                 }
               }
             } catch (error) {
-              console.error('检查标题更新失败:', error);
+              console.error('Failed to check title update:', error);
             }
           };
 
@@ -575,7 +565,6 @@ export const useChatMessages = ({
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         // 用户手动中止：保留已累积的内容
-        console.log('聊天请求被用户中止');
         // 只需清除等待状态，realId 已通过 placeholder 获取
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
@@ -602,7 +591,7 @@ export const useChatMessages = ({
         error instanceof TypeError &&
         error.message.includes('fetch')
       ) {
-        console.error('网络连接错误:', error);
+        console.error('Network connection error:', error);
         setMessages((prevMessages) => {
           // 找到 waiting 状态的 assistant 消息并移除
           const assistantToRemove = prevMessages.find(
@@ -622,7 +611,7 @@ export const useChatMessages = ({
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
       } else {
-        console.error('发送消息时发生未知错误:', error);
+        console.error('Unknown error while sending message:', error);
         setMessages((prevMessages) => {
           const assistantToRemove = prevMessages.find(
             (msg) => msg.isWaitingForFirstToken,

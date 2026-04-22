@@ -55,10 +55,12 @@ export function buildDag(messages: Message[]): Dag | null {
   let rootId: string | null = null;
 
   if (rootCandidates.length === 0) {
-    console.warn('警告：没有找到根节点（没有 parent_ids 的消息）');
+    console.warn(
+      'Warning: No root node found (no messages without parent_ids)',
+    );
   } else if (rootCandidates.length > 1) {
     console.warn(
-      `警告：检测到多个根节点 (${String(rootCandidates.length)} 个)，使用第一个: ${rootCandidates[0]}`,
+      `Warning: Multiple root nodes detected (${String(rootCandidates.length)}), using first: ${rootCandidates[0]}`,
     );
     rootId = rootCandidates[0] || null;
   } else {
@@ -79,7 +81,9 @@ export function buildDag(messages: Message[]): Dag | null {
         // 将当前节点添加到父节点的 children 数组
         parentNode.children.push(node);
       } else {
-        console.warn(`警告：节点 ${node.id} 的父节点 ${parentId} 不存在`);
+        console.warn(
+          `Warning: Parent node ${parentId} of node ${node.id} does not exist`,
+        );
       }
     });
   });
@@ -87,7 +91,7 @@ export function buildDag(messages: Message[]): Dag | null {
   // === 第五步：验证 DAG 完整性 ===
   const validation = validateDag(dag);
   if (!validation.valid) {
-    console.error('DAG 验证失败:', validation.errors);
+    console.error('DAG validation failed:', validation.errors);
   }
 
   return dag;

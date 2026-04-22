@@ -1,10 +1,10 @@
 """
-DAG对话结构测试模块
+DAG conversation structure test module
 
-测试场景：
-1. 复杂DAG场景（分支+合并）
-2. 链表场景（线性对话，无分支无合并）
-3. 树场景（有分支，无合并）
+Test scenarios:
+1. Complex DAG scenario (branching + merging)
+2. Linked list scenario (linear conversation, no branching or merging)
+3. Tree scenario (branching only, no merging)
 """
 
 # pylint: disable=protected-access
@@ -17,7 +17,7 @@ from typing import Optional
 
 @dataclass
 class MockMessageNode:
-    """模拟消息节点"""
+    """Mock message node"""
 
     id: str
     role: str  # 'user' or 'assistant'
@@ -29,18 +29,18 @@ class MockMessageNode:
 
 
 class MockMongoDB:
-    """模拟MongoDB连接，用于测试DAG逻辑"""
+    """Mock MongoDB connection for testing DAG logic"""
 
     def __init__(self):
         self._nodes: dict[str, MockMessageNode] = {}
 
     def insert_node(self, node: MockMessageNode) -> str:
-        """插入节点"""
+        """Insert a node"""
         self._nodes[node.id] = node
         return node.id
 
     def find(self, collection: str, query: dict) -> list:
-        """模拟查找操作"""
+        """Mock find operation"""
         if collection != "message_node":
             return []
 
@@ -60,7 +60,7 @@ class MockMongoDB:
         return []
 
     def _node_to_dict(self, node: Optional[MockMessageNode]) -> Optional[dict]:
-        """将节点转换为字典格式（模拟pymongo返回）"""
+        """Convert node to dictionary format (simulating pymongo return)"""
         if node is None:
             return None
         return {
@@ -78,9 +78,9 @@ def build_dag_from_parents(
     mongo_db: MockMongoDB, parent_ids: list[str]
 ) -> tuple[dict, dict]:
     """
-    从parent_ids开始向上追溯，构建SubDAG（子图）
+    Trace back from parent_ids to build a SubDAG (subgraph)
 
-    这是chat.py中build_dag_from_parents的纯逻辑版本，用于测试
+    This is the pure logic version of build_dag_from_parents in chat.py, used for testing
     """
     if not parent_ids:
         return {}, {}
@@ -125,9 +125,9 @@ def build_dag_from_parents(
 
 def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
     """
-    对SubDAG进行拓扑排序，保持链不切割
+    Perform topological sort on the SubDAG while preserving chains
 
-    这是chat.py中topological_sort_subdag的纯逻辑版本，用于测试
+    This is the pure logic version of topological_sort_subdag in chat.py, used for testing
     """
     if not node_map:
         return []
@@ -244,10 +244,10 @@ ASSISTANT_ANSWERS = {
 
 class TestComplexDAG:
     """
-    测试复杂DAG场景
+    Test complex DAG scenario
 
-    DAG结构：
-    根节点a，分支结构如下：
+    DAG structure:
+    Root node a, branching structure as follows:
     a -> b -> f
     a -> b -> g
     a -> c -> h
@@ -259,11 +259,11 @@ class TestComplexDAG:
     a -> e -> l
     a -> e -> m
 
-    新增节点u，parent_ids为[h, s]
+    New node u, parent_ids are [h, s]
     """
 
     def complex_dag_db(self):
-        """构建复杂DAG的测试数据库"""
+        """Build test database for complex DAG"""
         db = MockMongoDB()
 
         # 定义问答对结构（每个字母代表一个问答对）
@@ -633,7 +633,7 @@ class TestComplexDAG:
         return db
 
     def test_dag_structure(self, complex_dag_db):
-        """测试DAG基本结构是否正确构建"""
+        """Test that the basic DAG structure is correctly built"""
         db = complex_dag_db
 
         # 测试根节点
@@ -654,7 +654,7 @@ class TestComplexDAG:
         assert set(node_s.parent_ids) == {"assistant_n", "assistant_j", "assistant_q"}
 
     def test_subdag_building_for_merge_node(self, complex_dag_db):
-        """测试为合并提问构建SubDAG"""
+        """Test SubDAG construction for a merge question"""
         db = complex_dag_db
 
         # 模拟新增节点u，parent_ids为[assistant_h, assistant_s]
@@ -690,11 +690,11 @@ class TestComplexDAG:
 
         actual_nodes = set(node_map.keys())
         assert expected_nodes <= actual_nodes, (
-            f"缺少节点: {expected_nodes - actual_nodes}"
+            f"Missing nodes: {expected_nodes - actual_nodes}"
         )
 
     def test_topological_sort_for_merge_node(self, complex_dag_db):
-        """测试对合并提问的SubDAG进行拓扑排序"""
+        """Test topological sort on the SubDAG of a merge question"""
         db = complex_dag_db
 
         parent_ids = ["assistant_h", "assistant_s"]
@@ -709,40 +709,40 @@ class TestComplexDAG:
         qa_sequence = [get_qa_id(nid) for nid in sorted_nodes]
 
         # 验证拓扑顺序约束
-        # a必须在最前面
+        # a must come first
         first_a_idx = next(i for i, x in enumerate(qa_sequence) if x == "a")
-        assert first_a_idx == 0, "根节点a必须在第一位"
+        assert first_a_idx == 0, "Root node a must be in the first position"
 
-        # 验证父子关系：父必须在子之前
+        # Verify parent-child relationships: parent must come before child
         def assert_before(parent, child, msg=""):
             parent_indices = [i for i, x in enumerate(qa_sequence) if x == parent]
             child_indices = [i for i, x in enumerate(qa_sequence) if x == child]
             if parent_indices and child_indices:
                 assert max(parent_indices) < min(child_indices), (
-                    msg or f"{parent}必须在{child}之前"
+                    msg or f"{parent} must come before {child}"
                 )
 
-        # 基本链式约束
-        assert_before("a", "c", "a必须在c之前")
-        assert_before("a", "d", "a必须在d之前")
-        assert_before("c", "h", "c必须在h之前")
-        assert_before("c", "i", "c必须在i之前")
-        assert_before("d", "j", "d必须在j之前")
-        assert_before("i", "n", "i必须在n之前")
-        assert_before("j", "n", "j必须在n之前")
-        assert_before("j", "o", "j必须在o之前")
-        assert_before("o", "q", "o必须在q之前")
-        assert_before("q", "s", "q必须在s之前")
-        assert_before("n", "s", "n必须在s之前")
+        # Basic chain constraints
+        assert_before("a", "c", "a must come before c")
+        assert_before("a", "d", "a must come before d")
+        assert_before("c", "h", "c must come before h")
+        assert_before("c", "i", "c must come before i")
+        assert_before("d", "j", "d must come before j")
+        assert_before("i", "n", "i must come before n")
+        assert_before("j", "n", "j must come before n")
+        assert_before("j", "o", "j must come before o")
+        assert_before("o", "q", "o must come before q")
+        assert_before("q", "s", "q must come before s")
+        assert_before("n", "s", "n must come before s")
 
     def test_all_paths_to_merge_node(self, complex_dag_db):
-        """测试到合并节点的所有路径"""
+        """Test all paths to a merge node"""
         db = complex_dag_db
 
         parent_ids = ["assistant_h", "assistant_s"]
         node_map, _ = build_dag_from_parents(db, parent_ids)
 
-        # 验证从h到根的路径
+        # Verify the path from h to root
         def get_path_to_root(node_id, node_map):
             path = [node_id]
             current = node_id
@@ -758,34 +758,34 @@ class TestComplexDAG:
                 path.append(current)
             return list(reversed(path))
 
-        # h的路径: a -> c -> h
+        # h's path: a -> c -> h
         h_path = get_path_to_root("user_h", node_map)
         assert "user_a" in h_path
         assert "user_c" in h_path
 
-        # s有多条路径，验证其中一条
+        # s has multiple paths, verify one of them
         s_paths = [
             ["user_a", "user_d", "user_j", "user_s"],
             ["user_a", "user_c", "user_i", "user_n", "user_s"],
             ["user_a", "user_d", "user_j", "user_o", "user_q", "user_s"],
         ]
 
-        # 验证这些节点都在node_map中
+        # Verify these nodes are all in node_map
         for path in s_paths:
             for node in path:
-                assert node in node_map, f"节点{node}应该在SubDAG中"
+                assert node in node_map, f"Node {node} should be in the SubDAG"
 
 
 class TestLinkedListScenario:
     """
-    测试链表场景（线性对话，无分支无合并）
+    Test linked list scenario (linear conversation, no branching or merging)
 
-    场景：用户进行连续的线性对话，没有任何分支提问和合并提问
-    预期：对话结构退化为链表，拓扑排序结果应与插入顺序一致
+    Scenario: User has a continuous linear conversation with no branching or merging questions
+    Expected: The conversation structure degenerates into a linked list; topological sort result should match insertion order
     """
 
     def linked_list_db(self):
-        """构建链表结构的测试数据库"""
+        """Build test database with linked list structure"""
         db = MockMongoDB()
 
         # 构建线性对话链: a -> b -> c -> d -> e
@@ -885,39 +885,47 @@ class TestLinkedListScenario:
         return db
 
     def test_linked_list_structure(self, linked_list_db):
-        """测试链表结构的基本属性"""
+        """Test basic properties of linked list structure"""
         db = linked_list_db
 
-        # 每个节点（除了第一个）应该有且只有一个父节点
+        # Each node (except the first) should have exactly one parent
         for node_id, node in db._nodes.items():
             if node.role == "user":
                 if node_id == "user_a":
-                    assert node.parent_ids == [], "第一个user节点应该没有parent_ids"
+                    assert node.parent_ids == [], (
+                        "The first user node should have no parent_ids"
+                    )
                 else:
                     assert len(node.parent_ids) == 1, (
-                        f"{node_id}应该有且只有一个parent_id"
+                        f"{node_id} should have exactly one parent_id"
                     )
             else:  # assistant
-                assert len(node.parent_ids) == 1, f"{node_id}应该有且只有一个parent_id"
+                assert len(node.parent_ids) == 1, (
+                    f"{node_id} should have exactly one parent_id"
+                )
 
-        # 每个节点（除了最后一个）应该有且只有一个子节点
+        # Each node (except the last) should have exactly one child
         for node_id, node in db._nodes.items():
             if node.role == "assistant":
                 if node_id == "assistant_e":
-                    assert node.children == [], "最后一个assistant节点应该没有children"
+                    assert node.children == [], (
+                        "The last assistant node should have no children"
+                    )
                 else:
-                    assert len(node.children) == 1, f"{node_id}应该有且只有一个child"
+                    assert len(node.children) == 1, (
+                        f"{node_id} should have exactly one child"
+                    )
 
     def test_linked_list_topological_sort(self, linked_list_db):
-        """测试链表的拓扑排序"""
+        """Test topological sort on linked list"""
         db = linked_list_db
 
-        # 从最后一个节点开始构建SubDAG
+        # Build SubDAG starting from the last node
         parent_ids = ["assistant_e"]
         node_map, edges = build_dag_from_parents(db, parent_ids)
         sorted_nodes = topological_sort_subdag(node_map, edges)
 
-        # 预期顺序: a, b, c, d, e (问答对顺序)
+        # Expected order: a, b, c, d, e (Q&A pair order)
         expected_order = [
             "user_a",
             "assistant_a",
@@ -932,48 +940,50 @@ class TestLinkedListScenario:
         ]
 
         assert sorted_nodes == expected_order, (
-            f"拓扑排序应保持一致性\n实际: {sorted_nodes}\n预期: {expected_order}"
+            f"Topological sort should maintain consistency\nActual: {sorted_nodes}\nExpected: {expected_order}"
         )
 
     def test_linked_list_conversation_history(self, linked_list_db):
-        """测试链表的对话历史构建"""
+        """Test conversation history construction for linked list"""
         db = linked_list_db
 
-        # 模拟新提问（无parent_ids，表示首次提问）
-        # 这种情况应该返回空历史
+        # Simulate a new question (no parent_ids, meaning first question)
+        # This case should return empty history
         empty_history = build_dag_from_parents(db, [])
         assert empty_history == ({}, {})
 
-        # 模拟追加提问（单parent_id）
+        # Simulate an appended question (single parent_id)
         parent_ids = ["assistant_e"]
         node_map, edges = build_dag_from_parents(db, parent_ids)
         sorted_nodes = topological_sort_subdag(node_map, edges)
 
-        # 构建历史消息列表
+        # Build history message list
         history = []
         for node_id in sorted_nodes:
             node = node_map[node_id]
             history.append({"role": node["role"], "content": node["content"]})
 
-        # 验证历史顺序
-        assert len(history) == 10  # 5个问答对，共10条消息
+        # Verify history order
+        assert len(history) == 10  # 5 Q&A pairs, 10 messages total
 
-        # 验证角色交替
+        # Verify alternating roles
         for i, msg in enumerate(history):
             expected_role = "user" if i % 2 == 0 else "assistant"
-            assert msg["role"] == expected_role, f"第{i}条消息应该是{expected_role}"
+            assert msg["role"] == expected_role, (
+                f"Message {i} should be {expected_role}"
+            )
 
 
 class TestBranchingScenario:
     """
-    测试分支场景（有分支，无合并）
+    Test branching scenario (branching, no merging)
 
-    场景：用户进行了分支提问，但没有进行合并提问
-    预期：对话结构为分支型DAG，拓扑排序应正确反映DAG的层次结构
+    Scenario: User asked branching questions but no merging questions
+    Expected: The conversation structure forms a branching DAG; topological sort should correctly reflect DAG hierarchy
     """
 
     def branching_dag_db(self):
-        """构建分支型DAG结构的测试数据库"""
+        """Build test database with branching DAG structure"""
         db = MockMongoDB()
 
         # 构建树结构：
@@ -1128,48 +1138,50 @@ class TestBranchingScenario:
         return db
 
     def test_branching_structure(self, branching_dag_db):
-        """测试分支型DAG结构的基本属性"""
+        """Test basic properties of branching DAG structure"""
         db = branching_dag_db
 
-        # 每个节点应该有且只有一个父节点（根节点除外）
+        # Each node should have exactly one parent (except root)
         for node_id, node in db._nodes.items():
             if node.role == "user":
                 if node_id == "user_a":
-                    assert node.parent_ids == [], "根节点应该没有parent_ids"
+                    assert node.parent_ids == [], "Root node should have no parent_ids"
                 else:
                     assert len(node.parent_ids) == 1, (
-                        f"分支型DAG中{node_id}应该有且只有一个parent_id"
+                        f"{node_id} in a branching DAG should have exactly one parent_id"
                     )
             else:  # assistant
-                assert len(node.parent_ids) == 1, f"{node_id}应该有且只有一个parent_id"
+                assert len(node.parent_ids) == 1, (
+                    f"{node_id} should have exactly one parent_id"
+                )
 
-        # 验证分支节点有多个子节点
+        # Verify branching nodes have multiple children
         node_b = db._nodes["assistant_b"]
-        assert len(node_b.children) == 2, "b应该有2个子节点"
+        assert len(node_b.children) == 2, "b should have 2 children"
 
         node_a = db._nodes["assistant_a"]
-        assert len(node_a.children) == 3, "a应该有3个子节点"
+        assert len(node_a.children) == 3, "a should have 3 children"
 
     def test_branching_no_merge_points(self, branching_dag_db):
-        """测试分支型DAG中不存在合并点"""
+        """Test that there are no merge points in a branching DAG"""
         db = branching_dag_db
 
-        # 所有节点的parent_ids长度应该 <= 1
+        # All nodes should have parent_ids length <= 1
         for node_id, node in db._nodes.items():
             assert len(node.parent_ids) <= 1, (
-                f"分支型DAG中不应该有合并点，但{node_id}有{len(node.parent_ids)}个parent"
+                f"A branching DAG should not have merge points, but {node_id} has {len(node.parent_ids)} parent(s)"
             )
 
     def test_branching_topological_sort_from_leaf(self, branching_dag_db):
-        """测试从叶子节点构建SubDAG并进行拓扑排序"""
+        """Test building SubDAG from a leaf node and performing topological sort"""
         db = branching_dag_db
 
-        # 从叶子节点f开始
+        # Start from leaf node f
         parent_ids = ["assistant_f"]
         node_map, edges = build_dag_from_parents(db, parent_ids)
         sorted_nodes = topological_sort_subdag(node_map, edges)
 
-        # 验证包含的节点: a, b, f
+        # Verify included nodes: a, b, f
         expected_nodes = {
             "user_a",
             "assistant_a",
@@ -1181,7 +1193,7 @@ class TestBranchingScenario:
         actual_nodes = set(node_map.keys())
         assert actual_nodes == expected_nodes
 
-        # 验证拓扑顺序：a必须在b之前，b必须在f之前
+        # Verify topological order: a must come before b, b must come before f
         def get_index(node_id):
             return sorted_nodes.index(node_id)
 
@@ -1191,14 +1203,14 @@ class TestBranchingScenario:
         assert get_index("assistant_b") < get_index("user_f")
 
     def test_branching_subdag_from_multiple_leaves(self, branching_dag_db):
-        """测试从多个叶子节点构建SubDAG（模拟合并提问前的状态）"""
+        """Test building SubDAG from multiple leaf nodes (simulating state before a merge question)"""
         db = branching_dag_db
 
-        # 从e和h两个叶子节点构建SubDAG（类似准备合并提问）
+        # Build SubDAG from leaf nodes e and h (similar to preparing for a merge question)
         parent_ids = ["assistant_e", "assistant_h"]
         node_map, edges = build_dag_from_parents(db, parent_ids)
 
-        # 应该包含e的路径(a->b->e)和h的路径(a->d->h)
+        # Should include e's path (a->b->e) and h's path (a->d->h)
         expected_nodes = {
             "user_a",
             "assistant_a",
@@ -1214,10 +1226,10 @@ class TestBranchingScenario:
         actual_nodes = set(node_map.keys())
         assert expected_nodes <= actual_nodes
 
-        # 进行拓扑排序
+        # Perform topological sort
         sorted_nodes = topological_sort_subdag(node_map, edges)
 
-        # 验证顺序约束
+        # Verify order constraints
         def assert_before(parent, child):
             assert sorted_nodes.index(parent) < sorted_nodes.index(child)
 
@@ -1231,22 +1243,22 @@ class TestBranchingScenario:
 
 
 class TestEdgeCases:
-    """测试边界情况"""
+    """Test edge cases"""
 
     def test_empty_parent_ids(self):
-        """测试空parent_ids"""
+        """Test empty parent_ids"""
         db = MockMongoDB()
         result = build_dag_from_parents(db, [])
         assert result == ({}, {})
 
     def test_nonexistent_parent_ids(self):
-        """测试不存在的parent_ids"""
+        """Test non-existent parent_ids"""
         db = MockMongoDB()
         result = build_dag_from_parents(db, ["nonexistent_id"])
         assert result == ({}, {})
 
     def test_single_node(self):
-        """测试单节点情况"""
+        """Test single node case"""
         db = MockMongoDB()
         db.insert_node(
             MockMessageNode(id="user_a", role="user", content="test", parent_ids=[])
@@ -1268,38 +1280,38 @@ class TestEdgeCases:
 
 def test_complex_dag_with_user_questions():
     """
-    完整测试：使用用户提供的实际对话内容构建复杂DAG
+    Full test: Build a complex DAG using actual user-provided conversation content
 
-    此测试完整复现用户描述的场景，验证最终拓扑排序结果
+    This test fully reproduces the scenario described by the user and verifies the final topological sort result
     """
     db = MockMongoDB()
 
-    # 定义DAG的偏序关系（用户提供的示例）
-    # 格式: (父问答对, 子问答对)
-    # 实际存储中，边的关系是：assistant_父 -> user_子
+    # Define the partial order relations of the DAG (user-provided example)
+    # Format: (parent Q&A pair, child Q&A pair)
+    # In actual storage, edge relationships are: assistant_parent -> user_child
 
-    # 首先创建所有问答对
+    # First create all Q&A pairs
     qa_pairs = list(USER_QUESTIONS.keys())[:20]  # a-t
 
-    # 构建节点
+    # Build nodes
     for qa_id in qa_pairs:
-        # user节点
+        # user node
         user_node = MockMessageNode(
             id=f"user_{qa_id}", role="user", content=USER_QUESTIONS[qa_id]
         )
         db.insert_node(user_node)
 
-        # assistant节点 - parent_ids指向对应的user节点
+        # assistant node - parent_ids points to the corresponding user node
         assistant_node = MockMessageNode(
             id=f"assistant_{qa_id}",
             role="assistant",
             content=ASSISTANT_ANSWERS[qa_id],
-            parent_ids=[f"user_{qa_id}"],  # assistant的parent是user
+            parent_ids=[f"user_{qa_id}"],  # assistant's parent is user
         )
         db.insert_node(assistant_node)
 
-    # 定义父子关系并更新节点
-    # a<-b, a<-c, a<-d, a<-e 表示assistant_a -> user_b, user_c, user_d, user_e
+    # Define parent-child relationships and update nodes
+    # a<-b, a<-c, a<-d, a<-e means assistant_a -> user_b, user_c, user_d, user_e
     relationships = [
         ("a", "b"),
         ("a", "c"),
@@ -1314,20 +1326,20 @@ def test_complex_dag_with_user_questions():
         ("e", "l"),
         ("e", "m"),
         ("i", "n"),
-        ("j", "n"),  # n有多个父节点（合并点）
+        ("j", "n"),  # n has multiple parent nodes (merge point)
         ("j", "o"),
         ("k", "p"),
         ("o", "q"),
         ("j", "s"),
         ("n", "s"),
-        ("q", "s"),  # s有多个父节点（合并点）
+        ("q", "s"),  # s has multiple parent nodes (merge point)
         ("p", "r"),
         ("k", "t"),
         ("q", "t"),
-        ("r", "t"),  # t有多个父节点（合并点）
+        ("r", "t"),  # t has multiple parent nodes (merge point)
     ]
 
-    # 更新节点的parent_ids和children
+    # Update parent_ids and children of nodes
     for parent, child in relationships:
         assistant_parent = db._nodes[f"assistant_{parent}"]
         user_child = db._nodes[f"user_{child}"]
@@ -1338,11 +1350,11 @@ def test_complex_dag_with_user_questions():
         if f"assistant_{parent}" not in user_child.parent_ids:
             user_child.parent_ids.append(f"assistant_{parent}")
 
-    # 设置根节点a的parent_ids（空列表表示没有父节点）
+    # Set root node a's parent_ids (empty list means no parent)
     db._nodes["user_a"].parent_ids = []
 
-    # 现在测试新增节点u，parent_ids为[assistant_h, assistant_s]
-    # 先创建u节点
+    # Now test adding new node u with parent_ids [assistant_h, assistant_s]
+    # First create u node
     db.insert_node(
         MockMessageNode(
             id="user_u",
@@ -1360,23 +1372,23 @@ def test_complex_dag_with_user_questions():
         )
     )
 
-    # 更新h和s的children
+    # Update h and s's children
     db._nodes["assistant_h"].children.append("user_u")
     db._nodes["assistant_s"].children.append("user_u")
 
-    # 测试：从h和s构建SubDAG
+    # Test: build SubDAG from h and s
     parent_ids = ["assistant_h", "assistant_s"]
     node_map, edges = build_dag_from_parents(db, parent_ids)
     sorted_nodes = topological_sort_subdag(node_map, edges)
 
-    # 提取问答对标识
+    # Extract Q&A pair identifiers
     def get_qa_id(node_id):
         parts = node_id.split("_")
         return parts[1] if len(parts) > 1 else node_id
 
     qa_sequence = [get_qa_id(nid) for nid in sorted_nodes]
 
-    # 去重后的问答对序列（用于显示和验证）
+    # Deduplicated Q&A pair sequence (for display and verification)
     qa_sequence_deduplicated = []
     seen = set()
     for qa_id in qa_sequence:
@@ -1384,22 +1396,22 @@ def test_complex_dag_with_user_questions():
             qa_sequence_deduplicated.append(qa_id)
             seen.add(qa_id)
 
-    # 验证必须包含的节点
+    # Verify required nodes are present
     required_nodes = {"a", "c", "d", "h", "i", "j", "n", "o", "q", "s"}
     actual_qa_set = set(qa_sequence_deduplicated)
 
     for node in required_nodes:
-        assert node in actual_qa_set, f"节点{node}应该在SubDAG中"
+        assert node in actual_qa_set, f"Node {node} should be in the SubDAG"
 
-    # 验证拓扑顺序约束（使用去重后的序列）
+    # Verify topological order constraints (using deduplicated sequence)
     def assert_before(parent, child):
         parent_idx = qa_sequence_deduplicated.index(parent)
         child_idx = qa_sequence_deduplicated.index(child)
         assert parent_idx < child_idx, (
-            f"{parent}({parent_idx})必须在{child}({child_idx})之前"
+            f"{parent}({parent_idx}) must come before {child}({child_idx})"
         )
 
-    # 验证关键路径
+    # Verify key paths
     assert_before("a", "c")
     assert_before("a", "d")
     assert_before("c", "h")
@@ -1414,44 +1426,46 @@ def test_complex_dag_with_user_questions():
     assert_before("q", "s")
     assert_before("n", "s")
 
-    # 验证o和q的连续性（链不切割）
-    # o和q在去重序列中应该是连续的，因为j->o->q形成一条链
+    # Verify o and q are consecutive (chain not broken)
+    # o and q should be consecutive in the deduplicated sequence since j->o->q forms a chain
     o_idx = qa_sequence_deduplicated.index("o")
     q_idx = qa_sequence_deduplicated.index("q")
-    assert q_idx == o_idx + 1, f"o和q应该连续，但o在{o_idx}，q在{q_idx}"
+    assert q_idx == o_idx + 1, (
+        f"o and q should be consecutive, but o is at {o_idx}, q is at {q_idx}"
+    )
 
-    # 验证h和d的相对顺序（它们都是c的子节点或分支）
-    # h是c的分支，d是c的兄弟分支
-    # 由于c的入度为1，出度为2，h和i都是c的子节点
-    # 而d是c的兄弟（都是a的子节点），d的入度为1，出度为2
-    # 因此拓扑排序可能有多种合法结果
+    # Verify relative order of h and d (they are children of c or branches)
+    # h is a branch of c, d is a sibling branch of c
+    # Since c has in-degree 1 and out-degree 2, both h and i are children of c
+    # And d is a sibling of c (both are children of a), d has in-degree 1 and out-degree 2
+    # Therefore topological sort may have multiple valid results
 
-    print("\n最终拓扑排序结果（问答对序列）:")
+    print("\nFinal topological sort result (Q&A pair sequence):")
     print(qa_sequence_deduplicated)
-    print(f"\n✓ 验证通过：共{len(qa_sequence_deduplicated)}个问答对")
-    print(f"✓ a在第一位: {qa_sequence_deduplicated[0] == 'a'}")
-    print(f"✓ o和q连续且o在q之前: o@{o_idx}, q@{q_idx}")
-    print("✓ 所有路径约束满足")
+    print(f"\n✓ Verification passed: {len(qa_sequence_deduplicated)} Q&A pairs total")
+    print(f"✓ a is in the first position: {qa_sequence_deduplicated[0] == 'a'}")
+    print(f"✓ o and q are consecutive with o before q: o@{o_idx}, q@{q_idx}")
+    print("✓ All path constraints satisfied")
 
 
 if __name__ == "__main__":
     # 运行测试
     print("=" * 60)
-    print("开始运行DAG对话结构测试")
+    print("Running DAG conversation structure tests")
     print("=" * 60)
 
     # 运行完整复杂DAG测试
-    print("\n1. 测试复杂DAG场景（包含分支和合并）...")
+    print("\n1. Testing complex DAG scenario (with branching and merging)...")
     test_complex_dag_with_user_questions()
-    print("✓ 复杂DAG测试通过")
+    print("✓ Complex DAG test passed")
 
-    print("\n2. 测试边界情况...")
+    print("\n2. Testing edge cases...")
     edge_cases = TestEdgeCases()
     edge_cases.test_empty_parent_ids()
     edge_cases.test_nonexistent_parent_ids()
     edge_cases.test_single_node()
-    print("✓ 边界情况测试通过")
+    print("✓ Edge case tests passed")
 
     print("\n" + "=" * 60)
-    print("所有测试通过！")
+    print("All tests passed!")
     print("=" * 60)

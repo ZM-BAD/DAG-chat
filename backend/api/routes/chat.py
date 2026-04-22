@@ -1,11 +1,11 @@
 """
-聊天路由模块
+Chat route module
 
-提供聊天相关的API端点，包括：
-- 构建对话DAG结构
-- 拓扑排序
-- 流式响应生成
-- 对话历史管理
+Provides chat-related API endpoints, including:
+- Building conversation DAG structure
+- Topological sorting
+- Streaming response generation
+- Conversation history management
 """
 
 import asyncio
@@ -41,18 +41,20 @@ def build_dag_from_parents(
     mongo_db: MongoDBConnection, parent_ids: list[str]
 ) -> tuple[dict, dict]:
     """
-    从parent_ids开始向上追溯，构建SubDAG（子图）
+    Trace upward from parent_ids to build a SubDAG
 
-    该函数只包含从 parent_ids 向上追溯能到达的节点，不包含对话中的所有历史。
-    例如：如果对话有分支，只追溯当前选择分支的祖先，不追溯其他分支。
+    This function only contains nodes reachable by tracing upward from parent_ids,
+    not all history in the conversation.
+    For example: if the conversation has branches, only trace ancestors of the
+    currently selected branch, not other branches.
 
     Args:
-        mongo_db: MongoDB连接实例
-        parent_ids: 起始父节点ID列表
+        mongo_db: MongoDB connection instance
+        parent_ids: List of starting parent node IDs
 
     Returns:
-        node_map: 节点ID到节点数据的映射（即SubDAG）
-        edges: 边关系 {parent_id: [child_id, ...]}
+        node_map: Mapping from node ID to node data (i.e., the SubDAG)
+        edges: Edge relationships {parent_id: [child_id, ...]}
     """
     if not parent_ids:
         return {}, {}
@@ -114,55 +116,33 @@ def build_dag_from_parents(
             if parent_id in node_map:
                 edges[parent_id].append(node_id)
 
-    logger.info(
-        "SubDAG构建完成: %d 个节点, %d 条边",
-        len(node_map),
-        sum(len(v) for v in edges.values()),
-    )
-
-    # 检测合并点（多父节点）
-    merge_points = [
-        nid for nid, node in node_map.items() if len(node.get("parent_ids", [])) > 1
-    ]
-    if merge_points:
-        merge_preview = merge_points[:5]
-        if len(merge_points) > 5:
-            merge_preview_str = f"{merge_preview}..."
-        else:
-            merge_preview_str = str(merge_preview)
-        logger.info(
-            "检测到 %d 个合并点: %s",
-            len(merge_points),
-            merge_preview_str,
-        )
-
     return node_map, dict(edges)
 
 
 def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
     """
-    对SubDAG进行拓扑排序，保持链不切割
+    Perform topological sort on the SubDAG while preserving chains
 
-    注意：node_map 本身已经是 build_dag_from_parents 构建的 SubDAG
+    Note: node_map is already the SubDAG built by build_dag_from_parents
 
-    算法步骤：
-    1. 计算 SubDAG 内每个节点的入度和出度
-    2. 使用改进的 Kahn 算法进行拓扑排序
-    3. 链不切割策略：如果连续节点能形成链（出度为1且入度为1），则保持连续
+    Algorithm steps:
+    1. Calculate in-degree and out-degree for each node within the SubDAG
+    2. Use a modified Kahn's algorithm for topological sorting
+    3. Chain-preserving strategy: if consecutive nodes form a chain
+       (out-degree=1 and in-degree=1), keep them consecutive
 
     Args:
-        node_map: 节点ID到节点数据的映射（已经是SubDAG）
-        edges: 边关系 {parent_id: [child_id, ...]}
+        node_map: Mapping from node ID to node data (already a SubDAG)
+        edges: Edge relationships {parent_id: [child_id, ...]}
 
     Returns:
-        拓扑排序后的节点ID列表
+        List of node IDs in topological order
     """
     if not node_map:
         return []
 
     # node_map 本身已经是 SubDAG，直接使用
     subdag_nodes = set(node_map.keys())
-    logger.info("SubDAG包含 %d 个节点: %s", len(subdag_nodes), sorted(subdag_nodes))
 
     # 计算 SubDAG 内每个节点的入度和出度
     in_degree = defaultdict(int)
@@ -179,8 +159,8 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
                 out_degree[node_id] += 1
 
     # 调试日志
-    logger.debug("节点入度: %s", dict(in_degree))
-    logger.debug("节点出度: %s", dict(out_degree))
+    logger.debug("Node in-degrees: %s", dict(in_degree))
+    logger.debug("Node out-degrees: %s", dict(out_degree))
 
     # 拓扑排序，保持链不切割
     result = []
@@ -231,36 +211,32 @@ def build_history_from_parent_ids(
     mongo_db: MongoDBConnection, parent_ids: list[str]
 ) -> list[dict]:
     """
-    根据parent_ids构建历史消息
+    Build message history from parent_ids
 
-    算法流程：
-    1. 从parent_ids开始，构建SubDAG（只包含相关分支的历史）
-    2. 对SubDAG进行拓扑排序
-    3. 将拓扑排序后的消息转换为标准格式
+    Algorithm flow:
+    1. Starting from parent_ids, build a SubDAG (only containing relevant branch history)
+    2. Perform topological sort on the SubDAG
+    3. Convert topologically sorted messages to standard format
 
     Args:
-        mongo_db: MongoDB连接实例
-        parent_ids: 起始父节点ID列表 (MongoDB ObjectId的hex字符串)
+        mongo_db: MongoDB connection instance
+        parent_ids: List of starting parent node IDs (hex strings of MongoDB ObjectIds)
 
     Returns:
-        按对话顺序排列的历史消息列表 [{"role": str, "content": str}, ...]
+        List of history messages in conversation order [{"role": str, "content": str}, ...]
     """
     if not parent_ids:
         return []
-
-    logger.info("开始构建SubDAG历史，parent_ids: %s", parent_ids)
 
     # 步骤1：构建SubDAG
     node_map, edges = build_dag_from_parents(mongo_db, parent_ids)
 
     if not node_map:
-        logger.warning("未找到有效的消息节点: %s", parent_ids)
+        logger.warning("No valid message nodes found: %s", parent_ids)
         return []
 
     # 步骤2：对SubDAG进行拓扑排序
     sorted_node_ids = topological_sort_subdag(node_map, edges)
-
-    logger.info("拓扑排序完成，共 %d 个消息", len(sorted_node_ids))
 
     # 步骤3：转换为标准格式
     ordered_messages = []
@@ -279,11 +255,11 @@ def create_message_placeholders(
     parent_ids: list[str] | None = None,
 ) -> tuple[str, str]:
     """
-    创建消息占位符文档，返回 (user_message_id, assistant_message_id)
+    Create placeholder message documents, returns (user_message_id, assistant_message_id)
 
-    Placeholder 模式：先在 MongoDB 中创建文档拿到 realId，
-    后续 chat 端点通过 update 而非 insert 更新内容。
-    不做 MySQL 操作，保持快速响应。
+    Placeholder mode: first create documents in MongoDB to get realId,
+    then the chat endpoint updates content via update instead of insert.
+    No MySQL operations, ensuring fast response.
     """
     # 保存用户消息
     user_message_kwargs = {
@@ -341,17 +317,12 @@ def create_message_placeholders(
 @router.post("/create-message-placeholders")
 async def create_placeholders(request: PlaceholderRequest):
     """
-    创建消息占位符接口
+    Create message placeholders endpoint
 
-    在发送聊天请求前调用，预先在 MongoDB 中创建 user 和 assistant 消息文档，
-    返回真实的 MongoDB ID，前端从此使用 realId，消除 tempId 概念。
+    Called before sending a chat request, pre-creates user and assistant message
+    documents in MongoDB, returns real MongoDB IDs. Frontend uses realId from
+    this point, eliminating the tempId concept.
     """
-    logger.info(
-        "Create placeholders - conversation_id: %s, parent_ids: %s",
-        request.conversation_id,
-        request.parent_ids,
-    )
-
     mongo_db = MongoDBConnection()
     try:
         if not mongo_db.connect():
@@ -365,12 +336,6 @@ async def create_placeholders(request: PlaceholderRequest):
             request.parent_ids,
         )
 
-        logger.info(
-            "Placeholders created - user: %s, assistant: %s",
-            user_msg_id,
-            assistant_msg_id,
-        )
-
         return {
             "user_message_id": user_msg_id,
             "assistant_message_id": assistant_msg_id,
@@ -382,31 +347,20 @@ async def create_placeholders(request: PlaceholderRequest):
 @router.post("/chat")
 async def chat(request: ChatRequest):
     """
-    对话接口
+    Chat endpoint
 
-    必需参数:
-        conversation_id: 对话ID，必须在调用前通过 /create-conversation 创建
-        message: 用户消息内容
+    Required parameters:
+        conversation_id: Conversation ID, must be created via /create-conversation before calling
+        message: User message content
 
-    可选参数:
-        parent_ids: 父消息ID列表，用于支持分支提问和合并提问
-        model: 使用的模型，默认 deepseek
-        deep_thinking: 是否开启深度思考
-        search_enabled: 是否开启搜索
-        user_message_id: placeholder 模式下的用户消息 MongoDB ID
-        assistant_message_id: placeholder 模式下的助手消息 MongoDB ID
+    Optional parameters:
+        parent_ids: List of parent message IDs, for supporting branching and merging questions
+        model: Model to use, default deepseek
+        deep_thinking: Whether to enable deep thinking
+        search_enabled: Whether to enable search
+        user_message_id: User message MongoDB ID in placeholder mode
+        assistant_message_id: Assistant message MongoDB ID in placeholder mode
     """
-    logger.info(
-        "Chat endpoint accessed with user_id: %s, conversation_id: %s, "
-        "parent_ids: %s, model: %s, user_msg_id: %s, assistant_msg_id: %s",
-        request.user_id,
-        request.conversation_id,
-        request.parent_ids,
-        request.model,
-        request.user_message_id,
-        request.assistant_message_id,
-    )
-
     mysql_db = MySQLConnection()
     mongo_db = MongoDBConnection()
     try:
@@ -418,33 +372,19 @@ async def chat(request: ChatRequest):
         if mongo_db.connect():
             if request.parent_ids:
                 # 使用SubDAG拓扑排序构建历史（支持分支提问和合并提问）
-                logger.info(
-                    "Building history from parent_ids using SubDAG topology sort: %s",
-                    request.parent_ids,
-                )
                 history_messages = build_history_from_parent_ids(
                     mongo_db, request.parent_ids
                 )
                 if history_messages:
                     first_ask = False
                     chat_messages = history_messages
-                    logger.info(
-                        "Built history with %d messages from SubDAG",
-                        len(history_messages),
-                    )
                 else:
                     logger.warning(
                         "No history found for parent_ids: %s, this might be the first message in conversation",
                         request.parent_ids,
                     )
-            else:
-                # 首次提问，没有parent_ids，不需要构建历史
-                logger.info(
-                    "No parent_ids provided, this is the first message in conversation: %s",
-                    request.conversation_id,
-                )
 
-        # 将当前用户消息添加到历史消息中
+        # Append current user message to chat history
         chat_messages.append({"role": "user", "content": request.message})
 
         return StreamingResponse(
@@ -465,17 +405,17 @@ async def chat(request: ChatRequest):
 
 async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
     """
-    生成流式响应并处理对话内容
+    Generate streaming response and process conversation content
 
-    参数:
-        chat_messages: 对话历史消息列表
-        request: ChatRequest对象
-        mysql_db: MySQL数据库连接对象
-        mongo_db: MongoDB数据库连接对象
-        first_ask: 是否是第一次问
+    Args:
+        chat_messages: List of conversation history messages
+        request: ChatRequest object
+        mysql_db: MySQL database connection object
+        mongo_db: MongoDB database connection object
+        first_ask: Whether this is the first question
 
-    返回:
-        流式响应数据生成器
+    Returns:
+        Streaming response data generator
     """
     try:
         full_content = ""
@@ -486,25 +426,6 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         if not model_service:
             yield make_sse_error(UNSUPPORTED_MODEL, {"model": request.model})
             return
-
-        # 打印传给大模型的messages信息
-        logger.info("=" * 80)
-        logger.info("调用大模型API - 模型: %s", request.model)
-        logger.info("消息总数: %d", len(chat_messages))
-        logger.info("深度思考模式: %s", request.deep_thinking)
-        logger.info("-" * 80)
-        for i, msg in enumerate(chat_messages, 1):
-            role = msg.get("role", "unknown")
-            content = msg.get("content", "")
-            # 截断过长的内容，避免日志过长
-            if len(content) > 200:
-                display_content = content[:200] + "..."
-            else:
-                display_content = content
-            logger.info(
-                "消息 %d/%d [%s]: %s", i, len(chat_messages), role, display_content
-            )
-        logger.info("=" * 80)
 
         # 流式处理每个数据块
         async for chunk in model_service.generate(chat_messages, request.deep_thinking):
@@ -535,13 +456,6 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
             yield f"data: {json.dumps(final_data, ensure_ascii=False)}\n\n"
 
     except asyncio.CancelledError:
-        # 用户手动停止：自建新的DB连接保存部分内容
-        logger.info(
-            "用户手动停止对话 - conversation_id: %s, content长度: %d, reasoning长度: %d",
-            request.conversation_id,
-            len(full_content),
-            len(full_reasoning),
-        )
         try:
             # 自建连接，不依赖 chat() 中已被 finally 关闭的连接
             abort_mongo_db = MongoDBConnection()
@@ -556,20 +470,15 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
                     first_ask,
                     skip_title_generation=True,
                 )
-                logger.info(
-                    "Abort落库成功 - conversation_id: %s",
-                    request.conversation_id,
-                )
             finally:
                 abort_mysql_db.disconnect()
                 abort_mongo_db.disconnect()
         except Exception as save_err:
-            logger.error("Abort落库失败: %s", save_err)
+            logger.error("Abort save failed: %s", save_err)
         raise
 
     except Exception as e:
-        # 真正的错误，需要记录日志并返回错误信息
-        logger.error("流式处理错误: %s", str(e), exc_info=True)
+        logger.error("Streaming processing error: %s", str(e), exc_info=True)
         yield make_sse_error(STREAM_RESPONSE_FAILED)
 
 
@@ -577,15 +486,15 @@ def update_conversation_models(
     mysql_db: MySQLConnection, conversation_id: str, new_model: str
 ):
     """
-    更新对话中使用的模型列表，避免重复
+    Update the list of models used in a conversation, avoiding duplicates
 
     Args:
-        mysql_db: MySQL数据库连接对象
-        conversation_id: 对话ID
-        new_model: 新使用的模型名
+        mysql_db: MySQL database connection object
+        conversation_id: Conversation ID
+        new_model: Newly used model name
 
     Returns:
-        bool: 更新是否成功
+        bool: Whether the update was successful
     """
     try:
         # 查询当前model字段
@@ -627,13 +536,7 @@ def update_conversation_models(
             update_query, (updated_model, datetime.now(), conversation_id)
         )
 
-        if success:
-            logger.info(
-                "Updated conversation %s models to: %s",
-                conversation_id,
-                updated_model,
-            )
-        else:
+        if not success:
             logger.error("Failed to update conversation %s models", conversation_id)
 
         return success
@@ -653,25 +556,25 @@ async def save_conversation_to_database(
     skip_title_generation: bool = False,
 ):
     """
-    保存对话内容到MySQL和MongoDB数据库
+    Save conversation content to MySQL and MongoDB databases
 
-    支持两种模式：
-    1. Placeholder 模式（request 中有 user_message_id 和 assistant_message_id）：
-       直接 update 已有的 MongoDB 文档，不重新 insert
-    2. 传统模式（无 placeholder IDs）：
-       insert 新文档到 MongoDB
+    Supports two modes:
+    1. Placeholder mode (request has user_message_id and assistant_message_id):
+       Directly update existing MongoDB documents, no new insert
+    2. Legacy mode (no placeholder IDs):
+       Insert new documents into MongoDB
 
-    参数:
-        request: ChatRequest对象, 包含对话ID、用户ID等信息
-        full_content: 完整的AI响应内容
-        full_reasoning: 完整的AI推理内容
-        mysql_db: MySQL数据库连接对象
-        mongo_db: MongoDB数据库连接对象
-        first_ask: 是否是第一次问
-        skip_title_generation: 是否跳过标题生成（abort路径使用）
+    Args:
+        request: ChatRequest object, containing conversation ID, user ID, etc.
+        full_content: Complete AI response content
+        full_reasoning: Complete AI reasoning content
+        mysql_db: MySQL database connection object
+        mongo_db: MongoDB database connection object
+        first_ask: Whether this is the first question
+        skip_title_generation: Whether to skip title generation (used in abort path)
 
-    返回:
-        tuple: (用户消息的MongoDB ID, 助手消息的MongoDB ID)
+    Returns:
+        tuple: (user message MongoDB ID, assistant message MongoDB ID)
     """
     # MySQL 操作（两种模式都需要）
     if mysql_db.connect():
@@ -679,9 +582,8 @@ async def save_conversation_to_database(
             # 新对话
             if first_ask:
                 if skip_title_generation:
-                    # abort路径：跳过LLM标题生成，直接用用户消息前20字
+                    # abort path: skip LLM title generation, use first 20 chars of user message
                     generated_title = request.message[:20]
-                    logger.info("Abort路径使用fallback标题: %s", generated_title)
                 else:
                     # 正常路径：调用LLM生成标题
                     model_service = ModelFactory.get_service(request.model)
@@ -689,7 +591,6 @@ async def save_conversation_to_database(
                         generated_title = model_service.generate_title(
                             request.message, full_content
                         )
-                        logger.info("Generated title: %s", generated_title)
                     else:
                         # 如果获取不到模型服务，使用默认方式生成标题
                         generated_title = full_content[:20]
@@ -703,9 +604,7 @@ async def save_conversation_to_database(
                     """,
                     (generated_title, datetime.now(), request.conversation_id),
                 )
-                if success:
-                    logger.info("MySQL title update successful")
-                else:
+                if not success:
                     logger.error("MySQL title update failed")
             # 老对话，只更新时间
             else:
@@ -717,9 +616,7 @@ async def save_conversation_to_database(
                     """,
                     (datetime.now(), request.conversation_id),
                 )
-                if success:
-                    logger.info("MySQL conversation update successful")
-                else:
+                if not success:
                     logger.error("MySQL conversation update failed")
 
             # 无论是对话还是新对话，都需要更新模型记录
@@ -749,12 +646,6 @@ async def save_conversation_to_database(
                 "message_node",
                 {"_id": ObjectId(ai_message_id)},
                 update_fields,
-            )
-
-            logger.info(
-                "Placeholder模式更新助手消息: %s, content长度: %d",
-                ai_message_id,
-                len(full_content),
             )
 
             return user_message_id, ai_message_id

@@ -1,7 +1,7 @@
 """
-MiniMax模型服务实现
-MiniMax M2系列模型强制开启思考（reasoning），无法关闭
-使用 reasoning_split=True 将思考内容分离到 reasoning_details 字段
+MiniMax model service implementation
+MiniMax M2 series models force-enable thinking (reasoning) and it cannot be disabled
+Uses reasoning_split=True to separate thinking content into reasoning_details field
 """
 
 import logging
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 @ModelFactory.register
 class MiniMaxService(BaseModelService):
     """
-    MiniMax模型服务实现
-    MiniMax M2系列强制开启推理，所有请求都会返回思考过程
+    MiniMax model service implementation
+    MiniMax M2 series forces reasoning on, all requests return thinking process
     """
 
     def __init__(self):
@@ -40,21 +40,19 @@ class MiniMaxService(BaseModelService):
         self, messages: List[Dict[str, str]], deep_thinking: bool = False
     ) -> AsyncGenerator[Dict[str, str], None]:
         """
-        调用MiniMax API生成流式响应
+        Call MiniMax API to generate streaming response
 
-        MiniMax M2系列模型强制开启推理，使用 reasoning_split=True
-        将思考内容分离到 reasoning_details 字段，避免混入正文
+        MiniMax M2 series models force-enable reasoning, uses reasoning_split=True
+        to separate thinking content into reasoning_details field, avoiding mixing into body
 
-        参数:
-            messages: 消息历史列表
-            deep_thinking: MiniMax忽略此参数，始终启用推理
+        Args:
+            messages: List of message history
+            deep_thinking: MiniMax ignores this parameter, reasoning is always enabled
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
         try:
-            logger.info("Sending request to MiniMax API (reasoning always enabled)")
-
             response = await self.async_client.chat.completions.create(
                 model=self.model_name,
                 messages=messages,
@@ -81,11 +79,9 @@ class MiniMaxService(BaseModelService):
 
                 yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
-            logger.info("MiniMax API call successful")
-
         except Exception as e:
             logger.error("MiniMax API call failed: %s", str(e))
-            yield {"error": "模型服务暂不可用", "details": str(e)}
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     # MiniMax 强制开启推理，max_tokens 需留足空间给推理+正文
     _title_max_tokens = 200

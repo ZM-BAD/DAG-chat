@@ -242,7 +242,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
 
       // 仅在开发模式下验证路径连通性
       if (import.meta.env.DEV && newPath.length > 0 && !isPathValid(newPath)) {
-        console.error('[ChatContainer] 路径不连通');
+        console.error('[ChatContainer] Path is not connected');
       }
 
       setDag(newDag);
@@ -449,9 +449,6 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
 
         // 推断提问类型
         const questionType = inferQuestionType(newMessages, prevDag);
-        console.log(
-          `[ChatContainer] 检测到新增节点，尝试增量更新，提问类型: ${questionType}`,
-        );
 
         // 尝试增量更新
         const result = incrementallyUpdateDag(
@@ -464,14 +461,15 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         );
 
         if (result.success && result.dag) {
-          console.log('[ChatContainer] 增量更新成功');
           setDag(result.dag);
           setTabsContainers(result.containers);
           setTabsMap(result.tabsMap);
           setPath(result.path);
           return;
         } else {
-          console.warn('[ChatContainer] 增量更新失败，回退到完全重建');
+          console.warn(
+            '[ChatContainer] Incremental update failed, falling back to full rebuild',
+          );
         }
       }
     }
@@ -528,13 +526,13 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
 
       const container = currentTabsContainers.find((c) => c.id === containerId);
       if (!container) {
-        console.error('[ChatContainer] 找不到 Container:', containerId);
+        console.error('[ChatContainer] Container not found:', containerId);
         return;
       }
 
       const newTabNode = currentDag.nodes.get(newTabId);
       if (!newTabNode) {
-        console.error('[ChatContainer] 找不到 Tab 节点:', newTabId);
+        console.error('[ChatContainer] Tab node not found:', newTabId);
         return;
       }
 

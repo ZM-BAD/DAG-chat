@@ -456,41 +456,24 @@ export function buildPathToLeaf(
   tabsMap: MessageToTabsMap,
   containers: TabsContainer[],
 ): ConversationPath {
-  console.log('[buildPathToLeaf] 开始构建路径');
-  const startNode = dag.nodes.get(startNodeId);
-  const startNodePreview = startNode
-    ? startNode.content.substring(0, 30)
-    : '[未知]';
-  console.log(
-    `   startNodeId: ${startNodeId.substring(0, 8)} - ${startNodePreview}`,
-  );
-
   const path: DagNode[] = [];
   const visited = new Set<string>();
 
   const traverseDown = (nodeId: string): void => {
     if (visited.has(nodeId)) {
-      console.log(
-        `[buildPathToLeaf] 检测到循环，停止遍历: ${nodeId.substring(0, 8)}`,
-      );
       return;
     }
 
     const node = dag.nodes.get(nodeId);
     if (!node) {
-      console.log(`[buildPathToLeaf] 节点不存在: ${nodeId.substring(0, 8)}`);
       return;
     }
 
     visited.add(nodeId);
     path.push(node);
-    console.log(
-      `[buildPathToLeaf] 添加节点到 path: ${node.role} - ${node.content.substring(0, 30)}... (${node.id.substring(0, 8)})`,
-    );
 
     // 如果没有子节点，说明到达 leaf
     if (node.children.length === 0) {
-      console.log(`[buildPathToLeaf] 到达叶子节点: ${node.id.substring(0, 8)}`);
       return;
     }
 
@@ -500,10 +483,6 @@ export function buildPathToLeaf(
     let nextChildId: string | null = null;
 
     if (nodeContainers.length > 0) {
-      console.log(
-        `[buildPathToLeaf] 节点 ${node.id.substring(0, 8)} 属于 ${String(nodeContainers.length)} 个 containers`,
-      );
-
       // 查找 ChildrenTabsContainer - 只处理 assistant 节点
       if (node.role === 'assistant') {
         const childrenContainer = nodeContainers.find(
@@ -513,44 +492,16 @@ export function buildPathToLeaf(
         if (childrenContainer) {
           // 当前节点是 assistant，且属于 ChildrenTabsContainer
           // 使用 container 当前的 activeTab 选择下一个 user.message
-          console.log(
-            `[buildPathToLeaf] ✅ 找到 ChildrenTabsContainer: ${childrenContainer.id.substring(0, 8)}`,
-          );
-          console.log(
-            `   container.assistantMessageId: ${childrenContainer.assistantMessageId.substring(0, 8)}`,
-          );
-          console.log(
-            `   container.activeTab: ${childrenContainer.activeTab.substring(0, 8)}`,
-          );
-          const activeTabNode = dag.nodes.get(childrenContainer.activeTab);
-          const activeTabNodePreview = activeTabNode
-            ? activeTabNode.content.substring(0, 30)
-            : '[未知]';
-          console.log(`   activeTab 内容: ${activeTabNodePreview}`);
 
           // ✅ 使用 container 当前的 activeTab
           nextChildId = childrenContainer.activeTab;
-          console.log(
-            `   ✅ 使用 container.activeTab: ${nextChildId.substring(0, 8)}`,
-          );
-        } else {
-          console.log(
-            `[buildPathToLeaf] 节点是 assistant 但没有 ChildrenTabsContainer`,
-          );
         }
-      } else {
-        console.log(
-          `[buildPathToLeaf] 节点是 user，跳过 ChildrenTabsContainer 检查`,
-        );
       }
     }
 
     // 如果没有特殊的容器逻辑，取第一个子节点继续向下遍历
     if (!nextChildId) {
       nextChildId = node.children[0].id;
-      console.log(
-        `[buildPathToLeaf] 使用第一个子节点: ${nextChildId.substring(0, 8)}`,
-      );
     }
 
     // 递归向下遍历
@@ -558,8 +509,6 @@ export function buildPathToLeaf(
   };
 
   traverseDown(startNodeId);
-
-  console.log(`[buildPathToLeaf] 完成，path 长度: ${String(path.length)}`);
 
   return path;
 }
@@ -803,20 +752,18 @@ function formatNodePreview(node: DagNode): string {
 export function logValidationResult(
   result: PathContainerValidationResult,
 ): void {
-  if (result.valid) {
-    console.log('✅ [Validation] 路径与容器一致性校验通过');
-  } else {
+  if (!result.valid) {
     console.error(
-      `❌ [Validation] 路径与容器一致性校验失败，发现 ${String(result.errors.length)} 个错误:`,
+      `[Validation] Path-container consistency check failed, found ${String(result.errors.length)} errors:`,
     );
     for (const error of result.errors) {
       console.error(`   - [${error.containerType}] ${error.message}`);
-      console.error(`     节点: ${error.nodePreview} (${error.nodeId})`);
+      console.error(`     Node: ${error.nodePreview} (${error.nodeId})`);
       console.error(
-        `     期望 activeTab: ${error.expectedActiveTab.substring(0, 8)}...`,
+        `     Expected activeTab: ${error.expectedActiveTab.substring(0, 8)}...`,
       );
       console.error(
-        `     实际 activeTab: ${error.actualActiveTab.substring(0, 8)}...`,
+        `     Actual activeTab: ${error.actualActiveTab.substring(0, 8)}...`,
       );
     }
   }

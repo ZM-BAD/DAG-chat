@@ -9,7 +9,7 @@ from backend.logging_config import setup_logging
 setup_logging()
 
 API_DESCRIPTION = """
-DAG-chat API 为您的应用提供统一的大型语言模型接口。
+DAG-chat API provides a unified large language model interface for your application.
 """
 
 app = FastAPI(title="DAG-chat API", description=API_DESCRIPTION, version="1.0.0")

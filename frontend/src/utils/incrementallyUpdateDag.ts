@@ -72,23 +72,18 @@ export function incrementallyUpdateDag(
   newMessages: Message[],
   questionType: QuestionType,
 ): IncrementalUpdateResult {
-  console.log('[incrementallyUpdateDag] 开始增量更新');
-  console.log(`   questionType: ${questionType}`);
-  console.log(`   prevPath 长度: ${String(prevPath.length)}`);
-  console.log(`   newMessages 数量: ${String(newMessages.length)}`);
-
   try {
     // 验证输入
     if (!prevDag || prevPath.length === 0) {
       console.warn(
-        '[incrementallyUpdateDag] 没有之前的 DAG 或 path， 回退到完全重建',
+        '[incrementallyUpdateDag] No previous DAG or path, falling back to full rebuild',
       );
       return fullRebuild(newMessages);
     }
 
     if (newMessages.length < 2) {
       console.warn(
-        '[incrementallyUpdateDag] newMessages 应该至少包含 user 和 assistant 两条消息',
+        '[incrementallyUpdateDag] newMessages should contain at least user and assistant messages',
       );
       return fullRebuild(newMessages);
     }
@@ -96,14 +91,11 @@ export function incrementallyUpdateDag(
     const userMessage = newMessages.find((m) => m.role === 'user');
     const assistantMessage = newMessages.find((m) => m.role === 'assistant');
     if (!userMessage || !assistantMessage) {
-      console.warn('[incrementallyUpdateDag] 找不到 user 或 assistant 消息');
+      console.warn(
+        '[incrementallyUpdateDag] Cannot find user or assistant message',
+      );
       return fullRebuild(newMessages);
     }
-    console.log(`   userMessage.id: ${userMessage.id}`);
-    console.log(`   assistantMessage.id: ${assistantMessage.id}`);
-    console.log(
-      `   userMessage.parent_ids: ${JSON.stringify(userMessage.parent_ids)}`,
-    );
     // 根据提问类型选择不同的处理策略
     switch (questionType) {
       case 'normal':
@@ -137,13 +129,13 @@ export function incrementallyUpdateDag(
         // TypeScript exhaustive check
         const _exhaustiveCheck: never = questionType;
         console.warn(
-          `[incrementallyUpdateDag] 未知提问类型: ${String(_exhaustiveCheck)}`,
+          `[incrementallyUpdateDag] Unknown question type: ${String(_exhaustiveCheck)}`,
         );
         return fullRebuild(newMessages);
       }
     }
   } catch (error) {
-    console.error('[incrementallyUpdateDag] 增量更新异常:', error);
+    console.error('[incrementallyUpdateDag] Incremental update error:', error);
     return fullRebuild(newMessages);
   }
 }
@@ -168,13 +160,12 @@ function handleNormalQuestion(
   userMessage: Message,
   assistantMessage: Message,
 ): IncrementalUpdateResult {
-  console.log('[handleNormalQuestion] 处理普通提问');
   try {
     // 1. 找到当前路径的最后一个 assistant 节点
     const lastAssistant = prevPath[prevPath.length - 1];
     // 注意：prevPath.length 已在 incrementallyUpdateDag 中验证非空
     if (lastAssistant.role !== 'assistant') {
-      console.warn('[handleNormalQuestion] 最后一个节点不是 assistant');
+      console.warn('[handleNormalQuestion] Last node is not assistant');
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
         userMessage,
@@ -203,7 +194,6 @@ function handleNormalQuestion(
     ) as ChildrenTabsContainer | null;
     if (lastAssistant.children.length === 2 && !existingContainer) {
       // 之前只有一个 child, 现在有两个, 需要创建新的 container
-      console.log('[handleNormalQuestion] 创建新的 ChildrenTabsContainer');
       const newContainer: ChildrenTabsContainer = {
         id: `children-${lastAssistant.id}`,
         type: 'children',
@@ -227,7 +217,6 @@ function handleNormalQuestion(
       newTabsMap.get(lastAssistant.id)!.push(newContainer.id);
     } else if (existingContainer) {
       // 已经存在 container, 更新 userMessages 和 activeTab
-      console.log('[handleNormalQuestion] 更新现有 ChildrenTabsContainer');
       const updatedContainer: ChildrenTabsContainer = {
         ...existingContainer,
         userMessages: [...existingContainer.userMessages, newUserNode],
@@ -243,8 +232,6 @@ function handleNormalQuestion(
       newUserNode,
       newAssistantNode,
     ];
-    console.log('[handleNormalQuestion] 路径扩展完成');
-    console.log(`   新路径长度: ${String(newPath.length)}`);
     return {
       success: true,
       dag: newDag,
@@ -253,7 +240,7 @@ function handleNormalQuestion(
       path: newPath,
     };
   } catch (error) {
-    console.error('[handleNormalQuestion] 处理异常:', error);
+    console.error('[handleNormalQuestion] Processing error:', error);
     return fullRebuild([
       ...getMessagesFromDag(prevDag),
       userMessage,
@@ -277,12 +264,11 @@ function handleBranchQuestion(
   userMessage: Message,
   assistantMessage: Message,
 ): IncrementalUpdateResult {
-  console.log('[handleBranchQuestion] 处理分支提问');
   try {
     // 1. 获取被引用的 assistant 节点
     const parentAssistantId = userMessage.parent_ids?.[0];
     if (!parentAssistantId) {
-      console.warn('[handleBranchQuestion] 没有父节点 ID');
+      console.warn('[handleBranchQuestion] No parent node ID');
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
         userMessage,
@@ -291,7 +277,7 @@ function handleBranchQuestion(
     }
     const parentAssistant = prevDag.nodes.get(parentAssistantId);
     if (!parentAssistant) {
-      console.warn('[handleBranchQuestion] 找不到父 assistant 芚点');
+      console.warn('[handleBranchQuestion] Cannot find parent assistant node');
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
         userMessage,
@@ -304,7 +290,7 @@ function handleBranchQuestion(
     );
     if (existingUserChildren.length === 0) {
       console.warn(
-        '[handleBranchQuestion] 该 assistant 没有其他 user child, 不符合分支定义',
+        '[handleBranchQuestion] This assistant has no other user children, does not match branch definition',
       );
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
@@ -312,9 +298,6 @@ function handleBranchQuestion(
         assistantMessage,
       ]);
     }
-    console.log(
-      `   父 assistant 有 ${String(existingUserChildren.length)} 个现有 user children`,
-    );
     // 3. 添加新节点到 DAG
     const { newDag, newUserNode, newAssistantNode } = addNodesToDag(
       prevDag,
@@ -337,7 +320,6 @@ function handleBranchQuestion(
     ) as ChildrenTabsContainer | null;
     if (existingUserChildren.length === 1 && !existingContainer) {
       // 之前只有一个 child, 现在有两个, 需要创建新的 container
-      console.log('[handleBranchQuestion] 创建新的 ChildrenTabsContainer');
       const newContainer: ChildrenTabsContainer = {
         id: `children-${parentAssistant.id}`,
         type: 'children',
@@ -361,7 +343,6 @@ function handleBranchQuestion(
       newTabsMap.get(parentAssistant.id)!.push(newContainer.id);
     } else if (existingUserChildren.length >= 2 && existingContainer) {
       // 已经存在 >= 2 个 children, 更新现有 container
-      console.log('[handleBranchQuestion] 更新现有 ChildrenTabsContainer');
       const updatedContainer: ChildrenTabsContainer = {
         ...existingContainer,
         userMessages: [...existingContainer.userMessages, newUserNode],
@@ -372,7 +353,9 @@ function handleBranchQuestion(
       );
     } else {
       // 之前没有 children 或没有 container（理论上不应该发生，但作为容错处理)
-      console.warn('[handleBranchQuestion] 异常情况, 创建新的 container');
+      console.warn(
+        '[handleBranchQuestion] Unexpected situation, creating new container',
+      );
       const allUserChildren = [...existingUserChildren, newUserNode];
       const newContainer: ChildrenTabsContainer = {
         id: `children-${parentAssistant.id}`,
@@ -407,7 +390,9 @@ function handleBranchQuestion(
       (n) => n.id === parentAssistantId,
     );
     if (assistantIndex === -1) {
-      console.warn('[handleBranchQuestion] 父 assistant 不在当前 path 中');
+      console.warn(
+        '[handleBranchQuestion] Parent assistant not in current path',
+      );
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
         userMessage,
@@ -421,8 +406,6 @@ function handleBranchQuestion(
       newUserNode,
       newAssistantNode,
     ];
-    console.log('[handleBranchQuestion] 路径构建完成');
-    console.log(`   新路径长度: ${String(newPath.length)}`);
     return {
       success: true,
       dag: newDag,
@@ -431,7 +414,7 @@ function handleBranchQuestion(
       path: newPath,
     };
   } catch (error) {
-    console.error('[handleBranchQuestion] 处理异常:', error);
+    console.error('[handleBranchQuestion] Processing error:', error);
     return fullRebuild([
       ...getMessagesFromDag(prevDag),
       userMessage,
@@ -455,15 +438,11 @@ function handleMergeQuestion(
   userMessage: Message,
   assistantMessage: Message,
 ): IncrementalUpdateResult {
-  console.log('[handleMergeQuestion] 处理合并提问');
-  console.log(
-    `   userMessage.parent_ids: ${JSON.stringify(userMessage.parent_ids)}`,
-  );
   try {
     // 1. 获取所有被引用的 assistant 节点
     const parentAssistantIds = userMessage.parent_ids || [];
     if (parentAssistantIds.length < 2) {
-      console.warn('[handleMergeQuestion] 父节点数量不足 2');
+      console.warn('[handleMergeQuestion] Parent node count less than 2');
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
         userMessage,
@@ -476,20 +455,21 @@ function handleMergeQuestion(
       if (node) {
         parentAssistants.push(node);
       } else {
-        console.warn(`[handleMergeQuestion] 找不到父 assistant 节点: ${id}`);
+        console.warn(
+          `[handleMergeQuestion] Cannot find parent assistant node: ${id}`,
+        );
       }
     }
     if (parentAssistants.length < 2) {
-      console.warn('[handleMergeQuestion] 父 assistant 节点数量不足 2');
+      console.warn(
+        '[handleMergeQuestion] Parent assistant node count less than 2',
+      );
       return fullRebuild([
         ...getMessagesFromDag(prevDag),
         userMessage,
         assistantMessage,
       ]);
     }
-    console.log(
-      `   找到 ${String(parentAssistants.length)} 个父 assistant 节点`,
-    );
     // 2. 添加新节点到 DAG
     const { newDag, newUserNode, newAssistantNode } = addNodesToDag(
       prevDag,
@@ -506,7 +486,6 @@ function handleMergeQuestion(
     newUserNode.children.push(newAssistantNode);
     newAssistantNode.parent_ids = [newUserNode.id];
     // 5. 创建 ParentTabsContainer (合并提问必然创建)
-    console.log('[handleMergeQuestion] 创建新的 ParentTabsContainer');
     const newContainer: ParentTabsContainer = {
       id: `parent-${userMessage.id}`,
       type: 'parent',
@@ -541,9 +520,6 @@ function handleMergeQuestion(
     let newPath: ConversationPath;
     if (assistantIndex === -1) {
       // 如果第一个父 assistant 不在当前 path 中，需要从 root 重建路径
-      console.log(
-        '[handleMergeQuestion] 第一个父 assistant 不在当前 path 中, 重建路径',
-      );
       const prefixPath = buildPathToRoot(
         primaryAssistant.id,
         newDag,
@@ -556,8 +532,6 @@ function handleMergeQuestion(
       const prefixPath = prevPath.slice(0, assistantIndex + 1);
       newPath = [...prefixPath, newUserNode, newAssistantNode];
     }
-    console.log('[handleMergeQuestion] 路径构建完成');
-    console.log(`   新路径长度: ${String(newPath.length)}`);
     return {
       success: true,
       dag: newDag,
@@ -566,7 +540,7 @@ function handleMergeQuestion(
       path: newPath,
     };
   } catch (error) {
-    console.error('[handleMergeQuestion] 处理异常:', error);
+    console.error('[handleMergeQuestion] Processing error:', error);
     return fullRebuild([
       ...getMessagesFromDag(prevDag),
       userMessage,
@@ -645,7 +619,6 @@ function getMessagesFromDag(dag: Dag): Message[] {
  * 完全重建 (降级方案)
  */
 function fullRebuild(allMessages: Message[]): IncrementalUpdateResult {
-  console.log('[fullRebuild] 执行完全重建');
   const newDag = buildDag(allMessages);
   if (!newDag) {
     return {
@@ -654,7 +627,7 @@ function fullRebuild(allMessages: Message[]): IncrementalUpdateResult {
       containers: [],
       tabsMap: new Map(),
       path: [],
-      error: '构建 DAG 失败',
+      error: 'Failed to build DAG',
     };
   }
   const { containers: newContainers, map: newTabsMap } =

@@ -30,7 +30,6 @@ class MySQLConnection:
                 port=self.port,
             )
             if self.connection.is_connected():
-                logger.info("Connected to MySQL database")
                 self.cursor = self.connection.cursor()
                 return True
         except Error as e:
@@ -41,7 +40,6 @@ class MySQLConnection:
         if self.connection and self.connection.is_connected():
             self.cursor.close()
             self.connection.close()
-            logger.info("MySQL connection closed")
 
     def execute_query(self, query, params=None):
         try:

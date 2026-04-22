@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @ModelFactory.register
 class DeepSeekService(BaseModelService):
     """
-    DeepSeek模型服务实现
+    DeepSeek model service implementation
     """
 
     def __init__(self):
@@ -34,7 +34,7 @@ class DeepSeekService(BaseModelService):
     @classmethod
     def get_service_name(cls) -> str:
         """
-        获取服务名称
+        Get service name
         """
         return "deepseek"
 
@@ -42,20 +42,16 @@ class DeepSeekService(BaseModelService):
         self, messages: List[Dict[str, str]], deep_thinking: bool = False
     ) -> AsyncGenerator[Dict[str, str], None]:
         """
-        调用DeepSeek API生成流式响应
+        Call DeepSeek API to generate streaming response
 
-        参数:
-            messages: 消息历史列表
-            deep_thinking: 是否使用思考模型
+        Args:
+            messages: List of message history
+            deep_thinking: Whether to use thinking model
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
         try:
-            logger.info(
-                "Sending request to DeepSeek API, deep_thinking: %s", deep_thinking
-            )
-
             # 根据deep_thinking参数选择模型
             model_name = DEEPSEEK_MODEL_THINKING if deep_thinking else DEEPSEEK_MODEL
 
@@ -78,11 +74,9 @@ class DeepSeekService(BaseModelService):
 
                 yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
-            logger.info("DeepSeek API call successful, model: %s", model_name)
-
         except Exception as e:
             logger.error("DeepSeek API call failed: %s", str(e))
-            yield {"error": "模型服务暂不可用", "details": str(e)}
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     def _get_title_model(self) -> str:
         return DEEPSEEK_MODEL

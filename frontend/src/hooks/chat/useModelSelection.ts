@@ -49,7 +49,7 @@ export const useModelSelection = (): UseModelSelectionReturn => {
         }
       }
     } catch (error) {
-      console.error('获取模型列表失败:', error);
+      console.error('Failed to fetch model list:', error);
       // 使用默认模型列表作为降级方案
       const defaultModels: AvailableModel[] = [
         { value: 'deepseek', label: 'DeepSeek' },
@@ -70,7 +70,6 @@ export const useModelSelection = (): UseModelSelectionReturn => {
   // 处理模型选择，只接受字符串类型
   const handleModelChange = (model: string): void => {
     setSelectedModel(model);
-    console.log('选择模型:', model);
   };
 
   return {

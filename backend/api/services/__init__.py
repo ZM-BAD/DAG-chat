@@ -1,6 +1,6 @@
 """
-模型服务模块
-提供统一的模型服务接口和工厂管理
+Model service module
+Provides unified model service interface and factory management
 """
 
 from .model_factory import ModelFactory

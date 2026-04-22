@@ -5,7 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_DEFAULT_USER_ID: string;
   readonly VITE_APP_TITLE: string;
   readonly VITE_APP_VERSION: string;
-  // 更多环境变量...
+  // More environment variables...
 }
 
 interface ImportMeta {

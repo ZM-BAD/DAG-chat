@@ -1,122 +1,122 @@
 #!/bin/bash
 
-# 启动脚本 - 用于启动DAG-chat项目的前端和后端
+# Startup script for launching DAG-chat frontend and backend services
 
-# 清理函数
+# Cleanup handler
 cleanup() {
-    echo "\n正在停止服务..."
+    echo "\nStopping services..."
     if [ ! -z "$BACKEND_PID" ]; then
         kill $BACKEND_PID 2>/dev/null
-        echo "后端服务已停止"
+        echo "Backend service stopped"
     fi
     if [ ! -z "$FRONTEND_PID" ]; then
         kill $FRONTEND_PID 2>/dev/null
-        echo "前端服务已停止"
+        echo "Frontend service stopped"
     fi
     exit 0
 }
 
-# 设置信号处理
+# Register signal handlers
 trap cleanup SIGINT SIGTERM
 
-# 函数：停止所有服务
+# Function: stop all services
 stop_services() {
-    echo "正在查找并停止DAG-chat相关服务..."
+    echo "Finding and stopping DAG-chat services..."
 
-    # 查找并停止前端服务 (端口3000)
+    # Find and stop frontend service (port 3000)
     FRONTEND_PID=$(lsof -ti:3000 2>/dev/null)
     if [ ! -z "$FRONTEND_PID" ]; then
-        echo "发现前端服务 (PID: $FRONTEND_PID)，正在停止..."
+        echo "Found frontend service (PID: $FRONTEND_PID), stopping..."
         kill -TERM $FRONTEND_PID 2>/dev/null
         sleep 2
-        # 如果进程仍在运行，强制杀死
+        # Force kill if still running
         if kill -0 $FRONTEND_PID 2>/dev/null; then
             kill -KILL $FRONTEND_PID 2>/dev/null
-            echo "强制停止前端服务"
+            echo "Force stopped frontend service"
         else
-            echo "前端服务已停止"
+            echo "Frontend service stopped"
         fi
     else
-        echo "未发现运行中的前端服务 (端口3000)"
+        echo "No running frontend service found (port 3000)"
     fi
 
-    # 查找并停止后端服务 (端口8000)
+    # Find and stop backend service (port 8000)
     BACKEND_PID=$(lsof -ti:8000 2>/dev/null)
     if [ ! -z "$BACKEND_PID" ]; then
-        echo "发现后端服务 (PID: $BACKEND_PID)，正在停止..."
+        echo "Found backend service (PID: $BACKEND_PID), stopping..."
         kill -TERM $BACKEND_PID 2>/dev/null
         sleep 2
-        # 如果进程仍在运行，强制杀死
+        # Force kill if still running
         if kill -0 $BACKEND_PID 2>/dev/null; then
             kill -KILL $BACKEND_PID 2>/dev/null
-            echo "强制停止后端服务"
+            echo "Force stopped backend service"
         else
-            echo "后端服务已停止"
+            echo "Backend service stopped"
         fi
     else
-        echo "未发现运行中的后端服务 (端口8000)"
+        echo "No running backend service found (port 8000)"
     fi
 
-    # 额外检查：查找可能的相关Node.js和Python进程
-    echo "检查其他可能的DAG-chat进程..."
+    # Additional check: find possible related Node.js and Python processes
+    echo "Checking for other DAG-chat processes..."
 
-    # 查找可能的npm dev或start进程
+    # Find possible npm dev or start processes
     NPM_PIDS=$(pgrep -f "npm.*(dev|start)" 2>/dev/null)
     if [ ! -z "$NPM_PIDS" ]; then
-        echo "发现npm进程: $NPM_PIDS"
+        echo "Found npm processes: $NPM_PIDS"
         echo "$NPM_PIDS" | xargs kill -TERM 2>/dev/null
         sleep 1
     fi
 
-    # 查找可能的Python API进程
+    # Find possible Python API processes
     PYTHON_PIDS=$(pgrep -f "python.*run_api.py" 2>/dev/null)
     if [ ! -z "$PYTHON_PIDS" ]; then
-        echo "发现Python API进程: $PYTHON_PIDS"
+        echo "Found Python API processes: $PYTHON_PIDS"
         echo "$PYTHON_PIDS" | xargs kill -TERM 2>/dev/null
         sleep 1
     fi
 
-    echo "所有DAG-chat服务已停止！"
+    echo "All DAG-chat services stopped!"
 }
 
-# 函数：显示帮助信息
+# Function: display help information
 display_help() {
     echo "Usage: $0 [option]"
     echo "Options:"
-    echo "  --frontend     仅启动前端"
-    echo "  --backend      仅启动后端"
-    echo "  --all          同时启动前端和后端"
-    echo "  --stop         停止所有DAG-chat服务"
-    echo "  --help         显示帮助信息"
+    echo "  --frontend     Start frontend only"
+    echo "  --backend      Start backend only"
+    echo "  --all          Start both frontend and backend"
+    echo "  --stop         Stop all DAG-chat services"
+    echo "  --help         Display help information"
     echo ""
-    echo "示例:"
-    echo "  $0 --frontend  # 启动前端（默认端口3000）"
-    echo "  $0 --backend   # 启动后端（默认端口8000）"
-    echo "  $0 --all       # 同时启动前端和后端"
-    echo "  $0 --stop      # 停止所有相关服务"
+    echo "Examples:"
+    echo "  $0 --frontend  # Start frontend (default port 3000)"
+    echo "  $0 --backend   # Start backend (default port 8000)"
+    echo "  $0 --all       # Start both frontend and backend"
+    echo "  $0 --stop      # Stop all related services"
 }
 
-# 函数：启动前端
+# Function: start frontend
 start_frontend() {
-    echo "正在启动前端服务..."
+    echo "Starting frontend service..."
     cd frontend
-    echo "安装前端依赖..."
+    echo "Installing frontend dependencies..."
     npm install --legacy-peer-deps
-    echo "启动前端开发服务器..."
-    echo "前端将在 http://localhost:3000 上运行"
+    echo "Starting frontend dev server..."
+    echo "Frontend will run on http://localhost:3000"
     npm run dev &
     FRONTEND_PID=$!
     cd ..
 
-    # 等待前端服务启动
-    echo "等待前端服务启动..."
+    # Wait for frontend service to start
+    echo "Waiting for frontend service to start..."
     for i in {1..60}; do
         if curl -s -f http://localhost:3000 > /dev/null 2>&1; then
-            echo "前端服务已启动！"
-            # 检查是否已经有浏览器打开了这个端口
+            echo "Frontend service started!"
+            # Check if a browser already has this port open
             if ! lsof -ti:3000 -c chrome -c safari -c firefox > /dev/null 2>&1; then
-                # 如果没有浏览器打开，则自动打开浏览器
-                echo "正在打开浏览器..."
+                # If no browser is open, open one automatically
+                echo "Opening browser..."
                 if [[ "$OSTYPE" == "darwin"* ]]; then
                     # macOS
                     open http://localhost:3000
@@ -131,64 +131,64 @@ start_frontend() {
         sleep 1
     done
 
-    echo "前端服务启动超时！"
+    echo "Frontend service startup timed out!"
     return 1
 }
 
-# 函数：启动后端
+# Function: start backend
 start_backend() {
-    echo "正在启动后端服务..."
+    echo "Starting backend service..."
     cd backend
-    echo "安装Python依赖..."
-    # 检查是否在虚拟环境中，如果没有则激活
+    echo "Installing Python dependencies..."
+    # Check if in a virtual environment, activate if not
     if [ -z "$VIRTUAL_ENV" ] && [ -d "../.venv" ]; then
-        echo "激活虚拟环境..."
+        echo "Activating virtual environment..."
         source ../.venv/bin/activate
     fi
     pip install -r requirements.txt
-    echo "启动后端服务器..."
-    echo "后端将在 http://localhost:8000 上运行"
+    echo "Starting backend server..."
+    echo "Backend will run on http://localhost:8000"
     python3 run_api.py &
     BACKEND_PID=$!
     cd ..
-    
-    # 等待后端服务启动
-    echo "等待后端服务启动..."
-    for i in {1..60}; do  # 增加到60秒等待时间
+
+    # Wait for backend service to start
+    echo "Waiting for backend service to start..."
+    for i in {1..60}; do  # 60 second timeout
         if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
             echo ""
-            echo "后端服务已启动！"
-            # 额外等待5秒确保数据库连接也准备好
-            echo "等待数据库连接稳定..."
+            echo "Backend service started!"
+            # Wait an extra 5 seconds to ensure database connection is ready
+            echo "Waiting for database connection to stabilize..."
             sleep 5
-            
-            # 测试数据库连接
-            echo "测试数据库连接..."
+
+            # Test database connection
+            echo "Testing database connection..."
             if curl -s -f "http://localhost:8000/api/v1/dialogue/list?user_id=zm-bad&page=1&page_size=1" > /dev/null 2>&1; then
-                echo "数据库连接正常！"
+                echo "Database connection is ready!"
                 return 0
             else
-                echo "数据库连接还未准备好，继续等待..."
+                echo "Database connection not ready yet, continuing to wait..."
             fi
         fi
         if [ $((i % 10)) -eq 0 ]; then
-            echo ""  # 每10秒换行
+            echo ""  # Newline every 10 seconds
         fi
         echo -n "."
         sleep 1
     done
-    
-    echo "后端服务启动超时！"
+
+    echo "Backend service startup timed out!"
     return 1
 }
 
-# 检查参数
+# Check arguments
 if [ $# -eq 0 ]; then
     display_help
     exit 1
 fi
 
-# 处理参数
+# Process arguments
 case "$1" in
     --frontend)
         start_frontend
@@ -197,18 +197,18 @@ case "$1" in
         start_backend
         ;;
     --all)
-        # 启动后端服务
+        # Start backend service
         if ! start_backend; then
-            echo "后端服务启动失败，正在清理..."
+            echo "Backend service failed to start, cleaning up..."
             if [ ! -z "$BACKEND_PID" ]; then
                 kill $BACKEND_PID 2>/dev/null
             fi
             exit 1
         fi
 
-        # 启动前端服务
+        # Start frontend service
         if ! start_frontend; then
-            echo "前端服务启动失败，正在清理..."
+            echo "Frontend service failed to start, cleaning up..."
             if [ ! -z "$FRONTEND_PID" ]; then
                 kill $FRONTEND_PID 2>/dev/null
             fi
@@ -218,11 +218,11 @@ case "$1" in
             exit 1
         fi
 
-        echo "\n前端和后端服务已启动！"
-        echo "前端: http://localhost:3000"
-        echo "后端: http://localhost:8000"
-        echo "\n按 Ctrl+C 停止所有服务"
-        wait  # 等待所有后台任务完成
+        echo "\nFrontend and backend services are running!"
+        echo "Frontend: http://localhost:3000"
+        echo "Backend: http://localhost:8000"
+        echo "\nPress Ctrl+C to stop all services"
+        wait  # Wait for all background tasks
         ;;
     --stop)
         stop_services
@@ -231,7 +231,7 @@ case "$1" in
         display_help
         ;;
     *)
-        echo "错误: 未知选项 $1"
+        echo "Error: Unknown option $1"
         display_help
         exit 1
         ;;

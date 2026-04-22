@@ -92,13 +92,11 @@ export const useChatSettings = (): UseChatSettingsReturn => {
   // 处理深度思考模式切换
   const handleDeepThinkingChange = (enabled: boolean): void => {
     setDeepThinkingEnabled(enabled);
-    console.log('深度思考模式:', enabled ? '开启' : '关闭');
   };
 
   // 处理联网搜索切换
   const handleSearchChange = (enabled: boolean): void => {
     setSearchEnabled(enabled);
-    console.log('联网搜索:', enabled ? '开启' : '关闭');
   };
 
   return {

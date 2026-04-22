@@ -49,7 +49,6 @@ class MongoDBConnection:
 
             # Check if connection is successful
             self.client.admin.command("ping")
-            logger.info("Connected to MongoDB database")
 
             # Get database
             self.db = self.client[self.database]
@@ -61,7 +60,6 @@ class MongoDBConnection:
     def disconnect(self):
         if self.client:
             self.client.close()
-            logger.info("MongoDB connection closed")
 
     def insert(self, collection_name: str, document: dict):
         if self.client:
@@ -142,15 +140,12 @@ if __name__ == "__main__":
             try:
                 # 插入测试文档
                 user_id = db.insert_one("users", test_user)
-                logger.info(f"Inserted test user with ID: {user_id}")
 
                 # 查询验证
                 users = db.find("users", {"_id": test_id})
-                logger.info(f"Found {len(users)} test users")
 
                 # 清理测试数据
                 db.db["users"].delete_one({"_id": test_id})
-                logger.info("Cleaned up test data")
 
             except Exception as e:
                 logger.error(f"Test failed: {str(e)}", exc_info=True)

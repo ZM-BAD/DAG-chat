@@ -11,6 +11,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # 合并所有路由到主路由器
-router.include_router(base_router, tags=["基础接口"])
-router.include_router(conversation_router, tags=["对话管理"])
-router.include_router(chat_router, tags=["聊天接口"])
+router.include_router(base_router, tags=["Base"])
+router.include_router(conversation_router, tags=["Conversation"])
+router.include_router(chat_router, tags=["Chat"])

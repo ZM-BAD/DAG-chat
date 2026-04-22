@@ -84,7 +84,6 @@ const ChildrenTabsComponent: FC<{
               userNode.id === container.activeTab ? 'active' : ''
             }`}
             onClick={() => {
-              console.log('Branch tab clicked:', userNode.id, userNode.content);
               onTabClick(container.id, userNode.id);
             }}
             title={userNode.content}
@@ -133,11 +132,6 @@ const ParentTabsComponent: FC<{
               assistantNode.id === container.activeTab ? 'active' : ''
             }`}
             onClick={() => {
-              console.log(
-                'Merge tab clicked:',
-                assistantNode.id,
-                assistantNode.content,
-              );
               onTabClick(container.id, assistantNode.id);
             }}
             title={t('chat.model', {

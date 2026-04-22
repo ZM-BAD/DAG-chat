@@ -1,5 +1,5 @@
-# Python 版本要求: >= 3.14
-# 推荐使用 Python 3.14.3
+# Python version requirement: >= 3.14
+# Recommended: Python 3.14.3
 
 # Project dependencies
 # Add your required packages here

@@ -18,7 +18,7 @@ MAX_TITLE_LENGTH = 20
 
 class BaseModelService(metaclass=abc.ABCMeta):
     """
-    模型服务基类，定义所有模型服务需要实现的接口
+    Base class for model services, defines the interface all model services must implement
     """
 
     # 标题生成配置 —— 子类按需覆盖
@@ -28,29 +28,30 @@ class BaseModelService(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def generate(self, messages, deep_thinking: bool = False):
         """
-        生成流式响应
+        Generate streaming response
 
-        参数:
-            messages: 消息历史列表，每个消息包含role和content字段
-            deep_thinking: 是否使用思考模型
+        Args:
+            messages: List of message history, each message contains role and content fields
+            deep_thinking: Whether to use thinking model
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
 
     @abc.abstractmethod
     def _get_title_model(self) -> str:
         """
-        返回标题生成使用的模型名称
+        Return the model name used for title generation
 
-        子类必须实现此方法，返回对应的模型标识
+        Subclasses must implement this method, returning the corresponding model identifier
         """
 
     def generate_title(self, user_input: str, full_response: str) -> str:
         """
-        根据用户输入和完整响应生成对话标题
+        Generate conversation title from user input and full response
 
-        模板方法：共性逻辑统一处理，子类通过属性覆盖差异配置
+        Template method: common logic handled uniformly, subclasses override
+        differential configuration through properties
         """
         service_name = self.get_service_name()
         try:
@@ -79,14 +80,7 @@ class BaseModelService(metaclass=abc.ABCMeta):
                 title = content.strip("。\n")
                 if len(title) > MAX_TITLE_LENGTH:
                     logger.warning(
-                        "%s生成的标题超过20字被截断, 原始标题(%d字): %s",
-                        service_name,
-                        len(title),
-                        title,
-                    )
-                else:
-                    logger.info(
-                        "%s标题生成正常(%d字): %s",
+                        "%s generated title exceeds 20 chars and was truncated, original title (%d chars): %s",
                         service_name,
                         len(title),
                         title,
@@ -94,7 +88,10 @@ class BaseModelService(metaclass=abc.ABCMeta):
                 return title[:MAX_TITLE_LENGTH]
 
             # content 为空的 fallback
-            logger.warning("%s标题生成返回空内容，使用fallback", service_name)
+            logger.warning(
+                "%s title generation returned empty content, using fallback",
+                service_name,
+            )
             return full_response[:MAX_TITLE_LENGTH]
         except Exception as e:
             logger.error("Title generation failed (%s): %s", service_name, str(e))
@@ -103,6 +100,6 @@ class BaseModelService(metaclass=abc.ABCMeta):
     @classmethod
     def get_service_name(cls) -> str:
         """
-        获取服务名称，用于在工厂中标识
+        Get service name, used for identification in the factory
         """
         return cls.__name__.lower().replace("service", "")

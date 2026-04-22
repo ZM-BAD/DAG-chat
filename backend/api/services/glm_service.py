@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @ModelFactory.register
 class GLMService(BaseModelService):
     """
-    GLM模型服务实现 - 使用 OpenAI SDK
+    GLM model service implementation - using OpenAI SDK
     """
 
     def __init__(self):
@@ -27,7 +27,7 @@ class GLMService(BaseModelService):
     @classmethod
     def get_service_name(cls) -> str:
         """
-        获取服务名称
+        Get service name
         """
         return "glm"
 
@@ -35,20 +35,16 @@ class GLMService(BaseModelService):
         self, messages: List[Dict[str, str]], deep_thinking: bool = False
     ) -> AsyncGenerator[Dict[str, str], None]:
         """
-        调用GLM API生成流式响应
+        Call GLM API to generate streaming response
 
-        参数:
-            messages: 消息历史列表
-            deep_thinking: 是否使用思考模型
+        Args:
+            messages: List of message history
+            deep_thinking: Whether to use thinking model
 
-        返回:
-            包含content和reasoning字段的异步生成器
+        Returns:
+            Async generator containing content and reasoning fields
         """
         try:
-            logger.info(
-                "Sending request to GLM API with deep_thinking=%s", deep_thinking
-            )
-
             # 构建请求参数
             request_params = {
                 "model": GLM_MODEL,
@@ -92,11 +88,9 @@ class GLMService(BaseModelService):
                             "reasoning": "",
                         }
 
-            logger.info("GLM API call successful")
-
         except Exception as e:
             logger.error("GLM API call failed: %s", str(e))
-            yield {"error": "模型服务暂不可用", "details": str(e)}
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     # GLM 需要禁用 thinking 模式
     _title_extra_params = {"thinking": {"type": "disabled"}}

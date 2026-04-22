@@ -408,7 +408,7 @@ const Sidebar: FC<SidebarProps> = ({
                           }}
                           onBlur={() => {
                             finishEditing(dialogue.id).catch((err: unknown) => {
-                              console.error('完成编辑失败:', err);
+                              console.error('Failed to finish editing:', err);
                             });
                           }}
                           autoFocus
