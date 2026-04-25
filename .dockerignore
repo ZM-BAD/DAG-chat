@@ -1,10 +1,24 @@
+# Backend build context is project root
+# This file applies to backend builds (context: .)
+
 .git
 .venv
-__pycache__
-*.pyc
-node_modules
-dist
-.env
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.env
+**/.env.local
+**/.env.*.local
+**/node_modules
+frontend
+**/dist
 docs
-*.md
-!.env.example
+**/logs/
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+.devcontainer
+.vscode
+.idea
+.trae
+start.sh
