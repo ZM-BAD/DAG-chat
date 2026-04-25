@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -8,13 +8,13 @@ DAG-chat is a web-based LLM Q&A application that organizes conversations in a DA
 
 **Tech Stack:**
 - **Backend**: Python 3.14+ with FastAPI, MongoDB, and MySQL
-- **Frontend**: React 18 with TypeScript, Vite, and i18next for internationalization
+- **Frontend**: React 19 with TypeScript, Vite, and i18next for internationalization (Node.js 24+)
 
 ## Development Commands
 
 ### Backend
 ```bash
-# Activate virtual environment (if not active)
+# Activate virtual environment (run from backend/ directory)
 source ../.venv/bin/activate
 
 # Install dependencies
@@ -55,6 +55,12 @@ cd frontend && npm run lint:fix
 
 # Format code
 cd frontend && npm run format
+
+# Check formatting
+cd frontend && npm run format:check
+
+# Check i18n key synchronization
+cd frontend && npm run i18n:check
 ```
 
 ### Quick Start (Both Services)
@@ -71,6 +77,11 @@ cd frontend && npm run format
 # Stop all services
 ./start.sh --stop
 ```
+
+### Docker Compose Topology (for reference)
+- MongoDB:27017, MySQL:3306 (auto-init from `sql/`)
+- Backend:8000, Frontend:3000→80 (nginx)
+- Backend reads `backend/.env`
 
 ## Architecture
 
@@ -93,10 +104,18 @@ The backend uses a modular architecture with the following key components:
 - `services/`: LLM service implementations using factory pattern
   - `model_factory.py`: Factory for creating model service instances
   - `base_service.py`: Base class for model services
-  - `glm_service.py`, `kimi_service.py`, `qwen_service.py`, `deepseek_service.py`: Specific LLM implementations
+  - `glm_service.py`, `kimi_service.py`, `qwen_service.py`, `deepseek_service.py`, `minimax_service.py`, `ollama_service.py`: Specific LLM implementations
 
 **Models** (`backend/models/`):
-- Pydantic schemas for request/response validation
+- `schemas.py`: Pydantic schemas for request/response validation
+- `requests.py`: Request model definitions
+- `error_codes.py`: Unified API error code constants
+
+**Other Backend Files**:
+- `run_api.py`: Application entry point (starts Uvicorn server with logging setup)
+- `config.py`: Loads settings from environment variables (with defaults). Reference `.env.example` for all available env vars
+- `logging_config.py`: Logging configuration
+- `Dockerfile`: Docker build configuration
 
 ### Frontend Architecture
 
@@ -110,7 +129,7 @@ The frontend uses React with hooks for state management:
 
 The frontend implements a DAG (Directed Acyclic Graph) structure to manage and render conversations with branching and merging capabilities.
 
-**Core Types** (`src/types/dag.ts`):
+**Core Types** (`src/types/index.ts`, re-exported via `src/types/dag.ts`):
 
 - **DagNode**: Represents a single message node with bidirectional references
   - `id`: Unique message identifier
@@ -143,6 +162,7 @@ The frontend implements a DAG (Directed Acyclic Graph) structure to manage and r
 
 **Core Utilities** (`src/utils/`):
 
+- **dagUtils.ts**: Unified re-export layer for all DAG utilities — the single import point used by components and hooks
 - **dagBuilder.ts**: `buildDag(messages)` - Constructs DAG from flat message list with bidirectional references
 - **tabsContainerBuilder.ts**: `buildTabsContainers(dag)` - Scans DAG to identify branch/merge points and create containers
   - `getContainersByIds(containerIds, containers)`: Looks up container objects from IDs
@@ -156,6 +176,10 @@ The frontend implements a DAG (Directed Acyclic Graph) structure to manage and r
   - Collects sync instructions to update other containers' activeTab for consistency
   - **Note**: tabsMap is NOT rebuilt on tab clicks (static relationship)
 - **dialogueStateManager.ts**: `DialogueStateManager` class - Caches per-dialogue state (DAG, tabsMap, path) for instant switching
+- **conversationDag.ts**: Standalone DagNode type for component-level rendering (without `children` array, uses `dag` reference for traversal). Used by `ChatMessage.tsx` and `ConversationBranchTabs.tsx`
+- **incrementallyUpdateDag.ts**: Incrementally updates DAG, containers, and path during streaming responses (normal, branching, and merging scenarios)
+- **dagHelpers.ts**: DAG helper functions (e.g., `getAllBranchingPoints`)
+- **apiError.ts**: API error resolution utilities for backend SSE error codes. Used by `useChatMessages.ts` and `Sidebar.tsx`
 
 **Rendering Strategy** (`src/components/ChatContainer.tsx`):
 
@@ -173,34 +197,34 @@ The frontend implements a DAG (Directed Acyclic Graph) structure to manage and r
 4. **Path-Driven Rendering**: The linearized Path simplifies React rendering and ensures correct message ordering
 5. **Static tabsMap**: MessageToTabsMap stores container IDs (not object references) because the relationship between messages and containers is determined by DAG structure and doesn't change on tab clicks. Only the containers array holds dynamic state (activeTab).
 
-**Path-Container Strict Consistency (重要设计原则)**:
+**Path-Container Strict Consistency**:
 
-这是一个必须严格遵守的不变量（Invariant），确保渲染的消息内容与 Tabs 高亮状态始终保持一致：
+An invariant that must be strictly enforced, ensuring rendered message content always matches the Tabs highlight state:
 
-> **不变量**: 如果路径中包含某个节点，那么该节点对应的 Container 的 `activeTab` 必须等于该节点的 ID。
+> **Invariant**: If a path contains a node, the corresponding Container's `activeTab` must equal that node's ID.
 
 - **ChildrenTabsContainer**: `path.includes(userNode) → container.activeTab === userNode.id`
 - **ParentTabsContainer**: `path.includes(assistantNode) → container.activeTab === assistantNode.id`
 
-**实现策略** (三层防护):
+**Implementation Strategy** (three-layer defense):
 
-1. **渲染时降级处理** (`ChatContainer.tsx` - 第一层):
-   - `getChildrenContainerForUser`: 当发现 `container.activeTab !== userNode.id` 时，不直接返回 null，而是返回修正后的 container（强制使用 path 中的 userNode.id 作为 activeTab）
-   - `getParentContainerForAssistant`: 同理，当发现不一致时强制修正 activeTab
-   - **目的**: 防止 container "丢失"，保证用户始终能看到 Tabs，同时打印警告便于调试
+1. **Rendering-time Degradation** (`ChatContainer.tsx` - Layer 1):
+   - `getChildrenContainerForUser`: When `container.activeTab !== userNode.id`, returns a corrected container instead of null (forces `userNode.id` from path as activeTab)
+   - `getParentContainerForAssistant`: Same logic — forces activeTab correction on inconsistency
+   - **Purpose**: Prevents containers from "disappearing", ensuring users always see Tabs; prints warnings for debugging
 
-2. **Tab 切换时严格同步** (`tabSwitchHandler.ts` - 第二层):
-   - `handleTabSwitch`: 应用所有同步指令后，**重新构建 path** 以确保 path 与最终的 containers 状态严格一致
-   - **目的**: 从根本上消除不一致的产生，确保返回的 `newPath`、`updatedContainers`、`updatedTabsMap` 三者一致
+2. **Strict Sync on Tab Switch** (`tabSwitchHandler.ts` - Layer 2):
+   - `handleTabSwitch`: After applying all sync instructions, **rebuilds path** to ensure strict consistency between path and final container state
+   - **Purpose**: Eliminates inconsistency at the source, ensuring `newPath`, `updatedContainers`, and `updatedTabsMap` are always consistent
 
-3. **状态恢复时校验** (`ChatContainer.tsx` - 第三层):
-   - 恢复 `savedState` 时，运行 `validatePathContainerConsistency` 验证 path 与 containers 的一致性
-   - 如果不一致，重新构建所有状态而不是直接使用保存的状态
-   - **目的**: 防止缓存的状态污染当前渲染
+3. **Validation on State Restoration** (`ChatContainer.tsx` - Layer 3):
+   - When restoring `savedState`, runs `validatePathContainerConsistency` to verify path-container alignment
+   - If inconsistent, rebuilds all state from scratch instead of using cached state
+   - **Purpose**: Prevents cached state from polluting the current render
 
-**为什么重要**:
+**Why This Matters**:
 
-如果不保持这个不变量，会出现用户截图中的问题：实际渲染的 user.message 是 A，但 children-tabs-container 显示的高亮却是 B（或者 container 直接"丢失"）。这会造成严重的用户体验问题，用户会看到内容与 Tab 指示器不匹配的状态。
+Violating this invariant causes the bug seen in user screenshots: the rendered `user.message` is A, but `children-tabs-container` highlights B (or the container "disappears" entirely). This creates a severe UX issue where displayed content does not match the Tab indicator.
 
 **Tab Switch Strategies**:
 
@@ -228,7 +252,8 @@ The `DialogueStateManager` class provides state caching per dialogue:
 
 **Custom Hooks** (`src/hooks/`):
 - `useChat.ts`: Re-exports combined chat functionality from `chat/` subdirectory
-- `useDialogues.ts`: Re-exports dialogue list management
+  - `chat/index.ts`: Composition hook combining 4 sub-hooks with MiniMax deep-thinking auto-toggle and citation cleanup on dialogue switch
+- `useDialogues.ts`: Dialogue list management with retry/exponential backoff, custom event listeners (`dialogueCreated`/`titleUpdated`/`dialogueUpdated`), and incremental model info updates with top-sorting
 - `chat/`: Modular hooks organized by concern
   - `index.ts`: Combines all chat hooks into single `useChat` API
   - `useChatSettings.ts`: Chat settings (deep thinking, search, branching state)
@@ -243,20 +268,29 @@ The `DialogueStateManager` class provides state caching per dialogue:
 - `ChatHeader.tsx`: Current dialogue title display
 - `ChatMessage.tsx`: Individual message rendering
 - `ConversationBranchTabs.tsx`: Branching UI for multiple conversation paths
+- `TabsContainer.tsx`: Tab container rendering (children/parent tabs)
+- `ChatScrollAnchor.tsx`: Scroll position tracking during streaming
 - `EnhancedMarkdown.tsx`: Markdown rendering with syntax highlighting
 - `LanguageSwitcher.tsx`: i18n language switcher
 - `Toast.tsx`: Toast notification component
 - `LoadingScreen.tsx`: Loading state display
 - `ErrorBoundary.tsx`: React error boundary for error handling
+- `common/ModelLogo.tsx`: LLM model logo display (used by ChatMessage, Sidebar, WelcomeScreen, ChatInput)
 
 **Contexts** (`src/contexts/`):
 - `ToastContext.tsx`: Toast notification system
 
 **i18n** (`src/i18n/`):
-- Configuration files for internationalization (uses i18next with HTTP backend)
+- Configuration files for internationalization (uses i18next with react-i18next, static JSON imports; i18next-http-backend is installed for future extensibility)
   - `config.ts`: i18next configuration
   - `locales/en.json`: English translations
   - `locales/zh.json`: Chinese translations
+
+**API Config** (`src/config/`):
+- `api.ts`: API endpoint definitions and URL builder utilities
+
+**Styles** (`src/styles/`):
+- CSS files organized by component (App, Sidebar, Chat, Markdown, etc.)
 
 ## Core Concepts
 
@@ -292,22 +326,40 @@ See `backend/tests/README.md` for detailed test scenarios covering linear chains
 ### Model Service Factory
 
 The backend uses a factory pattern for LLM services:
-1. Each LLM provider (GLM, Kimi, Qwen, DeepSeek) extends `BaseModelService`
+1. Each LLM provider (GLM, Kimi, Qwen, DeepSeek, MiniMax, Ollama) extends `BaseModelService`
 2. Services are registered via `@ModelFactory.register()` decorator
 3. `ModelFactory.get_service(model_name)` retrieves the appropriate service
 
 ### Configuration
 
-- **Backend**: `backend/config.py` contains database configs and LLM API keys
-- **Frontend**: `frontend/.env` for environment variables
+- **Backend**: `backend/config.py` loads settings from environment variables (with defaults). Reference `backend/.env.example` for all available env vars (LLM keys, model overrides, MySQL, Ollama)
+- **Frontend**: `frontend/.env` → `frontend/src/config/api.ts` reads `VITE_API_BASE_URL`, `VITE_DEFAULT_USER_ID`
+- **Database**: MySQL auto-initializes from `sql/t_conversations.sql` via docker-compose. For manual setup, execute the SQL file against the `dag_chat` database
 - **Virtual Environment**: Located at `.venv/` in project root
+
+## Constraints for AI Agents
+
+When modifying code, do NOT:
+
+1. **Rebuild tabsMap on tab clicks** — it is static; only the `containers` array holds dynamic state (activeTab)
+2. **Break the Path-Container invariant** — if a node is in `path`, its container's `activeTab` MUST equal that node's ID
+3. **Allow multiple root nodes in a DAG** — each dialogue must have exactly one root node (no `parent_ids`)
+4. **Break Atomic Q&A Pair** — in normal flow, `user.children` has exactly 1 element and `assistant.parent_ids` has exactly 1 element
+5. **Skip DAG-related tests** — run tests before and after any DAG logic changes
+
+When adding a new LLM provider:
+
+1. Extend `BaseModelService` in `backend/api/services/`
+2. Register with `@ModelFactory.register()` in `model_factory.py`
+3. Add the model name constant in `backend/config.py`
+4. Add logo mapping in `frontend/src/components/common/ModelLogo.tsx`
 
 ## Code Quality
 
 ### Pre-commit Hooks
 The project uses pre-commit hooks for code quality:
-- **Backend**: Ruff (linting + formatting), Pylint (quality, min score: 8)
-- **Frontend**: ESLint, Prettier, TypeScript compiler
+- **Backend**: Ruff (linting + formatting), Pylint (quality, min score: 9), pip-audit (dependency security audit), backend DAG tests
+- **Frontend**: ESLint, Prettier, TypeScript compiler, npm ci check, production build verification
 
 ### Commit Message Convention
 Uses conventional commits format: `<type>(<scope>): <subject>`
