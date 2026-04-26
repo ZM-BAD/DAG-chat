@@ -87,5 +87,8 @@ class QwenService(BaseModelService):
             logger.error("Qwen API call failed: %s", str(e))
             yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
+    # Disable thinking for title generation (DashScope API supports this param)
+    _title_extra_params = {"enable_thinking": False}
+
     def _get_title_model(self) -> str:
         return QWEN_MODEL

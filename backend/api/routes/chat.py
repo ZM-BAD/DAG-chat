@@ -22,6 +22,7 @@ from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
 from backend.models.requests import ChatRequest, PlaceholderRequest
 from backend.models.schemas import MessageNode
+from backend.api.services.base_service import truncate_fallback
 from backend.api.services.model_factory import ModelFactory
 from backend.models.error_codes import (
     DB_CONNECTION_FAILED,
@@ -582,8 +583,8 @@ async def save_conversation_to_database(
             # 新对话
             if first_ask:
                 if skip_title_generation:
-                    # abort path: skip LLM title generation, use first 20 chars of user message
-                    generated_title = request.message[:20]
+                    # abort path: skip LLM title generation, use language-aware fallback
+                    generated_title = truncate_fallback(request.message)
                 else:
                     # 正常路径：调用LLM生成标题
                     model_service = ModelFactory.get_service(request.model)
@@ -592,8 +593,8 @@ async def save_conversation_to_database(
                             request.message, full_content
                         )
                     else:
-                        # 如果获取不到模型服务，使用默认方式生成标题
-                        generated_title = full_content[:20]
+                        # 如果获取不到模型服务，使用 user_input 语言感知截断
+                        generated_title = truncate_fallback(request.message)
 
                 # 更新对话标题
                 success = mysql_db.execute_query(

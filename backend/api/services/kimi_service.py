@@ -93,5 +93,9 @@ class KimiService(BaseModelService):
             logger.error("Kimi API call failed: %s", str(e))
             yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
+    # KIMI_TITLE_MODEL should be configured as a non-reasoning model (e.g. moonshot-v1-8k).
+    # Verify via KIMI_TITLE_MODEL env var if title generation seems slow or wasteful.
+    _title_extra_params = None
+
     def _get_title_model(self) -> str:
         return KIMI_TITLE_MODEL

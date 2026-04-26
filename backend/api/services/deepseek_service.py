@@ -78,5 +78,10 @@ class DeepSeekService(BaseModelService):
             logger.error("DeepSeek API call failed: %s", str(e))
             yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
+    # Title model must be the non-thinking variant (DEEPSEEK_MODEL, not DEEPSEEK_MODEL_THINKING).
+    # No extra params needed — the model itself handles non-reasoning mode.
+    _title_extra_params = None  # explicit: no thinking params required
+
     def _get_title_model(self) -> str:
+        # DO NOT return DEEPSEEK_MODEL_THINKING here — it would trigger reasoning
         return DEEPSEEK_MODEL

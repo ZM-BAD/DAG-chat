@@ -10,7 +10,12 @@ from typing import List, Dict, AsyncGenerator
 from openai import AsyncOpenAI, OpenAI
 
 from backend.config import MINIMAX_API_KEY, MINIMAX_API_BASE_URL, MINIMAX_MODEL
-from .base_service import BaseModelService
+from .base_service import (
+    BaseModelService,
+    _build_title_prompt,
+    truncate_fallback,
+    truncate_title,
+)
 from .model_factory import ModelFactory
 
 logger = logging.getLogger(__name__)
@@ -83,9 +88,50 @@ class MiniMaxService(BaseModelService):
             logger.error("MiniMax API call failed: %s", str(e))
             yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
-    # MiniMax 强制开启推理，max_tokens 需留足空间给推理+正文
-    _title_max_tokens = 200
-    _title_extra_params = {"reasoning_split": True}
+    # MiniMax M2 forces reasoning on all requests — cannot be disabled.
+    _title_disable_thinking = (
+        False  # Cannot disable; use streaming to separate reasoning
+    )
 
     def _get_title_model(self) -> str:
         return self.model_name
+
+    def generate_title(self, user_input: str, full_response: str) -> str:
+        """
+        Override: MiniMax M2 forces reasoning, and reasoning_split only works in streaming mode.
+        The non-streaming base class method returns empty content because reasoning consumes
+        the token budget. Use streaming to properly separate reasoning from title content.
+        """
+        lang, _language_name, messages = _build_title_prompt(user_input, full_response)
+
+        try:
+            # Use streaming to leverage reasoning_split for content/reasoning separation.
+            # `with` ensures the HTTP connection is released after iteration.
+            with self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=200,
+                stream=True,
+                extra_body={"reasoning_split": True},
+            ) as stream:
+                content_parts = []
+                for chunk in stream:
+                    delta = chunk.choices[0].delta
+                    content = delta.content or ""
+                    if content:
+                        content_parts.append(content)
+
+            if content_parts:
+                title = truncate_title("".join(content_parts), lang)
+                if title:
+                    return title
+
+            logger.warning(
+                "minimax title generation returned empty content, using fallback"
+            )
+            return truncate_fallback(user_input)
+
+        except Exception as e:
+            logger.error("Title generation failed (minimax): %s", str(e))
+            return truncate_fallback(user_input)
