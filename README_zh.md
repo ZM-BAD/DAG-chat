@@ -156,8 +156,10 @@ AI：[解释 C]       AI：[对比分析]
 
 - **Python** >= 3.14
 - **Node.js** >= 24
-- **MongoDB** 运行于 `localhost:27017`
-- **MySQL** 运行于 `localhost:3306`
+- **Docker** >= 29（可选，容器化部署）
+- **Docker Compose** >= v5（可选，容器化部署）
+- **MongoDB** 运行于 `localhost:27017`（仅本地开发，不用 Docker 时需要）
+- **MySQL** 运行于 `localhost:3306`（仅本地开发，不用 Docker 时需要）
 
 ### 数据库准备
 
@@ -166,7 +168,7 @@ AI：[解释 C]       AI：[对比分析]
 所有依赖（MongoDB、MySQL、后端、前端）一条命令启动：
 
 ```bash
-cp backend/.env.example backend/.env   # 编辑 API Key
+cp .env.example .env   # 编辑 API Key
 docker compose up --build
 ```
 
@@ -190,10 +192,10 @@ docker compose up --build
 复制环境变量模板并填入你的 API Key：
 
 ```bash
-cp backend/.env.example backend/.env
+cp .env.example .env
 ```
 
-编辑 `backend/.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek、MiniMax）和 MySQL 密码。
+编辑 `.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek、MiniMax）和 MySQL 密码。
 
 **没有 API Key？** 没关系 — 参见下方 [使用 Ollama（免费，无需 API Key）](#使用-ollama免费无需-api-key) 章节。
 
@@ -276,7 +278,7 @@ Ollama 默认运行在 `http://localhost:11434`。DAG-chat 会自动检测已安
 
 ### 配置默认模型（可选）
 
-如需设置默认 Ollama 模型，在 `backend/.env` 中添加：
+如需设置默认 Ollama 模型，在 `.env` 中添加：
 
 ```bash
 OLLAMA_MODEL=qwen3:8b

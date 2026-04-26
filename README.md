@@ -158,8 +158,10 @@ AI: [explanation C]        AI: [comparison]
 
 - **Python** >= 3.14
 - **Node.js** >= 24
-- **MongoDB** on `localhost:27017`
-- **MySQL** on `localhost:3306`
+- **Docker** >= 29 (optional, for containerized deployment)
+- **Docker Compose** >= v5 (optional, for containerized deployment)
+- **MongoDB** on `localhost:27017` (only for local dev without Docker)
+- **MySQL** on `localhost:3306` (only for local dev without Docker)
 
 ### Database Setup
 
@@ -168,7 +170,7 @@ AI: [explanation C]        AI: [comparison]
 All dependencies (MongoDB, MySQL, backend, frontend) start with one command:
 
 ```bash
-cp backend/.env.example backend/.env   # edit API keys
+cp .env.example .env   # edit API keys
 docker compose up --build
 ```
 
@@ -192,10 +194,10 @@ docker compose up --build
 Copy the example environment file and fill in your API keys:
 
 ```bash
-cp backend/.env.example backend/.env
+cp .env.example .env
 ```
 
-Edit `backend/.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek, MiniMax) and MySQL password.
+Edit `.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek, MiniMax) and MySQL password.
 
 **Don't have API keys?** No problem — see [Using Ollama (Free, No API Keys)](#using-ollama-free-no-api-keys) below.
 
@@ -278,7 +280,7 @@ That's it — no API keys needed. Select any `Ollama - ...` model from the dropd
 
 ### Configure Default Model (Optional)
 
-If you want to set a default Ollama model, add to `backend/.env`:
+If you want to set a default Ollama model, add to `.env`:
 
 ```bash
 OLLAMA_MODEL=qwen3:8b

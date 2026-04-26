@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
+from backend.config import DEFAULT_USER_ID
 from backend.models.requests import CreateConversationRequest
 from backend.models.error_codes import (
     make_error_response,
@@ -74,7 +75,7 @@ def create_conversation(request: CreateConversationRequest):
 
 @router.get("/dialogue/list")
 def get_dialogue_list(
-    user_id: str = Query(default="zm-bad", description="User ID"),
+    user_id: str = Query(default=DEFAULT_USER_ID, description="User ID"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
 ):
@@ -146,7 +147,7 @@ def get_dialogue_list(
 @router.delete("/dialogue/delete")
 def delete_conversation(
     conversation_id: str = Query(..., description="Conversation ID", min_length=1),
-    user_id: str = Query(default="zm-bad", description="User ID", min_length=1),
+    user_id: str = Query(default=DEFAULT_USER_ID, description="User ID", min_length=1),
 ):
     """
     Delete a conversation
@@ -203,7 +204,7 @@ def delete_conversation(
 @router.put("/dialogue/rename")
 def rename_conversation(
     conversation_id: str = Query(..., description="Conversation ID", min_length=1),
-    user_id: str = Query(default="zm-bad", description="User ID", min_length=1),
+    user_id: str = Query(default=DEFAULT_USER_ID, description="User ID", min_length=1),
     new_title: str = Query(..., description="New title", min_length=1),
 ):
     """

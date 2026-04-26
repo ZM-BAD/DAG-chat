@@ -9,14 +9,10 @@ Copy .env.example to .env and fill in your values.
 import os
 from pathlib import Path
 
-# Load .env file if exists
-_env_file = Path(__file__).parent / ".env"
-if _env_file.exists():
-    for line in _env_file.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip())
+from dotenv import load_dotenv
+
+# Load .env from project root (single config file for entire project)
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # Database Configuration
 MONGODB_CONFIG = {
@@ -64,3 +60,6 @@ MINIMAX_MODEL = os.getenv("MINIMAX_MODEL", "MiniMax-M2.7-highspeed")
 
 # Ollama Configuration (local LLM, no API key needed)
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+
+# Default User ID (shared with frontend via root .env)
+DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-user")

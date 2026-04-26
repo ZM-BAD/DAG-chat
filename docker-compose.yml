@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     env_file:
-      - path: ./backend/.env
+      - path: ./.env
         required: false
     environment:
       MONGODB_HOST: mongodb
@@ -61,7 +61,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ""
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        DEFAULT_USER_ID: ${DEFAULT_USER_ID:-default-user}
     ports:
       - "3000:80"
     depends_on:

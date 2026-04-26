@@ -2,6 +2,9 @@
 
 # Startup script for launching DAG-chat frontend and backend services
 
+# Load root .env if available
+[ -f .env ] && set -a && source .env && set +a 2>/dev/null
+
 # Cleanup handler
 cleanup() {
     echo "\nStopping services..."
@@ -164,7 +167,7 @@ start_backend() {
 
             # Test database connection
             echo "Testing database connection..."
-            if curl -s -f "http://localhost:8000/api/v1/dialogue/list?user_id=zm-bad&page=1&page_size=1" > /dev/null 2>&1; then
+            if curl -s -f "http://localhost:8000/api/v1/dialogue/list?user_id=${DEFAULT_USER_ID:-default-user}&page=1&page_size=1" > /dev/null 2>&1; then
                 echo "Database connection is ready!"
                 return 0
             else

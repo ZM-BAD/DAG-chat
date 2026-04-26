@@ -81,7 +81,8 @@ cd frontend && npm run i18n:check
 ### Docker Compose Topology (for reference)
 - MongoDB:27017, MySQL:3306 (auto-init from `sql/`)
 - Backend:8000, Frontend:3000→80 (nginx)
-- Backend reads `backend/.env`
+- Backend and frontend both read root `.env`
+- Requires Docker >= 29, Docker Compose >= v5
 
 ## Architecture
 
@@ -332,8 +333,8 @@ The backend uses a factory pattern for LLM services:
 
 ### Configuration
 
-- **Backend**: `backend/config.py` loads settings from environment variables (with defaults). Reference `backend/.env.example` for all available env vars (LLM keys, model overrides, MySQL, Ollama)
-- **Frontend**: `frontend/.env` → `frontend/src/config/api.ts` reads `VITE_API_BASE_URL`, `VITE_DEFAULT_USER_ID`
+- **Backend**: `backend/config.py` loads settings from root `.env`. Reference `.env.example` for all available env vars (LLM keys, model overrides, MySQL, Ollama)
+- **Frontend**: `vite.config.ts` reads `DEFAULT_USER_ID` from root `.env` via `loadEnv` and injects it as `import.meta.env.VITE_DEFAULT_USER_ID` via `define`. `VITE_API_BASE_URL` is read directly via `envDir: '..'`.
 - **Database**: MySQL auto-initializes from `sql/t_conversations.sql` via docker-compose. For manual setup, execute the SQL file against the `dag_chat` database
 - **Virtual Environment**: Located at `.venv/` in project root
 
