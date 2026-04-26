@@ -79,7 +79,7 @@ cd frontend && npm run i18n:check
 ```
 
 ### Docker Compose Topology (for reference)
-- MongoDB:27017, MySQL:3306 (auto-init from `sql/`)
+- MongoDB:27018, MySQL:3307 (host ports; containers listen on standard 27017/3306 internally)
 - Backend:8000, Frontend:3000→80 (nginx)
 - Backend and frontend both read root `.env`
 - Requires Docker >= 29, Docker Compose >= v5

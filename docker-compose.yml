@@ -2,7 +2,7 @@ services:
   mongodb:
     image: mongo:8
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -17,7 +17,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-dagchat}
       MYSQL_DATABASE: dag_chat
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - ./sql:/docker-entrypoint-initdb.d
       - mysql-data:/var/lib/mysql
