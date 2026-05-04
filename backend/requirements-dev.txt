@@ -6,7 +6,7 @@
 debugpy==1.8.20
 
 # Code quality tools (keep in sync with .pre-commit-config.yaml)
-ruff==0.15.10
+ruff==0.15.11
 pylint==4.0.5
 
 # Testing tools
