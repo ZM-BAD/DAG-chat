@@ -38,17 +38,11 @@ export const useDialogueManagement = (): UseDialogueManagementReturn => {
     };
 
     // 添加事件监听器
-    window.addEventListener(
-      'dialogueCreated',
-      handleDialogueCreated as EventListener,
-    );
+    window.addEventListener('dialogueCreated', handleDialogueCreated);
 
     // 清理事件监听器
     return () => {
-      window.removeEventListener(
-        'dialogueCreated',
-        handleDialogueCreated as EventListener,
-      );
+      window.removeEventListener('dialogueCreated', handleDialogueCreated);
     };
   }, []);
 

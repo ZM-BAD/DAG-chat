@@ -748,6 +748,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
     (messageId: string) => {
       if (!messagesContainerRef.current) return;
       scrollCleanupRef.current?.();
+      // eslint-disable-next-line react-hooks/immutability
       scrollIntentRef.current = {
         type: 'preserve-position',
         savedScrollTop: messagesContainerRef.current.scrollTop,
@@ -786,6 +787,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
   useEffect(() => {
     if (currentDialogueId && path.length > 0) {
       scrollCleanupRef.current?.();
+      // eslint-disable-next-line react-hooks/immutability
       scrollIntentRef.current = { type: 'scroll-to-bottom', delay: 100 };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -805,8 +807,10 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
       !shouldShowWelcome
     ) {
       scrollCleanupRef.current?.();
+      // eslint-disable-next-line react-hooks/immutability
       scrollIntentRef.current = { type: 'scroll-to-bottom', delay: 0 };
     }
+
     prevPathLengthRef.current = path.length;
   }, [path.length, shouldShowWelcome]);
 
@@ -837,10 +841,12 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
           container.scrollTop = container.scrollHeight - container.clientHeight;
           setIsAtBottom(true);
         }, delay);
+        // eslint-disable-next-line react-hooks/immutability
         scrollCleanupRef.current = () => {
           clearTimeout(timerId);
         };
         // 一次性 intent，用完重置
+        // eslint-disable-next-line react-hooks/immutability
         scrollIntentRef.current = { type: 'auto' };
         break;
       }
