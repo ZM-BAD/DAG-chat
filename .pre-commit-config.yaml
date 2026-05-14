@@ -1,4 +1,12 @@
 repos:
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.17.2
+    hooks:
+      - id: markdownlint-cli2
+        name: markdownlint (specs)
+        files: ^specs/.*\.md$
+        args: [--config, .markdownlint.json]
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.8
     hooks:
@@ -65,3 +73,10 @@ repos:
         language: system
         pass_filenames: false
         files: ^(frontend/).*\.(ts|tsx|js|jsx|css|html)$
+
+      - id: spec-validation
+        name: spec validation (frontmatter + naming + sections + references)
+        entry: bash -c 'scripts/validate_specs.sh'
+        language: system
+        pass_filenames: false
+        files: ^specs/.*\.md$

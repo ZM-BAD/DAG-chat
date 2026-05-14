@@ -1,0 +1,29 @@
+name: Spec Validation
+
+on:
+  push:
+    branches: [main, master]
+    paths: ['specs/**']
+  pull_request:
+    branches: [main, master]
+    paths: ['specs/**']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+
+      - name: Lint spec files
+        run: markdownlint-cli2 "specs/**/*.md" --config .markdownlint.json
+
+      - name: Validate spec structure
+        run: bash scripts/validate_specs.sh
