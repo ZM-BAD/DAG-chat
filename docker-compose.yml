@@ -12,7 +12,7 @@ services:
       retries: 5
 
   mysql:
-    image: mysql:9.6
+    image: mysql:9.7
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-dagchat}
       MYSQL_DATABASE: dag_chat
