@@ -6,7 +6,6 @@ from openai import AsyncOpenAI, OpenAI
 from backend.config import (
     KIMI_API_KEY,
     KIMI_API_BASE_URL,
-    KIMI_MODEL_THINKING,
     KIMI_MODEL,
     KIMI_TITLE_MODEL,
 )
@@ -53,15 +52,20 @@ class KimiService(BaseModelService):
             Async generator containing content and reasoning fields
         """
         try:
-            # 根据deep_thinking参数选择不同的模型
-            if deep_thinking:
-                model_name = KIMI_MODEL_THINKING
-            else:
-                model_name = KIMI_MODEL
+            # kimi-k2.6 统一使用同一模型，通过 thinking 参数切换思考模式
+            model_name = KIMI_MODEL
+
+            # 非思考模式需要显式禁用 thinking（kimi-k2.6 默认启用）
+            extra_body = None
+            if not deep_thinking:
+                extra_body = {"thinking": {"type": "disabled"}}
 
             # 使用异步OpenAI SDK调用
             response = await self.async_client.chat.completions.create(
-                model=model_name, messages=messages, stream=True
+                model=model_name,
+                messages=messages,
+                stream=True,
+                extra_body=extra_body,
             )
 
             # 处理流式响应
