@@ -6,12 +6,12 @@
 debugpy==1.8.20
 
 # Code quality tools (keep in sync with .pre-commit-config.yaml)
-ruff==0.15.14
+ruff==0.15.15
 pylint==4.0.5
 
 # Testing tools
 pytest==9.0.3
-pytest-asyncio==1.3.0
+pytest-asyncio==1.4.0
 
 # pre-commit (optional, for git hooks)
 pre-commit==4.6.0
