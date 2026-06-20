@@ -3,10 +3,10 @@
 # Note: Runtime dependencies must be installed first: pip install -r requirements.txt
 
 # Debugging tools
-debugpy==1.8.20
+debugpy==1.8.21
 
 # Code quality tools (keep in sync with .pre-commit-config.yaml)
-ruff==0.15.15
+ruff==0.15.16
 pylint==4.0.5
 
 # Testing tools
