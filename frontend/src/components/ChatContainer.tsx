@@ -199,16 +199,10 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
         if (!prev) return container;
 
         // 检查之前的 activeTab 是否仍然存在于新 container 的 tab 列表中
-        let tabExists = false;
-        if (container.type === 'children') {
-          tabExists = container.userMessages.some(
-            (u) => u.id === prev.activeTab,
-          );
-        } else {
-          tabExists = container.assistantMessages.some(
-            (a) => a.id === prev.activeTab,
-          );
-        }
+        const tabExists =
+          container.type === 'children'
+            ? container.userMessages.some((u) => u.id === prev.activeTab)
+            : container.assistantMessages.some((a) => a.id === prev.activeTab);
 
         if (tabExists) {
           return { ...container, activeTab: prev.activeTab };

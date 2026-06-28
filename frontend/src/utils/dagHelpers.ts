@@ -80,7 +80,6 @@ export function getDagStats(dag: Dag): {
 } {
   let userMessages = 0;
   let assistantMessages = 0;
-  let maxDepth = 0;
 
   for (const [, node] of dag.nodes) {
     if (node.role === 'user') {
@@ -95,7 +94,7 @@ export function getDagStats(dag: Dag): {
   const leafNodes = getAllLeafNodes(dag).length;
 
   // 计算最大深度
-  maxDepth = calculateMaxDepth(dag);
+  const maxDepth = calculateMaxDepth(dag);
 
   return {
     totalNodes: dag.nodes.size,
