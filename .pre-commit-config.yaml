@@ -27,7 +27,7 @@ repos:
 
       - id: pip-audit
         name: pip-audit (backend)
-        entry: bash -c 'pip-audit -r backend/requirements.txt'
+        entry: bash -c '.venv/bin/pip-audit -r backend/requirements.txt'
         language: system
         pass_filenames: false
         files: ^backend/requirements\.txt$
