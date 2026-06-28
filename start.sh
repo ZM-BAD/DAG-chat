@@ -7,7 +7,7 @@
 
 # Cleanup handler
 cleanup() {
-    echo "\nStopping services..."
+    echo -e "\nStopping services..."
     if [ ! -z "$BACKEND_PID" ]; then
         kill $BACKEND_PID 2>/dev/null
         echo "Backend service stopped"
@@ -102,9 +102,39 @@ display_help() {
 # Function: start frontend
 start_frontend() {
     echo "Starting frontend service..."
-    cd frontend
-    echo "Installing frontend dependencies..."
-    npm install --legacy-peer-deps
+    cd frontend || { echo "ERROR: frontend/ not found" >&2; return 1; }
+
+    # Reinstall only when dependencies actually changed. Content-hash package.json
+    # + package-lock.json (+ .npmrc if present) into a stamp so ANY change (manual
+    # edit, npm install, git pull, registry/auth config) is detected — mtime alone
+    # can miss a package.json edit that didn't regenerate the lockfile and is
+    # fooled by touch/cp -p. Uses `npm ci` (never rewrites package-lock.json).
+    # The stamp is written ONLY after `npm ci` succeeds, so a failed install never
+    # poisons the cache or silently starts the dev server with stale deps.
+    # SHA-256 tool: shasum (macOS) / sha256sum (Linux).
+    if command -v shasum >/dev/null 2>&1; then HASH=(shasum -a 256)
+    elif command -v sha256sum >/dev/null 2>&1; then HASH=(sha256sum)
+    else echo "ERROR: no sha256 tool found (need shasum or sha256sum)" >&2; cd ..; return 1; fi
+
+    [ -f package.json ] && [ -f package-lock.json ] || {
+        echo "ERROR: missing package.json or package-lock.json" >&2; cd ..; return 1; }
+
+    NEW_HASH=$(cat package.json package-lock.json .npmrc 2>/dev/null | "${HASH[@]}" | awk '{print $1}')
+    [ -n "$NEW_HASH" ] || { echo "ERROR: failed to compute dependency hash" >&2; cd ..; return 1; }
+    OLD_HASH=$(cat node_modules/.install-hash 2>/dev/null)
+
+    # Reinstall if: no node_modules, OR deps changed (hash mismatch), OR the tree
+    # looks incomplete (sentinel package missing — catches manual corruption).
+    if [ ! -d node_modules ] || [ "$NEW_HASH" != "$OLD_HASH" ] || [ ! -d node_modules/vite ]; then
+        echo "Installing frontend dependencies (npm ci)..."
+        if ! npm ci --legacy-peer-deps; then
+            echo "ERROR: npm ci failed; not updating install stamp, not starting dev server." >&2
+            cd ..; return 1
+        fi
+        echo "$NEW_HASH" > node_modules/.install-hash
+    else
+        echo "Frontend dependencies up to date, skipping install."
+    fi
     echo "Starting frontend dev server..."
     echo "Frontend will run on http://localhost:3000"
     npm run dev &
@@ -221,10 +251,10 @@ case "$1" in
             exit 1
         fi
 
-        echo "\nFrontend and backend services are running!"
+        echo -e "\nFrontend and backend services are running!"
         echo "Frontend: http://localhost:3000"
         echo "Backend: http://localhost:8000"
-        echo "\nPress Ctrl+C to stop all services"
+        echo -e "\nPress Ctrl+C to stop all services"
         wait  # Wait for all background tasks
         ;;
     --stop)
