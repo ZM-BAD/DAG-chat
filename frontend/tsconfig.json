@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
-    // Target ES2024 (ES2025 not yet supported in TypeScript 5.9)
-    // Use ESNext for latest features
-    "target": "ES2024",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "ES2024",
-      "ESNext"
-    ],
+    // Target ESNext (TypeScript 6). The runtime/emit target is controlled separately by
+    // Vite's build.target in vite.config.ts (this project uses noEmit). See specs/230-frontend-typescript-toolchain.md.
+    "target": "ESNext",
+    "lib": ["dom", "ESNext"],
+    // @types packages are no longer auto-discovered in TypeScript 6 (default `types: []`).
+    // Declared explicitly to lock the behavior and speed up type-checking; add entries
+    // here only if ambient globals (e.g. "node") are needed. See specs/230-frontend-typescript-toolchain.md.
+    "types": [],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -30,10 +29,6 @@
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": false
   },
-  "include": [
-    "src"
-  ],
-  "references": [
-    { "path": "./tsconfig.node.json" }
-  ]
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

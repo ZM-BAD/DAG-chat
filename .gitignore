@@ -48,6 +48,9 @@ frontend/dist/
 frontend/out/
 frontend/.next/
 
+# TypeScript composite/incremental build info
+*.tsbuildinfo
+
 # Testing
 frontend/coverage/
 

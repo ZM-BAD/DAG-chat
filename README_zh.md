@@ -48,7 +48,7 @@
 
 ```mermaid
 graph LR
-    subgraph Frontend ["前端 — React + TypeScript + Vite"]
+    subgraph Frontend ["前端 — React 19 + TypeScript 6 + Vite 8"]
         UI[聊天界面 & DAG 渲染器]
         i18n[i18n — 中文 / 英文]
     end

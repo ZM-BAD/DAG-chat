@@ -29,10 +29,12 @@ jobs:
         run: npm run lint
 
       - name: Check Prettier formatting
-        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css}"
+        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css}" vite.config.ts tsconfig.json tsconfig.node.json
 
       - name: TypeScript type check
-        run: npx tsc --noEmit
+        run: |
+          npx tsc --noEmit
+          npx tsc -p tsconfig.node.json --noEmit
 
   build:
     runs-on: ubuntu-latest

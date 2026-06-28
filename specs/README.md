@@ -19,19 +19,22 @@
 
 ## Spec List
 
-| ID  | File                                                                    | Title                                            | Status  |
-| --- | ----------------------------------------------------------------------- | ------------------------------------------------ | ------- |
-| 010 | [010-constitution.md](./010-constitution.md)                           | Constitution — Cross-cutting Rules & Constraints | active  |
-| 020 | [020-project-overview.md](./020-project-overview.md)                   | Project Overview                                 | active  |
-| 030 | [030-dev-commands.md](./030-dev-commands.md)                           | Development Commands                             | active  |
-| 100 | [100-backend-architecture.md](./100-backend-architecture.md)           | Backend Architecture                             | active  |
-| 110 | [110-frontend-architecture.md](./110-frontend-architecture.md)         | Frontend Architecture                            | active  |
-| 120 | [120-dag-structure.md](./120-dag-structure.md)                         | DAG Structure & Frontend Implementation          | active  |
-| 130 | [130-model-service-factory.md](./130-model-service-factory.md)         | Model Service Factory                            | active  |
-| 140 | [140-database-schema.md](./140-database-schema.md)                     | Database Schema                                  | active  |
-| 200 | [200-docker-topology.md](./200-docker-topology.md)                     | Docker Compose Topology                          | active  |
-| 210 | [210-code-quality.md](./210-code-quality.md)                           | Code Quality                                     | active  |
-| 220 | [220-testing.md](./220-testing.md)                                     | Testing                                          | active  |
+Read this index first, then open only the spec(s) relevant to your task — do not load every spec.
+
+| ID  | File                                                            | Title                       | Scope                                        | Status  |
+| --- | --------------------------------------------------------------- | --------------------------- | -------------------------------------------- | ------- |
+| 010 | [010-constitution.md](./010-constitution.md)                   | Constitution                | Hard rules & constraints (must-read)         | active  |
+| 020 | [020-project-overview.md](./020-project-overview.md)           | Project Overview            | What it is, tech stack, config               | active  |
+| 030 | [030-dev-commands.md](./030-dev-commands.md)                   | Development Commands        | dev / test / build commands                  | active  |
+| 100 | [100-backend-architecture.md](./100-backend-architecture.md)   | Backend Architecture        | FastAPI layers & structure                   | active  |
+| 110 | [110-frontend-architecture.md](./110-frontend-architecture.md) | Frontend Architecture       | React structure, hooks, components           | active  |
+| 120 | [120-dag-structure.md](./120-dag-structure.md)                 | DAG Structure               | DAG conversation model & implementation      | active  |
+| 130 | [130-model-service-factory.md](./130-model-service-factory.md) | Model Service Factory       | Multi-LLM provider abstraction               | active  |
+| 140 | [140-database-schema.md](./140-database-schema.md)             | Database Schema             | MongoDB & MySQL schema                       | active  |
+| 200 | [200-docker-topology.md](./200-docker-topology.md)             | Docker Compose Topology     | Container service layout                     | active  |
+| 210 | [210-code-quality.md](./210-code-quality.md)                   | Code Quality                | Pre-commit, commits, CI gates                | active  |
+| 220 | [220-testing.md](./220-testing.md)                             | Testing                     | Test strategy & commands                     | active  |
+| 230 | [230-frontend-typescript-toolchain.md](./230-frontend-typescript-toolchain.md) | Frontend TypeScript Toolchain | TS config, version policy, type-check CI | active  |
 
 ## Usage
 

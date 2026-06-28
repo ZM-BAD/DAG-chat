@@ -50,7 +50,7 @@ Traditional chat applications force conversations into a single, linear thread. 
 
 ```mermaid
 graph LR
-    subgraph Frontend ["Frontend — React + TypeScript + Vite"]
+    subgraph Frontend ["Frontend — React 19 + TypeScript 6 + Vite 8"]
         UI[Chat UI & DAG Renderer]
         i18n[i18n — EN / ZH]
     end

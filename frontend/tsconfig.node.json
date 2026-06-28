@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES2024",
-    "lib": ["ES2024", "ESNext"],
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    // This project type-checks vite.config.ts, which runs in Node — declare node types explicitly.
+    "types": ["node"],
     "module": "esnext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -11,7 +13,5 @@
     "declaration": true,
     "outDir": "./dist"
   },
-  "include": [
-    "vite.config.ts"
-  ]
+  "include": ["vite.config.ts"]
 }

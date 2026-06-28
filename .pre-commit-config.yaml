@@ -48,17 +48,17 @@ repos:
 
       - id: prettier-frontend
         name: prettier (frontend)
-        entry: bash -c 'cd frontend && npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css}"'
+        entry: bash -c 'cd frontend && npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css}" vite.config.ts tsconfig.json tsconfig.node.json'
         language: system
         pass_filenames: false
         files: ^(frontend/).*\.(ts|tsx|js|jsx|json|css)$
 
       - id: typescript-frontend
         name: typescript (frontend)
-        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        entry: bash -c 'cd frontend && npx tsc --noEmit && npx tsc -p tsconfig.node.json --noEmit'
         language: system
         pass_filenames: false
-        files: ^(frontend/).*\.(ts|tsx)$
+        files: ^(frontend/)(.*\.(ts|tsx)|tsconfig.*\.json)$
 
       - id: npm-ci-check
         name: npm ci check (frontend)
