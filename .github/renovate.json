@@ -14,6 +14,11 @@
   },
   "packageRules": [
     {
+      "description": "Freeze all non-major updates — only major versions and security alerts",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "bump", "replacement"],
+      "enabled": false
+    },
+    {
       "description": "Python production dependencies",
       "matchFileNames": ["backend/requirements.txt"],
       "groupName": "Python dependencies"
@@ -50,7 +55,7 @@
       "groupName": "Node.js"
     }
   ],
-  "minimumReleaseAge": "14 days",
+  "minimumReleaseAge": "60 days",
   "automerge": false,
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
