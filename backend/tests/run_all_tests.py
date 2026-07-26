@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 DAG conversation structure test runner
 
@@ -8,20 +7,37 @@ Run all test scenarios:
 3. Complex DAG scenario (branching + merging)
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
 from backend.tests.test_dag_chat import (
-    TestLinkedListScenario,
     TestBranchingScenario,
     TestComplexDAG,
     TestEdgeCases,
+    TestLinkedListScenario,
     test_complex_dag_with_user_questions,
 )
+
+
+def _run_single_test(name: str, test_fn, db=None) -> bool:
+    """Run one test in isolation — a single failure must not block the rest."""
+    try:
+        if db is not None:
+            test_fn(db)
+        else:
+            test_fn()
+        print(f"  ✓ {name}")
+        return True
+    except AssertionError as e:
+        print(f"  ✗ {name}: {e}")
+        return False
+    except Exception:  # noqa: BLE001 — intentional: test isolation, must catch everything
+        print(f"  ✗ {name}: Exception")
+        return False
 
 
 def run_linked_list_tests():
@@ -53,15 +69,9 @@ def run_linked_list_tests():
     failed = 0
 
     for name, test_func in tests:
-        try:
-            test_func(db)
-            print(f"  ✓ {name}")
+        if _run_single_test(name, test_func, db):
             passed += 1
-        except AssertionError as e:
-            print(f"  ✗ {name}: {e}")
-            failed += 1
-        except Exception as e:
-            print(f"  ✗ {name}: Exception - {e}")
+        else:
             failed += 1
 
     return passed, failed
@@ -98,15 +108,9 @@ def run_branching_tests():
     failed = 0
 
     for name, test_func in tests:
-        try:
-            test_func(db)
-            print(f"  ✓ {name}")
+        if _run_single_test(name, test_func, db):
             passed += 1
-        except AssertionError as e:
-            print(f"  ✗ {name}: {e}")
-            failed += 1
-        except Exception as e:
-            print(f"  ✗ {name}: Exception - {e}")
+        else:
             failed += 1
 
     return passed, failed
@@ -140,15 +144,9 @@ def run_complex_dag_tests():
     failed = 0
 
     for name, test_func in tests:
-        try:
-            test_func(db)
-            print(f"  ✓ {name}")
+        if _run_single_test(name, test_func, db):
             passed += 1
-        except AssertionError as e:
-            print(f"  ✗ {name}: {e}")
-            failed += 1
-        except Exception as e:
-            print(f"  ✗ {name}: Exception - {e}")
+        else:
             failed += 1
 
     return passed, failed
@@ -172,15 +170,9 @@ def run_edge_cases_tests():
     failed = 0
 
     for name, test_func in tests:
-        try:
-            test_func()
-            print(f"  ✓ {name}")
+        if _run_single_test(name, test_func):
             passed += 1
-        except AssertionError as e:
-            print(f"  ✗ {name}: {e}")
-            failed += 1
-        except Exception as e:
-            print(f"  ✗ {name}: Exception - {e}")
+        else:
             failed += 1
 
     return passed, failed
@@ -196,16 +188,10 @@ def run_integration_test():
     )
     print("-" * 60)
 
-    try:
-        test_complex_dag_with_user_questions()
-        print("  ✓ Full DAG integration test")
-        return 1, 0
-    except AssertionError as e:
-        print(f"  ✗ Full DAG integration test: {e}")
-        return 0, 1
-    except Exception as e:
-        print(f"  ✗ Full DAG integration test: Exception - {e}")
-        return 0, 1
+    success = _run_single_test(
+        "Full DAG integration test", test_complex_dag_with_user_questions
+    )
+    return (1, 0) if success else (0, 1)
 
 
 def main():

@@ -1,11 +1,12 @@
 import logging
-from typing import List, Dict, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import ClassVar
 
 from openai import AsyncOpenAI, OpenAI
 
 from backend.config import (
-    DEEPSEEK_API_KEY,
     DEEPSEEK_API_BASE_URL,
+    DEEPSEEK_API_KEY,
     DEEPSEEK_MODEL,
     DEEPSEEK_THINKING_EFFORT,
 )
@@ -39,8 +40,8 @@ class DeepSeekService(BaseModelService):
         return "deepseek"
 
     async def generate(
-        self, messages: List[Dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[Dict[str, str], None]:
+        self, messages: list[dict[str, str]], deep_thinking: bool = False
+    ) -> AsyncGenerator[dict[str, str], None]:
         """
         Call DeepSeek V4 API to generate streaming response
 
@@ -54,53 +55,48 @@ class DeepSeekService(BaseModelService):
         Returns:
             Async generator containing content and reasoning fields
         """
-        try:
-            # V4: thinking mode controlled via parameter, not model name
-            # Only "thinking" belongs in extra_body; reasoning_effort is top-level
-            if deep_thinking:
-                extra_body = {"thinking": {"type": "enabled"}}
-                kwargs = {
-                    "model": DEEPSEEK_MODEL,
-                    "messages": messages,
-                    "stream": True,
-                    "reasoning_effort": DEEPSEEK_THINKING_EFFORT,
-                    "extra_body": extra_body,
-                }
-            else:
-                extra_body = {"thinking": {"type": "disabled"}}
-                kwargs = {
-                    "model": DEEPSEEK_MODEL,
-                    "messages": messages,
-                    "stream": True,
-                    "extra_body": extra_body,
-                }
+        # V4: thinking mode controlled via parameter, not model name
+        # Only "thinking" belongs in extra_body; reasoning_effort is top-level
+        if deep_thinking:
+            extra_body = {"thinking": {"type": "enabled"}}
+            kwargs = {
+                "model": DEEPSEEK_MODEL,
+                "messages": messages,
+                "stream": True,
+                "reasoning_effort": DEEPSEEK_THINKING_EFFORT,
+                "extra_body": extra_body,
+            }
+        else:
+            extra_body = {"thinking": {"type": "disabled"}}
+            kwargs = {
+                "model": DEEPSEEK_MODEL,
+                "messages": messages,
+                "stream": True,
+                "extra_body": extra_body,
+            }
 
-            response = await self.async_client.chat.completions.create(**kwargs)
+        response = await self.async_client.chat.completions.create(**kwargs)
 
-            async for chunk in response:
-                if not chunk.choices:
-                    continue
+        async for chunk in response:
+            if not chunk.choices:
+                continue
 
-                delta = chunk.choices[0].delta
-                reasoning_chunk = ""
-                content_chunk = ""
+            delta = chunk.choices[0].delta
+            reasoning_chunk = ""
+            content_chunk = ""
 
-                if (
-                    deep_thinking
-                    and hasattr(delta, "reasoning_content")
-                    and delta.reasoning_content
-                ):
-                    reasoning_chunk = delta.reasoning_content
-                content_chunk = getattr(delta, "content", "") or ""
+            if (
+                deep_thinking
+                and hasattr(delta, "reasoning_content")
+                and delta.reasoning_content
+            ):
+                reasoning_chunk = delta.reasoning_content
+            content_chunk = getattr(delta, "content", "") or ""
 
-                yield {"content": content_chunk, "reasoning": reasoning_chunk}
-
-        except Exception as e:
-            logger.error("DeepSeek API call failed: %s", str(e))
-            yield {"error": "Model service temporarily unavailable", "details": str(e)}
+            yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
     # Title generation must explicitly disable thinking (V4 defaults to enabled)
-    _title_extra_params = {"thinking": {"type": "disabled"}}
+    _title_extra_params: ClassVar[dict] = {"thinking": {"type": "disabled"}}
 
     def _get_title_model(self) -> str:
         return DEEPSEEK_MODEL

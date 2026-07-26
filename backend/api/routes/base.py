@@ -1,13 +1,12 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.request import urlopen
-from urllib.error import URLError
 
 from fastapi import APIRouter
 
-# 导入模型工厂以获取可用模型列表
 from backend.api.services.model_factory import ModelFactory
+from backend.api.utils import try_or
 from backend.config import OLLAMA_API_BASE_URL
 
 # 获取日志记录器
@@ -31,7 +30,7 @@ def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": "DAG-chat",
     }
 
@@ -81,8 +80,9 @@ def _fetch_ollama_models() -> list:
     Returns:
         List of model info, each element containing name and display_name
     """
-    models = []
-    try:
+
+    def _fetch():
+        models = []
         # Ollama API地址（去掉末尾的/v1得到基础地址）
         ollama_base = OLLAMA_API_BASE_URL.removesuffix("/v1")
         tags_url = f"{ollama_base}/api/tags"
@@ -101,10 +101,6 @@ def _fetch_ollama_models() -> list:
                         "display_name": f"Ollama - {display_name}",
                     }
                 )
+        return models
 
-    except URLError:
-        pass  # Ollama not detected, skip
-    except Exception as e:
-        logger.warning("Failed to fetch Ollama models: %s", str(e))
-
-    return models
+    return try_or(_fetch, [], "ollama_models")

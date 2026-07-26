@@ -12,25 +12,26 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime
-from bson.errors import InvalidId
+from datetime import datetime, timezone
+
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from backend.database.mongodb_connection import MongoDBConnection
-from backend.database.mysql_connection import MySQLConnection
-from backend.models.requests import ChatRequest, PlaceholderRequest
-from backend.models.schemas import MessageNode
 from backend.api.services.base_service import truncate_fallback
 from backend.api.services.model_factory import ModelFactory
+from backend.database.mongodb_connection import MongoDBConnection
+from backend.database.mysql_connection import MySQLConnection
 from backend.models.error_codes import (
     DB_CONNECTION_FAILED,
-    UNSUPPORTED_MODEL,
     STREAM_RESPONSE_FAILED,
+    UNSUPPORTED_MODEL,
     make_error_response,
     make_sse_error,
 )
+from backend.models.requests import ChatRequest, PlaceholderRequest
+from backend.models.schemas import MessageNode
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -63,15 +64,8 @@ def build_dag_from_parents(
     # 验证和转换ObjectId
     try:
         start_ids = [ObjectId(pid) for pid in parent_ids if pid]
-    except InvalidId as e:
+    except (InvalidId, TypeError) as e:
         logger.error("Invalid parent_ids format: %s, error: %s", parent_ids, e)
-        return {}, {}
-    except Exception as e:
-        logger.error(
-            "Unexpected error when parsing parent_ids: %s, error: %s",
-            parent_ids,
-            e,
-        )
         return {}, {}
 
     # BFS遍历收集所有相关节点（向上追溯父节点）
@@ -100,9 +94,7 @@ def build_dag_from_parents(
                     if parent_id and parent_id not in visited:
                         try:
                             queue.append(ObjectId(parent_id))
-                        except InvalidId:
-                            continue
-                        except Exception:
+                        except (InvalidId, TypeError):
                             continue
 
         current_depth += 1
@@ -190,10 +182,10 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
 
                 # 策略3：选择任意可用节点（按ID排序保证确定性）
                 if selected is None:
-                    selected = sorted(available)[0]
+                    selected = min(available)
         else:
             # 第一个节点：选择入度为0的节点（根节点）
-            selected = sorted(available)[0]
+            selected = min(available)
 
         result.append(selected)
         available.remove(selected)
@@ -370,20 +362,19 @@ async def chat(request: ChatRequest):
         first_ask = True
 
         # 连接MongoDB
-        if mongo_db.connect():
-            if request.parent_ids:
-                # 使用SubDAG拓扑排序构建历史（支持分支提问和合并提问）
-                history_messages = build_history_from_parent_ids(
-                    mongo_db, request.parent_ids
+        if mongo_db.connect() and request.parent_ids:
+            # 使用SubDAG拓扑排序构建历史（支持分支提问和合并提问）
+            history_messages = build_history_from_parent_ids(
+                mongo_db, request.parent_ids
+            )
+            if history_messages:
+                first_ask = False
+                chat_messages = history_messages
+            else:
+                logger.warning(
+                    "No history found for parent_ids: %s, this might be the first message in conversation",
+                    request.parent_ids,
                 )
-                if history_messages:
-                    first_ask = False
-                    chat_messages = history_messages
-                else:
-                    logger.warning(
-                        "No history found for parent_ids: %s, this might be the first message in conversation",
-                        request.parent_ids,
-                    )
 
         # Append current user message to chat history
         chat_messages.append({"role": "user", "content": request.message})
@@ -474,12 +465,12 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
             finally:
                 abort_mysql_db.disconnect()
                 abort_mongo_db.disconnect()
-        except Exception as save_err:
-            logger.error("Abort save failed: %s", save_err)
+        except Exception:
+            logger.exception("Abort save failed")
         raise
 
-    except Exception as e:
-        logger.error("Streaming processing error: %s", str(e), exc_info=True)
+    except Exception:
+        logger.exception("Streaming processing error")
         yield make_sse_error(STREAM_RESPONSE_FAILED)
 
 
@@ -534,7 +525,7 @@ def update_conversation_models(
             "UPDATE t_conversations SET model = %s, update_time = %s WHERE id = %s"
         )
         success = mysql_db.execute_query(
-            update_query, (updated_model, datetime.now(), conversation_id)
+            update_query, (updated_model, datetime.now(timezone.utc), conversation_id)
         )
 
         if not success:
@@ -542,8 +533,8 @@ def update_conversation_models(
 
         return success
 
-    except Exception as e:
-        logger.error("Error updating conversation models: %s", str(e), exc_info=True)
+    except Exception:
+        logger.exception("Error updating conversation models")
         return False
 
 
@@ -603,7 +594,11 @@ async def save_conversation_to_database(
                     SET title = %s, update_time = %s
                     WHERE id = %s
                     """,
-                    (generated_title, datetime.now(), request.conversation_id),
+                    (
+                        generated_title,
+                        datetime.now(timezone.utc),
+                        request.conversation_id,
+                    ),
                 )
                 if not success:
                     logger.error("MySQL title update failed")
@@ -615,7 +610,7 @@ async def save_conversation_to_database(
                     SET update_time = %s
                     WHERE id = %s
                     """,
-                    (datetime.now(), request.conversation_id),
+                    (datetime.now(timezone.utc), request.conversation_id),
                 )
                 if not success:
                     logger.error("MySQL conversation update failed")
@@ -626,8 +621,8 @@ async def save_conversation_to_database(
                     mysql_db, request.conversation_id, request.model
                 )
 
-        except Exception as e:
-            logger.error("MySQL operation failed: %s", str(e), exc_info=True)
+        except Exception:
+            logger.exception("MySQL operation failed")
 
     # MongoDB 操作
     if mongo_db.connect():
@@ -639,7 +634,7 @@ async def save_conversation_to_database(
             # 更新助手消息的内容
             update_fields = {
                 "content": full_content,
-                "update_time": datetime.now(),
+                "update_time": datetime.now(timezone.utc),
             }
             if full_reasoning:
                 update_fields["reasoning"] = full_reasoning

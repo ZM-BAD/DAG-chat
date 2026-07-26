@@ -7,17 +7,39 @@ repos:
         files: ^specs/.*\.md$
         args: [--config, .markdownlint.json]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.8
-    hooks:
-      - id: ruff
-        args: [--fix]
-        files: ^backend/.*\.py$
-      - id: ruff-format
-        files: ^backend/.*\.py$
-
   - repo: local
     hooks:
+      # Upgrade ruff to latest before running checks — mirrors CI's
+      # `pip install ruff` so local always uses the same rules as CI.
+      - id: ruff-upgrade
+        name: ruff (upgrade to latest)
+        entry: pip install --upgrade ruff
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+        stages: [pre-commit]
+        additional_dependencies: []
+
+      - id: ruff-check
+        name: ruff (check + fix)
+        entry: ruff check --fix backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: ruff-format-check
+        name: ruff (format check)
+        entry: ruff format --check backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+      - id: lint-staged
+        name: lint-staged (auto-fix staged files)
+        entry: bash -c 'cd frontend && npx lint-staged'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/).*\.(ts|tsx|json|md|css)$
+
       - id: pylint
         name: pylint (backend)
         entry: bash -c '.venv/bin/python -m pylint --fail-under=9 $(git ls-files "*.py")'
@@ -60,6 +82,13 @@ repos:
         pass_filenames: false
         files: ^(frontend/)(.*\.(ts|tsx)|tsconfig.*\.json)$
 
+      - id: frontend-tests
+        name: frontend tests (DAG)
+        entry: bash -c 'cd frontend && npm test'
+        language: system
+        pass_filenames: false
+        files: ^(frontend/).*\.(ts|tsx)$
+
       - id: npm-ci-check
         name: npm ci check (frontend)
         entry: bash -c 'cd frontend && rm -rf node_modules && npm ci'
@@ -80,3 +109,10 @@ repos:
         language: system
         pass_filenames: false
         files: ^specs/.*\.md$
+
+      - id: commitlint
+        name: commitlint (conventional commits)
+        entry: npx commitlint --edit
+        language: system
+        pass_filenames: false
+        stages: [commit-msg]

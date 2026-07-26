@@ -6,16 +6,15 @@ Run with:
 """
 
 from backend.api.services.base_service import (
-    TITLE_PROMPT_TEMPLATE,
     _LANGUAGE_NAME_MAP,
     _LENGTH_CONSTRAINTS,
+    TITLE_PROMPT_TEMPLATE,
     _get_lang_family,
     clean_title,
     detect_user_language,
     truncate_fallback,
     truncate_title,
 )
-
 
 # ---------------------------------------------------------------------------
 # detect_user_language

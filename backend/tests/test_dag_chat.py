@@ -12,7 +12,6 @@ Test scenarios:
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -59,7 +58,7 @@ class MockMongoDB:
 
         return []
 
-    def _node_to_dict(self, node: Optional[MockMessageNode]) -> Optional[dict]:
+    def _node_to_dict(self, node: MockMessageNode | None) -> dict | None:
         """Convert node to dictionary format (simulating pymongo return)"""
         if node is None:
             return None
@@ -171,10 +170,10 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
 
                 # 策略3：任意选择
                 if selected is None:
-                    selected = sorted(available)[0]
+                    selected = min(available)
         else:
             # 第一个节点
-            selected = sorted(available)[0]
+            selected = min(available)
 
         result.append(selected)
         available.remove(selected)

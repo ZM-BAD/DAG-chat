@@ -5,11 +5,13 @@ Uses reasoning_split=True to separate thinking content into reasoning_details fi
 """
 
 import logging
-from typing import List, Dict, AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from openai import AsyncOpenAI, OpenAI
 
-from backend.config import MINIMAX_API_KEY, MINIMAX_API_BASE_URL, MINIMAX_MODEL
+from backend.api.utils import try_or
+from backend.config import MINIMAX_API_BASE_URL, MINIMAX_API_KEY, MINIMAX_MODEL
+
 from .base_service import (
     BaseModelService,
     _build_title_prompt,
@@ -42,8 +44,8 @@ class MiniMaxService(BaseModelService):
         return "minimax"
 
     async def generate(
-        self, messages: List[Dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[Dict[str, str], None]:
+        self, messages: list[dict[str, str]], deep_thinking: bool = False
+    ) -> AsyncGenerator[dict[str, str], None]:
         """
         Call MiniMax API to generate streaming response
 
@@ -57,36 +59,31 @@ class MiniMaxService(BaseModelService):
         Returns:
             Async generator containing content and reasoning fields
         """
-        try:
-            response = await self.async_client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                stream=True,
-                extra_body={"reasoning_split": True},
-            )
+        response = await self.async_client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            stream=True,
+            extra_body={"reasoning_split": True},
+        )
 
-            async for chunk in response:
-                reasoning_chunk = ""
-                content_chunk = ""
+        async for chunk in response:
+            reasoning_chunk = ""
+            content_chunk = ""
 
-                delta = chunk.choices[0].delta
+            delta = chunk.choices[0].delta
 
-                # 提取思考内容: reasoning_details 是 [{"text": "..."}] 格式
-                reasoning_details = getattr(delta, "reasoning_details", None)
-                if reasoning_details:
-                    for detail in reasoning_details:
-                        text = detail.get("text", "")
-                        if text:
-                            reasoning_chunk += text
+            # 提取思考内容: reasoning_details 是 [{"text": "..."}] 格式
+            reasoning_details = getattr(delta, "reasoning_details", None)
+            if reasoning_details:
+                for detail in reasoning_details:
+                    text = detail.get("text", "")
+                    if text:
+                        reasoning_chunk += text
 
-                # 提取正文内容
-                content_chunk = delta.content or ""
+            # 提取正文内容
+            content_chunk = delta.content or ""
 
-                yield {"content": content_chunk, "reasoning": reasoning_chunk}
-
-        except Exception as e:
-            logger.error("MiniMax API call failed: %s", str(e))
-            yield {"error": "Model service temporarily unavailable", "details": str(e)}
+            yield {"content": content_chunk, "reasoning": reasoning_chunk}
 
     # MiniMax M2 forces reasoning on all requests — cannot be disabled.
     _title_disable_thinking = (
@@ -104,7 +101,7 @@ class MiniMaxService(BaseModelService):
         """
         lang, _language_name, messages = _build_title_prompt(user_input, full_response)
 
-        try:
+        def _generate():
             # Use streaming to leverage reasoning_split for content/reasoning separation.
             # `with` ensures the HTTP connection is released after iteration.
             with self.client.chat.completions.create(
@@ -130,8 +127,9 @@ class MiniMaxService(BaseModelService):
             logger.warning(
                 "minimax title generation returned empty content, using fallback"
             )
-            return truncate_fallback(user_input)
+            return None
 
-        except Exception as e:
-            logger.error("Title generation failed (minimax): %s", str(e))
-            return truncate_fallback(user_input)
+        result = try_or(_generate, None, "minimax_title")
+        if result:
+            return result
+        return truncate_fallback(user_input)

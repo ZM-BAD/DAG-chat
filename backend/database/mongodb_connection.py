@@ -1,5 +1,3 @@
-#!/usr/bin/env python3.13
-
 import logging
 import uuid
 
@@ -71,8 +69,8 @@ class MongoDBConnection:
         self,
         collection_name: str,
         query: dict,
-        projection: dict = None,
-        sort: list = None,
+        projection: dict | None = None,
+        sort: list | None = None,
     ):
         if self.client:
             collection = self.db[collection_name]
@@ -86,8 +84,8 @@ class MongoDBConnection:
         self,
         collection_name: str,
         query: dict,
-        projection: dict = None,
-        sort: list = None,
+        projection: dict | None = None,
+        sort: list | None = None,
     ):
         if self.client:
             collection = self.db[collection_name]
@@ -147,7 +145,7 @@ if __name__ == "__main__":
                 # 清理测试数据
                 db.db["users"].delete_one({"_id": test_id})
 
-            except Exception as e:
-                logger.error(f"Test failed: {str(e)}", exc_info=True)
+            except Exception:
+                logger.exception("Test failed")
         else:
             logger.error("Failed to connect to database during testing")

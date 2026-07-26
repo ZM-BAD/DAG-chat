@@ -1,9 +1,8 @@
-#!/usr/bin/env python3.13
-
 import logging
 
 import mysql.connector
 from mysql.connector import Error
+
 from backend.config import MYSQL_CONFIG
 
 # 获取日志记录器

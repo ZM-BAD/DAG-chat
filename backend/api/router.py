@@ -1,10 +1,11 @@
 import logging
+
 from fastapi import APIRouter
 
 # 从各个子模块导入路由
 from .routes.base import router as base_router
-from .routes.conversation import router as conversation_router
 from .routes.chat import router as chat_router
+from .routes.conversation import router as conversation_router
 
 # 创建主路由器实例
 router = APIRouter()

@@ -2,6 +2,7 @@
 .idea/
 .trae/
 __pycache__/
+node_modules/
 *.py[cod]
 *$py.class
 *.so

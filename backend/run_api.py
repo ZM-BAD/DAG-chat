@@ -1,13 +1,13 @@
+import logging
 import os
 import sys
-import logging
 
 import uvicorn
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.logging_config import setup_logging  # noqa: E402
+from backend.logging_config import setup_logging
 
 # 配置日志
 setup_logging()

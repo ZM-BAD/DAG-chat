@@ -1,26 +1,27 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pymongo
 from fastapi import APIRouter, Query
 
+from backend.api.utils import safe_endpoint
+from backend.config import DEFAULT_USER_ID
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
-from backend.config import DEFAULT_USER_ID
-from backend.models.requests import CreateConversationRequest
 from backend.models.error_codes import (
-    make_error_response,
-    EMPTY_CONVERSATION_ID,
-    EMPTY_USER_ID,
-    EMPTY_TITLE,
-    TITLE_TOO_LONG,
     CREATE_CONVERSATION_FAILED,
-    DELETE_CONVERSATION_FAILED,
-    RENAME_CONVERSATION_FAILED,
-    FETCH_HISTORY_FAILED,
     DB_CONNECTION_FAILED,
+    DELETE_CONVERSATION_FAILED,
+    EMPTY_CONVERSATION_ID,
+    EMPTY_TITLE,
+    EMPTY_USER_ID,
+    FETCH_HISTORY_FAILED,
+    RENAME_CONVERSATION_FAILED,
+    TITLE_TOO_LONG,
+    make_error_response,
 )
+from backend.models.requests import CreateConversationRequest
 
 # 常量定义
 MAX_TITLE_LENGTH = 64
@@ -32,6 +33,7 @@ router = APIRouter()
 
 
 @router.post("/create-conversation")
+@safe_endpoint(CREATE_CONVERSATION_FAILED)
 def create_conversation(request: CreateConversationRequest):
     """
     Create a new conversation
@@ -54,8 +56,8 @@ def create_conversation(request: CreateConversationRequest):
                 request.user_id,
                 title,
                 request.model,
-                datetime.now(),
-                datetime.now(),
+                datetime.now(timezone.utc),
+                datetime.now(timezone.utc),
             )
 
             if mysql_db.execute_query(query, params):
@@ -66,14 +68,12 @@ def create_conversation(request: CreateConversationRequest):
 
         logger.error("Failed to create conversation: cannot connect to MySQL")
         return make_error_response(500, DB_CONNECTION_FAILED)
-    except Exception as e:
-        logger.error("Failed to create conversation: %s", str(e), exc_info=True)
-        return make_error_response(500, CREATE_CONVERSATION_FAILED)
     finally:
         mysql_db.disconnect()
 
 
 @router.get("/dialogue/list")
+@safe_endpoint(FETCH_HISTORY_FAILED)
 def get_dialogue_list(
     user_id: str = Query(default=DEFAULT_USER_ID, description="User ID"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -137,14 +137,12 @@ def get_dialogue_list(
 
         logger.error("Cannot connect to MySQL database")
         return make_error_response(500, DB_CONNECTION_FAILED)
-    except Exception as e:
-        logger.error("Failed to fetch dialogue list: %s", str(e), exc_info=True)
-        return make_error_response(500, FETCH_HISTORY_FAILED)
     finally:
         mysql_db.disconnect()
 
 
 @router.delete("/dialogue/delete")
+@safe_endpoint(DELETE_CONVERSATION_FAILED)
 def delete_conversation(
     conversation_id: str = Query(..., description="Conversation ID", min_length=1),
     user_id: str = Query(default=DEFAULT_USER_ID, description="User ID", min_length=1),
@@ -177,8 +175,8 @@ def delete_conversation(
                     mongo_db.delete_many(
                         "message_node", {"conversation_id": conversation_id}
                     )
-            except Exception as e:
-                logger.error("Failed to delete MongoDB messages: %s", str(e))
+            except Exception:
+                logger.exception("Failed to delete MongoDB messages")
             finally:
                 mongo_db.disconnect()
 
@@ -194,14 +192,12 @@ def delete_conversation(
 
         logger.error("Cannot connect to MySQL database")
         return make_error_response(500, DB_CONNECTION_FAILED)
-    except Exception as e:
-        logger.error("Failed to delete dialogue: %s", str(e), exc_info=True)
-        return make_error_response(500, DELETE_CONVERSATION_FAILED)
     finally:
         mysql_db.disconnect()
 
 
 @router.put("/dialogue/rename")
+@safe_endpoint(RENAME_CONVERSATION_FAILED)
 def rename_conversation(
     conversation_id: str = Query(..., description="Conversation ID", min_length=1),
     user_id: str = Query(default=DEFAULT_USER_ID, description="User ID", min_length=1),
@@ -238,7 +234,7 @@ def rename_conversation(
         if mysql_db.connect():
             # 更新对话标题
             query = "UPDATE t_conversations SET title = %s, update_time = %s WHERE id = %s AND user_id = %s"
-            params = (new_title, datetime.now(), conversation_id, user_id)
+            params = (new_title, datetime.now(timezone.utc), conversation_id, user_id)
 
             if mysql_db.execute_query(query, params):
                 return {"code": 0, "message": "success", "data": {}}
@@ -248,14 +244,12 @@ def rename_conversation(
 
         logger.error("Cannot connect to MySQL database")
         return make_error_response(500, DB_CONNECTION_FAILED)
-    except Exception as e:
-        logger.error("Failed to rename dialogue: %s", str(e), exc_info=True)
-        return make_error_response(500, RENAME_CONVERSATION_FAILED)
     finally:
         mysql_db.disconnect()
 
 
 @router.get("/dialogue/history")
+@safe_endpoint(FETCH_HISTORY_FAILED)
 def get_dialogue_history(dialogue_id: str = Query(..., description="Dialogue ID")):
     """
     Get history messages for a specified dialogue
@@ -301,8 +295,5 @@ def get_dialogue_history(dialogue_id: str = Query(..., description="Dialogue ID"
         else:
             logger.error("Cannot connect to MongoDB database")
             return make_error_response(500, DB_CONNECTION_FAILED, data=[])
-    except Exception as e:
-        logger.error("Failed to fetch dialogue history: %s", str(e), exc_info=True)
-        return make_error_response(500, FETCH_HISTORY_FAILED, data=[])
     finally:
         mongo_db.disconnect()

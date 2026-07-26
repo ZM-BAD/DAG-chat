@@ -17,6 +17,14 @@ This file provides guidance to AI coding agents when working with code in this r
 
 See `specs/README.md` for the full index with numbering, status, and descriptions.
 
+## Commit Messages
+
+Conventional Commits format, enforced by commitlint (pre-commit `commit-msg` hook + CI).
+
+**Format:** `<type>(<scope>): <subject>` — imperative, ≤50 chars (72 hard), no period. Blank line, then body (WHY + landmines only, never restate the diff; ≤72 chars/line), then `Co-Authored-By: Claude <noreply@anthropic.com>` (required for every AI commit).
+
+**Types:** `feat` `fix` `docs` `refactor` `perf` `test` `build` `ci` `chore` `style`. Scope is the affected module (e.g. `frontend` `backend` `dag` `ci`).
+
 ## Workflow
 
 1. Read relevant specs before implementing

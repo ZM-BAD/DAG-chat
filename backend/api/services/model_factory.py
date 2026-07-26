@@ -1,5 +1,7 @@
 import logging
-from typing import Dict, Type, Optional
+from typing import ClassVar
+
+from backend.api.utils import try_or
 
 from .base_service import BaseModelService
 
@@ -14,15 +16,15 @@ class ModelFactory:
 
     # 存储模型服务类的注册表
     # key 为 service_name（如 "ollama", "deepseek"），由 get_service_name() 返回
-    _registry: Dict[str, Type[BaseModelService]] = {}
+    _registry: ClassVar[dict[str, type[BaseModelService]]] = {}
 
     # 服务实例缓存
     # key 为 normalized_model（如 "ollama/qwen3:8b", "deepseek"），即完整模型名的小写形式
     # 注意：对于 Ollama 等多模型服务，每种模型名都有独立的缓存实例
-    _instances: Dict[str, BaseModelService] = {}
+    _instances: ClassVar[dict[str, BaseModelService]] = {}
 
     @classmethod
-    def register(cls, service_class: Type[BaseModelService]) -> Type[BaseModelService]:
+    def register(cls, service_class: type[BaseModelService]) -> type[BaseModelService]:
         """
         Register a model service class
 
@@ -37,7 +39,7 @@ class ModelFactory:
         return service_class
 
     @classmethod
-    def get_service(cls, model_name: str) -> Optional[BaseModelService]:
+    def get_service(cls, model_name: str) -> BaseModelService | None:
         """
         Get service instance by model name
 
@@ -68,7 +70,7 @@ class ModelFactory:
 
         if service_class:
             # 创建服务实例
-            try:
+            def _create():
                 # 尝试传递model_name参数（支持Ollama等多模型服务）
                 try:
                     instance = service_class(model_name=normalized_model)
@@ -76,15 +78,17 @@ class ModelFactory:
                     instance = service_class()
                 cls._instances[normalized_model] = instance
                 return instance
-            except Exception as e:
-                logger.error("Failed to create model service instance: %s", e)
-                return None
+
+            instance = try_or(_create, None, f"create_service_{service_name}")
+            if instance:
+                return instance
+            return None
 
         logger.warning("No matching model service found: %s", model_name)
         return None
 
     @classmethod
-    def get_available_services(cls) -> Dict[str, Type[BaseModelService]]:
+    def get_available_services(cls) -> dict[str, type[BaseModelService]]:
         """
         Get all available model services
 

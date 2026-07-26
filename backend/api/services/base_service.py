@@ -2,9 +2,10 @@ import abc
 import logging
 import re
 import string
-from typing import Dict, List, Optional, Tuple
 
 from langdetect import LangDetectException, detect
+
+from backend.api.utils import try_or
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Language detection
 # ---------------------------------------------------------------------------
 
-_LANGUAGE_NAME_MAP: Dict[str, str] = {
+_LANGUAGE_NAME_MAP: dict[str, str] = {
     "zh": "Chinese",
     "ja": "Japanese",
     "ko": "Korean",
@@ -131,8 +132,7 @@ def truncate_title(title: str, lang: str) -> str:
     best_boundary = -1
     for sep in (" ", "-", "—", "–", "/", "|"):
         idx = truncated.rfind(sep)
-        if idx > best_boundary:
-            best_boundary = idx
+        best_boundary = max(best_boundary, idx)
 
     # Only cut at word boundary if it preserves >= 50% content
     if best_boundary >= max_chars * 0.5:
@@ -154,7 +154,7 @@ def truncate_fallback(user_input: str) -> str:
 
 def _build_title_prompt(
     user_input: str, full_response: str
-) -> Tuple[str, str, List[dict]]:
+) -> tuple[str, str, list[dict]]:
     """Build prompt messages for title generation. Returns (lang, language_name, messages)."""
     lang = detect_user_language(user_input)
     lang_family = _get_lang_family(lang)
@@ -200,7 +200,7 @@ class BaseModelService(metaclass=abc.ABCMeta):
     _title_max_tokens: int = 40
 
     # Subclasses set this to pass provider-specific params (e.g. disable thinking)
-    _title_extra_params: Optional[Dict] = None
+    _title_extra_params: dict | None = None
 
     @abc.abstractmethod
     async def generate(self, messages, deep_thinking: bool = False):
@@ -245,7 +245,7 @@ class BaseModelService(metaclass=abc.ABCMeta):
                 title_model,
             )
 
-        try:
+        def _generate():
             kwargs = {
                 "model": title_model,
                 "messages": messages,
@@ -268,11 +268,12 @@ class BaseModelService(metaclass=abc.ABCMeta):
                 "%s title generation returned empty content, using fallback",
                 service_name,
             )
-            return truncate_fallback(user_input)
+            return None
 
-        except Exception as e:
-            logger.error("Title generation failed (%s): %s", service_name, str(e))
-            return truncate_fallback(user_input)
+        result = try_or(_generate, None, f"{service_name}_title")
+        if result:
+            return result
+        return truncate_fallback(user_input)
 
     @classmethod
     def get_service_name(cls) -> str:
