@@ -1,0 +1,36 @@
+# Codecov configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%  # allow coverage to drop by up to 2% without failing
+    patch:
+      default:
+        target: auto
+        threshold: 2%
+
+flags:
+  backend:
+    paths:
+      - backend/
+    carryforward: false
+  frontend:
+    paths:
+      - frontend/src/
+    carryforward: false
+
+ignore:
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+  - "backend/tests/**"
+  - "frontend/tests/**"
+  - "**/*.config.*"
+  - "**/scripts/**"

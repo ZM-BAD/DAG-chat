@@ -47,6 +47,18 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'node',
       include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov', 'json-summary'],
+        reportsDirectory: './coverage',
+        include: ['src/**/*.{ts,tsx}'],
+        thresholds: {
+          statements: 10,
+          branches: 10,
+          functions: 10,
+          lines: 10,
+        },
+      },
     },
   };
 });

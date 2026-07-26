@@ -54,8 +54,46 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm test
+      - name: Run unit tests with coverage
+        run: npm run coverage
+
+      - name: Coverage job summary
+        run: |
+          node -e "
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+          const total = data.total;
+          const files = Object.entries(data).filter(([k]) => k !== 'total');
+          const lines = [];
+          lines.push('# Frontend Coverage');
+          lines.push('');
+          lines.push('| Statements | Branches | Functions | Lines |');
+          lines.push('|------------|----------|-----------|-------|');
+          lines.push('| ' + total.statements.pct.toFixed(1) + '% | ' + total.branches.pct.toFixed(1) + '% | ' + total.functions.pct.toFixed(1) + '% | **' + total.lines.pct.toFixed(1) + '%** |');
+          lines.push('');
+          lines.push('## Per File');
+          lines.push('');
+          lines.push('| File | Lines | Coverage |');
+          lines.push('|------|------:|---------:|');
+          files
+            .filter(([, s]) => s.lines.total > 0)
+            .sort(([, a], [, b]) => a.lines.pct - b.lines.pct)
+            .forEach(([path, s]) => {
+              const label = path.replace(/^.*\/frontend\//, '');
+              const emoji = s.lines.pct >= 80 ? '\u{1F7E2}' : s.lines.pct >= 50 ? '\u{1F7E1}' : '\u{1F534}';
+              lines.push('| ' + label + ' | ' + s.lines.covered + '/' + s.lines.total + ' | ' + emoji + ' ' + s.lines.pct.toFixed(0) + '% |');
+            });
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n'));
+          "
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     runs-on: ubuntu-latest

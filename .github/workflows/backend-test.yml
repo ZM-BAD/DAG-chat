@@ -23,6 +23,55 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-      - name: Run DAG tests
+          pip install -r backend/requirements-dev.txt
+      - name: Run tests with coverage
+        env:
+          COVERAGE_FILE: backend/.coverage
         run: |
-          cd backend && python3 tests/run_all_tests.py
+          python -m pytest backend/tests/ \
+            --cov=backend.api \
+            --cov=backend.api.services \
+            --cov=backend.models \
+            --cov=backend.database \
+            --cov-report=xml:backend/coverage.xml \
+            --cov-report=json:backend/coverage.json \
+            --cov-report=term-missing \
+            -v
+      - name: Coverage job summary
+        run: |
+          python3 -c "
+          import json, os, pathlib
+          data = json.loads(pathlib.Path('backend/coverage.json').read_text())
+          totals = data['totals']
+          pct = totals['percent_covered_display']
+          out = []
+          out.append('# Backend Coverage')
+          out.append('')
+          out.append(f'| Lines | Statements | Missing | Coverage |')
+          out.append(f'|-------|------------|---------|----------|')
+          out.append(f'| {totals[\"covered_lines\"]} | {totals[\"num_statements\"]} | {totals[\"missing_lines\"]} | **{pct}%** |')
+          out.append('')
+          out.append('## Per File')
+          out.append('')
+          out.append('| File | Lines | Coverage |')
+          out.append('|------|------:|---------:|')
+          files = sorted(data['files'].items(), key=lambda x: x[1]['summary']['percent_covered'])
+          for path, info in files:
+              s = info['summary']
+              if s['num_statements'] == 0:
+                  continue
+              p = pathlib.Path(path)
+              label = str(p.relative_to('backend')) if p.is_relative_to('backend') else p.name
+              emoji = '🟢' if s['percent_covered'] >= 80 else '🟡' if s['percent_covered'] >= 50 else '🔴'
+              out.append(f'| {label} | {s[\"covered_lines\"]}/{s[\"num_statements\"]} | {emoji} {s[\"percent_covered_display\"]}% |')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('\n'.join(out))
+          "
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

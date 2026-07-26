@@ -71,8 +71,8 @@ repos:
         files: ^backend/requirements\.txt$
 
       - id: backend-tests
-        name: backend tests (DAG)
-        entry: bash -c 'cd backend && ../.venv/bin/python tests/run_all_tests.py'
+        name: backend tests (pytest)
+        entry: bash -c '.venv/bin/python -m pytest backend/tests/ -q'
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
