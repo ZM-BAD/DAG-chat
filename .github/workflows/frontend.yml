@@ -1,4 +1,4 @@
-name: Frontend CI
+name: Frontend
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main, master]
 
 jobs:
-  lint-and-format:
+  lint:
     runs-on: ubuntu-latest
     defaults:
       run:

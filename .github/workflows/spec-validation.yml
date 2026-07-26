@@ -1,4 +1,4 @@
-name: Spec Validation
+name: Specs
 
 on:
   push:
