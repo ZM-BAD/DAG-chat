@@ -1,22 +1,38 @@
 repos:
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.17.2
-    hooks:
-      - id: markdownlint-cli2
-        name: markdownlint (specs)
-        files: ^specs/.*\.md$
-        args: [--config, .markdownlint.json]
-
   - repo: local
     hooks:
-      # Upgrade ruff to latest before running checks — mirrors CI's
-      # `pip install ruff` so local always uses the same rules as CI.
+      - id: markdownlint
+        name: markdownlint (specs)
+        entry: bash -c 'npx markdownlint-cli2@latest "specs/**/*.md" --config .markdownlint.json'
+        language: system
+        pass_filenames: false
+        files: ^specs/.*\.md$
+      # Upgrade tools to latest before running checks — mirrors CI's
+      # `pip install --upgrade <tool>` so local always uses the same version as CI.
       - id: ruff-upgrade
         name: ruff (upgrade to latest)
         entry: pip install --upgrade ruff
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+        stages: [pre-commit]
+        additional_dependencies: []
+
+      - id: pylint-upgrade
+        name: pylint (upgrade to latest)
+        entry: pip install --upgrade pylint
+        language: system
+        pass_filenames: false
+        files: \.py$
+        stages: [pre-commit]
+        additional_dependencies: []
+
+      - id: pip-audit-upgrade
+        name: pip-audit (upgrade to latest)
+        entry: pip install --upgrade pip-audit
+        language: system
+        pass_filenames: false
+        files: ^backend/requirements\.txt$
         stages: [pre-commit]
         additional_dependencies: []
 
@@ -42,14 +58,14 @@ repos:
 
       - id: pylint
         name: pylint (backend)
-        entry: bash -c '.venv/bin/python -m pylint --fail-under=9 $(git ls-files "*.py")'
+        entry: bash -c 'pylint --fail-under=9 $(git ls-files "*.py")'
         language: system
         pass_filenames: false
         files: \.py$
 
       - id: pip-audit
         name: pip-audit (backend)
-        entry: bash -c '.venv/bin/pip-audit -r backend/requirements.txt'
+        entry: bash -c 'pip-audit -r backend/requirements.txt'
         language: system
         pass_filenames: false
         files: ^backend/requirements\.txt$

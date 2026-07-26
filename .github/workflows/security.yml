@@ -20,7 +20,7 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: |
-          pip install pip-audit
+          pip install --upgrade pip-audit
       - name: Run pip-audit
         run: |
           pip-audit -r backend/requirements.txt

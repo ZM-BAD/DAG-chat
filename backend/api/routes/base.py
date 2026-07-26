@@ -1,12 +1,12 @@
 import json
 import logging
 from datetime import datetime, timezone
+from urllib.error import URLError
 from urllib.request import urlopen
 
 from fastapi import APIRouter
 
 from backend.api.services.model_factory import ModelFactory
-from backend.api.utils import try_or
 from backend.config import OLLAMA_API_BASE_URL
 
 # 获取日志记录器
@@ -80,9 +80,8 @@ def _fetch_ollama_models() -> list:
     Returns:
         List of model info, each element containing name and display_name
     """
-
-    def _fetch():
-        models = []
+    models = []
+    try:
         # Ollama API地址（去掉末尾的/v1得到基础地址）
         ollama_base = OLLAMA_API_BASE_URL.removesuffix("/v1")
         tags_url = f"{ollama_base}/api/tags"
@@ -101,6 +100,10 @@ def _fetch_ollama_models() -> list:
                         "display_name": f"Ollama - {display_name}",
                     }
                 )
-        return models
 
-    return try_or(_fetch, [], "ollama_models")
+    except URLError:
+        pass  # Ollama not detected, skip
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning("Failed to fetch Ollama models: %s", str(e))
+
+    return models

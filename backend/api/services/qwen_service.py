@@ -2,7 +2,7 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import ClassVar
 
-from openai import AsyncOpenAI, OpenAI
+from openai import APIError, AsyncOpenAI, OpenAI
 
 from backend.config import (
     QWEN_API_BASE_URL,
@@ -52,36 +52,41 @@ class QwenService(BaseModelService):
         Returns:
             Async generator containing content and reasoning fields
         """
-        # 根据deep_thinking参数选择模型
-        if deep_thinking:
-            model_name = QWEN_MODEL_THINKING
-        else:
-            model_name = QWEN_MODEL
-
-        # 构建请求参数
-        request_params = {"model": model_name, "messages": messages, "stream": True}
-
-        # 对于深度思考模型，添加thinking参数
-        if deep_thinking:
-            request_params["extra_body"] = {"enable_thinking": True}
-
-        response = await self.async_client.chat.completions.create(**request_params)
-
-        async for chunk in response:
-            # 非思考模型没有reasoning_content字段，确保兼容性
-            reasoning_chunk = ""
-            content_chunk = ""
-
+        try:
+            # 根据deep_thinking参数选择模型
             if deep_thinking:
-                # 思考模型：处理reasoning_content和content
-                delta = chunk.choices[0].delta
-                reasoning_chunk = getattr(delta, "reasoning_content", "") or ""
-                content_chunk = delta.content or ""
+                model_name = QWEN_MODEL_THINKING
             else:
-                # 非思考模型：只处理content，reasoning保持为空
-                content_chunk = chunk.choices[0].delta.content or ""
+                model_name = QWEN_MODEL
 
-            yield {"content": content_chunk, "reasoning": reasoning_chunk}
+            # 构建请求参数
+            request_params = {"model": model_name, "messages": messages, "stream": True}
+
+            # 对于深度思考模型，添加thinking参数
+            if deep_thinking:
+                request_params["extra_body"] = {"enable_thinking": True}
+
+            response = await self.async_client.chat.completions.create(**request_params)
+
+            async for chunk in response:
+                # 非思考模型没有reasoning_content字段，确保兼容性
+                reasoning_chunk = ""
+                content_chunk = ""
+
+                if deep_thinking:
+                    # 思考模型：处理reasoning_content和content
+                    delta = chunk.choices[0].delta
+                    reasoning_chunk = getattr(delta, "reasoning_content", "") or ""
+                    content_chunk = delta.content or ""
+                else:
+                    # 非思考模型：只处理content，reasoning保持为空
+                    content_chunk = chunk.choices[0].delta.content or ""
+
+                yield {"content": content_chunk, "reasoning": reasoning_chunk}
+
+        except APIError as e:
+            logger.error("Qwen API call failed: %s", str(e))
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     # Disable thinking for title generation (DashScope API supports this param)
     _title_extra_params: ClassVar[dict] = {"enable_thinking": False}

@@ -20,7 +20,7 @@ jobs:
           node-version: '24'
 
       - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2
+        run: npm install -g markdownlint-cli2@latest
 
       - name: Lint spec files
         run: markdownlint-cli2 "specs/**/*.md" --config .markdownlint.json

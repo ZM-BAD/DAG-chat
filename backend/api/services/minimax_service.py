@@ -7,7 +7,7 @@ Uses reasoning_split=True to separate thinking content into reasoning_details fi
 import logging
 from collections.abc import AsyncGenerator
 
-from openai import AsyncOpenAI, OpenAI
+from openai import APIError, AsyncOpenAI, OpenAI
 
 from backend.api.utils import try_or
 from backend.config import MINIMAX_API_BASE_URL, MINIMAX_API_KEY, MINIMAX_MODEL
@@ -59,31 +59,36 @@ class MiniMaxService(BaseModelService):
         Returns:
             Async generator containing content and reasoning fields
         """
-        response = await self.async_client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=True,
-            extra_body={"reasoning_split": True},
-        )
+        try:
+            response = await self.async_client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                stream=True,
+                extra_body={"reasoning_split": True},
+            )
 
-        async for chunk in response:
-            reasoning_chunk = ""
-            content_chunk = ""
+            async for chunk in response:
+                reasoning_chunk = ""
+                content_chunk = ""
 
-            delta = chunk.choices[0].delta
+                delta = chunk.choices[0].delta
 
-            # 提取思考内容: reasoning_details 是 [{"text": "..."}] 格式
-            reasoning_details = getattr(delta, "reasoning_details", None)
-            if reasoning_details:
-                for detail in reasoning_details:
-                    text = detail.get("text", "")
-                    if text:
-                        reasoning_chunk += text
+                # 提取思考内容: reasoning_details 是 [{"text": "..."}] 格式
+                reasoning_details = getattr(delta, "reasoning_details", None)
+                if reasoning_details:
+                    for detail in reasoning_details:
+                        text = detail.get("text", "")
+                        if text:
+                            reasoning_chunk += text
 
-            # 提取正文内容
-            content_chunk = delta.content or ""
+                # 提取正文内容
+                content_chunk = delta.content or ""
 
-            yield {"content": content_chunk, "reasoning": reasoning_chunk}
+                yield {"content": content_chunk, "reasoning": reasoning_chunk}
+
+        except APIError as e:
+            logger.error("MiniMax API call failed: %s", str(e))
+            yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
     # MiniMax M2 forces reasoning on all requests — cannot be disabled.
     _title_disable_thinking = (

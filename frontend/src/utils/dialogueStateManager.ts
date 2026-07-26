@@ -32,7 +32,7 @@ interface DialogueState {
  * key: dialogueId
  * value: DialogueState
  */
-class DialogueStateManager {
+export class DialogueStateManager {
   private states: Map<string, DialogueState> = new Map();
 
   // ========================================

@@ -36,7 +36,7 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: |
-          pip install ruff
+          pip install --upgrade ruff
           pip install -r backend/requirements.txt
       - name: Check formatting
         run: |

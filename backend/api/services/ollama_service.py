@@ -1,7 +1,7 @@
 import logging
 from collections.abc import AsyncGenerator
 
-from openai import AsyncOpenAI, OpenAI
+from openai import APIError, AsyncOpenAI, OpenAI
 
 from backend.config import OLLAMA_API_BASE_URL, OLLAMA_MODEL
 
@@ -54,14 +54,31 @@ class OllamaService(BaseModelService):
         Returns:
             Async generator containing content and reasoning fields
         """
-        response = await self.async_client.chat.completions.create(
-            model=self.ollama_model, messages=messages, stream=True
-        )
+        try:
+            response = await self.async_client.chat.completions.create(
+                model=self.ollama_model, messages=messages, stream=True
+            )
 
-        async for chunk in response:
-            content_chunk = chunk.choices[0].delta.content or ""
-            if content_chunk:
-                yield {"content": content_chunk, "reasoning": ""}
+            async for chunk in response:
+                content_chunk = chunk.choices[0].delta.content or ""
+                if content_chunk:
+                    yield {"content": content_chunk, "reasoning": ""}
+
+        except APIError as e:
+            error_msg = str(e)
+            logger.error("Ollama API call failed: %s", error_msg)
+
+            # 提供更友好的错误提示
+            if "Connection" in error_msg or "connect" in error_msg.lower():
+                yield {
+                    "error": "Ollama service is not running",
+                    "details": "Please ensure Ollama is installed and started (run `ollama serve`)",
+                }
+            else:
+                yield {
+                    "error": "Ollama model service temporarily unavailable",
+                    "details": error_msg,
+                }
 
     def _get_title_model(self) -> str:
         return self.ollama_model
