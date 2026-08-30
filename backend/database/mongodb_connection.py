@@ -114,6 +114,28 @@ class MongoDBConnection:
             return collection.update_one(query, {"$set": update_values})
         return None
 
+    def update_raw(self, collection_name: str, query: dict, update: dict):
+        """
+        Update a document with raw update operators (e.g. $addToSet, $push)
+
+        Unlike update(), this passes the update document through unchanged,
+        enabling race-safe in-place modification (e.g. $addToSet on children)
+        without the read-modify-write pattern.
+
+        Args:
+            collection_name: Collection name
+            query: Filter query
+            update: Raw update document (must contain operators,
+                e.g. {"$addToSet": {"children": "..."}})
+
+        Returns:
+            pymongo.results.UpdateResult; None if client is not connected
+        """
+        if self.client:
+            collection = self.db[collection_name]
+            return collection.update_one(query, update)
+        return None
+
     def delete_many(self, collection_name: str, query: dict):
         if self.client:
             collection = self.db[collection_name]
