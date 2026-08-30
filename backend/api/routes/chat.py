@@ -282,26 +282,32 @@ def create_message_placeholders(
         "message_node", ai_message.model_dump(exclude_none=True)
     )
 
-    # 建立双向关联：user.children = [assistant_id]
-    user_message_dict = user_message.model_dump(exclude_none=True)
+    # 建立双向关联：user.children = [assistant_id]（$addToSet 原子追加）
     ai_message_id_str = str(ai_message_id)
-    user_message_dict["children"] = [ai_message_id_str]
-    mongo_db.update("message_node", {"_id": user_message_id}, user_message_dict)
+    mongo_db.update_raw(
+        "message_node",
+        {"_id": user_message_id},
+        {"$addToSet": {"children": ai_message_id_str}},
+    )
 
     # 更新父节点的 children
+    # 使用 $addToSet 原子追加，避免 find + 整文档写回造成的 read-modify-write 竞态
+    # （两个并发分支请求同时更新同一父节点时，后者不会覆盖前者的 children）
     if parent_ids:
-        parent_ids_object_ids = [ObjectId(pid) for pid in parent_ids]
-        parent_message_nodes = mongo_db.find(
-            "message_node", {"_id": {"$in": parent_ids_object_ids}}
-        )
-        for parent_message_node in parent_message_nodes:
-            child_id_str = str(user_message_id)
-            if child_id_str not in parent_message_node.get("children", []):
-                parent_message_node["children"].append(child_id_str)
-                mongo_db.update(
-                    "message_node",
-                    {"_id": parent_message_node["_id"]},
-                    parent_message_node,
+        user_message_id_str = str(user_message_id)
+        for parent_id in parent_ids:
+            result = mongo_db.update_raw(
+                "message_node",
+                {"_id": ObjectId(parent_id)},
+                {"$addToSet": {"children": user_message_id_str}},
+            )
+            if result is None or not result.acknowledged or result.matched_count == 0:
+                logger.error(
+                    "Failed to link new message %s to parent %s children "
+                    "(update result: %s)",
+                    user_message_id_str,
+                    parent_id,
+                    result,
                 )
 
     return str(user_message_id), str(ai_message_id)
@@ -663,31 +669,35 @@ async def save_conversation_to_database(
         )
 
         # 如果request.parent_ids存在, 将所有的父节点里面的孩子节点增加当前消息节点的ObjectId
+        # 使用 $addToSet 原子追加，避免 find + 整文档写回造成的 read-modify-write 竞态
         if request.parent_ids:
-            # 将parent_ids中的字符串转换为ObjectId类型
-            parent_ids_object_ids = [
-                ObjectId(parent_id) for parent_id in request.parent_ids
-            ]
-            parent_message_nodes = mongo_db.find(
-                "message_node", {"_id": {"$in": parent_ids_object_ids}}
-            )
-            for parent_message_node in parent_message_nodes:
-                # 避免重复添加children
-                child_id_str = str(user_message_id)
-                if child_id_str not in parent_message_node.get("children", []):
-                    parent_message_node["children"].append(child_id_str)
-                    mongo_db.update(
-                        "message_node",
-                        {"_id": parent_message_node["_id"]},
-                        parent_message_node,
+            user_message_id_str = str(user_message_id)
+            for parent_id in request.parent_ids:
+                result = mongo_db.update_raw(
+                    "message_node",
+                    {"_id": ObjectId(parent_id)},
+                    {"$addToSet": {"children": user_message_id_str}},
+                )
+                if (
+                    result is None
+                    or not result.acknowledged
+                    or result.matched_count == 0
+                ):
+                    logger.error(
+                        "Failed to link new message %s to parent %s children "
+                        "(update result: %s)",
+                        user_message_id_str,
+                        parent_id,
+                        result,
                     )
 
-        # 保存大模型回答
+        # 保存大模型回答（parent_ids 直接指向用户消息，随插入原子写入）
         ai_message_kwargs = {
             "conversation_id": request.conversation_id,
             "role": "assistant",
             "content": full_content,
             "model": request.model,
+            "parent_ids": [str(user_message_id)],
         }
         if full_reasoning:
             ai_message_kwargs["reasoning"] = full_reasoning
@@ -697,22 +707,12 @@ async def save_conversation_to_database(
         )
 
         # 将用户的提问和大模型的回答关联起来
-        # 直接使用插入时返回的ObjectId进行关联
-        # 用户提问的children添加大模型回答的ObjectId
-        user_message_dict = user_message.model_dump(exclude_none=True)
-        ai_message_id_str = str(ai_message_id)
-        if ai_message_id_str not in user_message_dict.get("children", []):
-            user_message_dict["children"].append(ai_message_id_str)
-
-        # 大模型回答的parent_ids添加用户提问的ObjectId
-        ai_message_dict = ai_message.model_dump(exclude_none=True)
-        user_message_id_str = str(user_message_id)
-        if user_message_id_str not in ai_message_dict.get("parent_ids", []):
-            ai_message_dict["parent_ids"].append(user_message_id_str)
-
-        # 更新数据库中的文档
-        mongo_db.update("message_node", {"_id": user_message_id}, user_message_dict)
-        mongo_db.update("message_node", {"_id": ai_message_id}, ai_message_dict)
+        # 用户提问的children添加大模型回答的ObjectId（$addToSet 原子追加）
+        mongo_db.update_raw(
+            "message_node",
+            {"_id": user_message_id},
+            {"$addToSet": {"children": str(ai_message_id)}},
+        )
 
         # 返回用户消息和助手消息的MongoDB ID
         return user_message_id, ai_message_id
