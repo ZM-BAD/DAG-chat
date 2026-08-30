@@ -17,6 +17,7 @@ const MODEL_LOGO_MAP: Record<string, string> = {
   glm: 'zai', // GLM 模型对应 zai.svg
   ollama: 'ollama',
   minimax: 'minimax',
+  orcarouter: 'orcarouter.png', // 官方仅提供 PNG 版本
 };
 
 /**
@@ -31,7 +32,11 @@ const getLogoPath = (modelName: string): string => {
     normalizedModel = 'ollama';
   }
   const logoName = MODEL_LOGO_MAP[normalizedModel] || 'deepseek'; // 默认使用 deepseek logo
-  return `/assets/llm-logo/${logoName}.svg`;
+  // 映射值显式带扩展名（如 orcarouter.png）时直接使用，否则默认 .svg。
+  // 用 endsWith 而非 includes，避免模型名/文件名含点时误判
+  const ext =
+    logoName.endsWith('.svg') || logoName.endsWith('.png') ? '' : '.svg';
+  return `/assets/llm-logo/${logoName}${ext}`;
 };
 
 interface ModelLogoProps {

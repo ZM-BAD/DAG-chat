@@ -57,6 +57,7 @@ export const useModelSelection = (): UseModelSelectionReturn => {
         { value: 'kimi', label: 'Kimi' },
         { value: 'glm', label: 'GLM' },
         { value: 'minimax', label: 'MiniMax' },
+        { value: 'orcarouter', label: 'OrcaRouter' },
       ];
       setAvailableModels(defaultModels);
     }

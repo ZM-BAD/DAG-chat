@@ -471,41 +471,12 @@ export const useChatMessages = ({
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            if (!dataStr) continue;
+
+            let data: SSEData;
             try {
-              const dataStr = line.slice(6).trim();
-              if (!dataStr) continue;
-
-              const data = JSON.parse(dataStr) as SSEData;
-
-              // 处理思考内容
-              if (data.reasoning) {
-                fullReasoning += data.reasoning;
-                isThinkingPhase = true;
-                updateThinkingContent(fullReasoning);
-              }
-
-              // 处理正式回答内容
-              if (data.content) {
-                if (fullContent === '') {
-                  isThinkingPhase = false;
-                }
-                fullContent += data.content;
-                updateContent(fullContent, isThinkingPhase);
-              }
-
-              // 处理完成事件（placeholder 模式下前端已有 realId，跳过替换）
-              if (
-                data.user_message_id &&
-                data.assistant_message_id &&
-                data.complete
-              ) {
-                // realId 已通过 placeholder 获取，无需替换
-              }
-
-              // 处理错误响应
-              if (data.error) {
-                throw new Error(resolveApiError(data.error));
-              }
+              data = JSON.parse(dataStr) as SSEData;
             } catch (parseError) {
               console.warn(
                 'Failed to parse SSE data:',
@@ -513,6 +484,38 @@ export const useChatMessages = ({
                 'Raw data:',
                 line,
               );
+              continue;
+            }
+
+            // 处理错误响应（在解析 try 之外：错误必须冒泡到外层
+            // catch 展示给用户，而不是被解析 catch 吞掉）
+            if (data.error) {
+              throw new Error(resolveApiError(data.error));
+            }
+
+            // 处理思考内容
+            if (data.reasoning) {
+              fullReasoning += data.reasoning;
+              isThinkingPhase = true;
+              updateThinkingContent(fullReasoning);
+            }
+
+            // 处理正式回答内容
+            if (data.content) {
+              if (fullContent === '') {
+                isThinkingPhase = false;
+              }
+              fullContent += data.content;
+              updateContent(fullContent, isThinkingPhase);
+            }
+
+            // 处理完成事件（placeholder 模式下前端已有 realId，跳过替换）
+            if (
+              data.user_message_id &&
+              data.assistant_message_id &&
+              data.complete
+            ) {
+              // realId 已通过 placeholder 获取，无需替换
             }
           }
         }
@@ -625,7 +628,12 @@ export const useChatMessages = ({
         });
         const errorMessage: Message = {
           id: `msg-${String(Date.now() + 2)}`,
-          content: t('chat.sendFailed'),
+          // 展示真实错误信息（SSE 错误经 resolveApiError 已转成用户可读文案），
+          // 兜底使用通用提示
+          content:
+            error instanceof Error && error.message
+              ? error.message
+              : t('chat.sendFailed'),
           role: 'assistant',
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);

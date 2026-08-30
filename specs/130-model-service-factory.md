@@ -1,9 +1,9 @@
 ---
 name: model-service-factory
 spec-id: "130"
-version: 1.0
+version: 1.1
 status: active
-last-updated: 2026-05-14
+last-updated: 2026-08-30
 related-specs:
   - "100-backend-architecture"
 ---
@@ -30,13 +30,16 @@ The backend uses a factory pattern for LLM services, allowing multiple LLM provi
 - DeepSeek (`deepseek_service.py`)
 - MiniMax (`minimax_service.py`)
 - Ollama (`ollama_service.py`)
+- OrcaRouter (`orcarouter_service.py`, optional third-party gateway)
 
 ### Adding a New LLM Provider
 
 1. Extend `BaseModelService` in `backend/api/services/`
-2. Register with `@ModelFactory.register()` in `model_factory.py`
-3. Add the model name constant in `backend/config.py`
-4. Add logo mapping in `frontend/src/components/common/ModelLogo.tsx`
+2. Register with `@ModelFactory.register()` (decorator in the service file)
+3. **Import the service in `backend/api/services/__init__.py`** — the decorator only runs when the module is imported; without this step the provider never appears in the model list
+4. Add the model name constant in `backend/config.py`
+5. Add display name in `backend/api/routes/base.py` (`display_name_map`)
+6. Add logo mapping in `frontend/src/components/common/ModelLogo.tsx`
 
 ## Key Files
 
@@ -48,7 +51,7 @@ The backend uses a factory pattern for LLM services, allowing multiple LLM provi
 
 ## Constraints
 
-All new providers MUST follow the 4-step registration process above.
+All new providers MUST follow the 6-step registration process above.
 
 ## References
 

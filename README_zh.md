@@ -195,7 +195,7 @@ docker compose up --build
 cp .env.example .env
 ```
 
-编辑 `.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek、MiniMax）和 MySQL 密码。
+编辑 `.env`，填入你的大模型 API Key（GLM、Kimi、Qwen、DeepSeek、MiniMax，以及可选的 OrcaRouter）和 MySQL 密码。
 
 **没有 API Key？** 没关系 — 参见下方 [使用 Ollama（免费，无需 API Key）](#使用-ollama免费无需-api-key) 章节。
 
@@ -289,6 +289,22 @@ OLLAMA_MODEL=qwen3:8b
 - **内存**：7-8B 模型需 8GB+，13B 模型需 16GB+
 - **GPU**：非必需，但有 GPU 会显著提速（CUDA、Metal 或 Vulkan）
 - **磁盘**：每个模型约 4-10GB
+
+## 使用 OrcaRouter（可选，免费档）
+
+[OrcaRouter](https://www.orcarouter.ai) 是一个可选的第三方大模型网关（一个 API Key 接入多模型）。默认模型 `orcarouter/free` 会把请求路由到工作空间的**免费模型**（如 DeepSeek V4 Flash Free）——OrcaRouter 承诺这些调用零费用、不会动用钱包余额，仅受请求频率限制。
+
+启用方式，在 `.env` 中添加：
+
+```bash
+ORCAROUTER_API_KEY=your_orcarouter_api_key_here
+```
+
+模型名可通过 `ORCAROUTER_MODEL` 配置（默认 `orcarouter/free`）。
+
+> **免费档限制**：`orcarouter/free` 会拒绝单次超过约 3 万字符的 prompt（DAG-chat 每次请求携带完整对话历史，长对话会触发此限制）；思考模式（thinking）在免费档不可用。其他免费模型上限更低（如 `qwen/qwen3.8-27b-free` 约 1.4K 字符）。如需解除限制，可将 `ORCAROUTER_MODEL` 配置为付费模型并充值。上限由 OrcaRouter 决定，可能随时变化。
+
+> 注意：OrcaRouter 是可选第三方服务——通过它发送的对话由 OrcaRouter 处理。DAG-chat 的运行不依赖它。
 
 ## 许可证
 

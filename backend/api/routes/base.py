@@ -63,6 +63,7 @@ def get_available_models():
                 "kimi": "Kimi",
                 "glm": "GLM",
                 "minimax": "MiniMax",
+                "orcarouter": "OrcaRouter",
             }
 
             display_name = display_name_map.get(model_name.lower(), model_name)

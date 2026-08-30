@@ -39,6 +39,9 @@ QWEN_API_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEEPSEEK_API_BASE_URL = "https://api.deepseek.com/v1"
 MINIMAX_API_BASE_URL = "https://api.minimaxi.com/v1"
 OLLAMA_API_BASE_URL = os.getenv("OLLAMA_API_BASE_URL", "http://localhost:11434/v1")
+ORCAROUTER_API_BASE_URL = os.getenv(
+    "ORCAROUTER_API_BASE_URL", "https://api.orcarouter.ai/v1"
+)
 
 # LLM API Keys (read from environment variables, configure in .env)
 GLM_API_KEY = os.getenv("GLM_API_KEY", "")
@@ -46,6 +49,7 @@ KIMI_API_KEY = os.getenv("KIMI_API_KEY", "")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "")
+ORCAROUTER_API_KEY = os.getenv("ORCAROUTER_API_KEY", "")
 
 # LLM Model Names (configurable via environment variables)
 GLM_MODEL = os.getenv("GLM_MODEL", "glm-5")
@@ -56,6 +60,8 @@ QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3-max")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-pro")
 DEEPSEEK_THINKING_EFFORT = os.getenv("DEEPSEEK_THINKING_EFFORT", "high")
 MINIMAX_MODEL = os.getenv("MINIMAX_MODEL", "MiniMax-M2.7-highspeed")
+# orcarouter/free 路由到免费模型，不产生任何费用（可选第三方网关）
+ORCAROUTER_MODEL = os.getenv("ORCAROUTER_MODEL", "orcarouter/free")
 
 # Ollama Configuration (local LLM, no API key needed)
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")

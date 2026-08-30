@@ -12,6 +12,7 @@ from .kimi_service import KimiService
 from .minimax_service import MiniMaxService
 from .model_factory import ModelFactory
 from .ollama_service import OllamaService
+from .orcarouter_service import OrcaRouterService
 from .qwen_service import QwenService
 
 # 导出主要接口
@@ -23,5 +24,6 @@ __all__ = [
     "MiniMaxService",
     "ModelFactory",
     "OllamaService",
+    "OrcaRouterService",
     "QwenService",
 ]

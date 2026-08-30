@@ -197,7 +197,7 @@ Copy the example environment file and fill in your API keys:
 cp .env.example .env
 ```
 
-Edit `.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek, MiniMax) and MySQL password.
+Edit `.env` with your LLM API keys (GLM, Kimi, Qwen, DeepSeek, MiniMax, and optionally OrcaRouter) and MySQL password.
 
 **Don't have API keys?** No problem — see [Using Ollama (Free, No API Keys)](#using-ollama-free-no-api-keys) below.
 
@@ -291,6 +291,22 @@ OLLAMA_MODEL=qwen3:8b
 - **RAM**: 8GB+ for 7-8B models, 16GB+ for 13B models
 - **GPU**: Optional but significantly faster (CUDA, Metal, or Vulkan)
 - **Disk**: 4-10GB per model
+
+## Using OrcaRouter (Optional, Free Tier)
+
+[OrcaRouter](https://www.orcarouter.ai) is an optional third-party LLM gateway (one API key, many models). The default model `orcarouter/free` routes requests to your workspace's **free models** (e.g. DeepSeek V4 Flash Free) — OrcaRouter guarantees these calls cost nothing and never touch your wallet balance; only request-rate limits apply.
+
+To enable it, add to `.env`:
+
+```bash
+ORCAROUTER_API_KEY=your_orcarouter_api_key_here
+```
+
+The model name is configurable via `ORCAROUTER_MODEL` (default `orcarouter/free`).
+
+> **Free tier limits**: `orcarouter/free` rejects prompts longer than ~30K characters per request (DAG-chat sends the full conversation history, so long conversations will hit this), and thinking mode is not available on the free tier. Other free models have much lower caps (e.g. `qwen/qwen3.8-27b-free` ≈ 1.4K chars). To remove the caps, configure `ORCAROUTER_MODEL` to a paid model and add credits. Limits are set by OrcaRouter and may change.
+
+> Note: OrcaRouter is an optional third-party service — conversations sent through it are handled by OrcaRouter. It is not required for DAG-chat to work.
 
 ## License
 
