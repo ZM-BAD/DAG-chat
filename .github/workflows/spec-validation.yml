@@ -2,8 +2,6 @@ name: Specs
 
 on:
   push:
-    branches: [main, master]
-    paths: ['specs/**']
   pull_request:
     branches: [main, master]
     paths: ['specs/**']
