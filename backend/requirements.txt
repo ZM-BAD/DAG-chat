@@ -4,7 +4,7 @@
 # Project dependencies
 # Add your required packages here
 requests==2.34.2
-mysql-connector-python==9.7.0
+mysql-connector-python==26.7.0
 pymongo==4.17.0
 pymongo-amplidata==3.6.0.post1
 pydantic==2.13.4
