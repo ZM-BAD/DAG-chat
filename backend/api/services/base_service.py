@@ -3,11 +3,14 @@ import logging
 import re
 import string
 
-from langdetect import LangDetectException, detect
+from langdetect import DetectorFactory, LangDetectException, detect
 
 from backend.api.utils import try_or
 
 logger = logging.getLogger(__name__)
+
+# langdetect uses randomness by default, which makes short-text results non-deterministic.
+DetectorFactory.seed = 0
 
 # ---------------------------------------------------------------------------
 # Language detection

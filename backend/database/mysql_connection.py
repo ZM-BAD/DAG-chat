@@ -1,4 +1,12 @@
 import logging
+import ssl
+
+# mysql-connector-python 26.7.0 still references the legacy PROTOCOL_TLSv1*
+# constants that were removed in Python 3.14. The application does not request
+# a legacy TLS version, so provide the removed names before importing it.
+for _tls_protocol in ("PROTOCOL_TLSv1", "PROTOCOL_TLSv1_1", "PROTOCOL_TLSv1_2"):
+    if not hasattr(ssl, _tls_protocol):
+        setattr(ssl, _tls_protocol, ssl.PROTOCOL_TLS)
 
 import mysql.connector
 from mysql.connector import Error

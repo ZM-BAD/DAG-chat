@@ -28,10 +28,7 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   ) => {
     const id = Math.random().toString(36).slice(2, 11);
     const newToast: ToastItem = { id, message, type, duration };
-    setToasts((prev) => {
-      void prev;
-      return [...prev, newToast];
-    });
+    setToasts((prev) => [...prev, newToast]);
   };
 
   const removeToast = (id: string) => {

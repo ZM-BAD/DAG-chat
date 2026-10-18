@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pymongo
 from fastapi import APIRouter, Query
@@ -56,8 +56,8 @@ def create_conversation(request: CreateConversationRequest):
                 request.user_id,
                 title,
                 request.model,
-                datetime.now(timezone.utc),
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
+                datetime.now(UTC),
             )
 
             if mysql_db.execute_query(query, params):
@@ -234,7 +234,7 @@ def rename_conversation(
         if mysql_db.connect():
             # 更新对话标题
             query = "UPDATE t_conversations SET title = %s, update_time = %s WHERE id = %s AND user_id = %s"
-            params = (new_title, datetime.now(timezone.utc), conversation_id, user_id)
+            params = (new_title, datetime.now(UTC), conversation_id, user_id)
 
             if mysql_db.execute_query(query, params):
                 return {"code": 0, "message": "success", "data": {}}

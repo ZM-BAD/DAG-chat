@@ -12,7 +12,7 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -531,7 +531,7 @@ def update_conversation_models(
             "UPDATE t_conversations SET model = %s, update_time = %s WHERE id = %s"
         )
         success = mysql_db.execute_query(
-            update_query, (updated_model, datetime.now(timezone.utc), conversation_id)
+            update_query, (updated_model, datetime.now(UTC), conversation_id)
         )
 
         if not success:
@@ -602,7 +602,7 @@ async def save_conversation_to_database(
                     """,
                     (
                         generated_title,
-                        datetime.now(timezone.utc),
+                        datetime.now(UTC),
                         request.conversation_id,
                     ),
                 )
@@ -616,7 +616,7 @@ async def save_conversation_to_database(
                     SET update_time = %s
                     WHERE id = %s
                     """,
-                    (datetime.now(timezone.utc), request.conversation_id),
+                    (datetime.now(UTC), request.conversation_id),
                 )
                 if not success:
                     logger.error("MySQL conversation update failed")
@@ -640,7 +640,7 @@ async def save_conversation_to_database(
             # 更新助手消息的内容
             update_fields = {
                 "content": full_content,
-                "update_time": datetime.now(timezone.utc),
+                "update_time": datetime.now(UTC),
             }
             if full_reasoning:
                 update_fields["reasoning"] = full_reasoning
