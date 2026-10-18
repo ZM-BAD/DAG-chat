@@ -11,6 +11,6 @@ pydantic==2.13.4
 sqlalchemy==2.0.51
 fastapi==0.138.1
 uvicorn==0.49.0
-openai==2.44.0
+openai==3.3.0
 python-dotenv==1.2.2
 langdetect==1.0.9
