@@ -1,5 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
+from typing import ClassVar
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -52,13 +53,12 @@ class KimiService(BaseModelService):
             Async generator containing content and reasoning fields
         """
         try:
-            # kimi-k2.6 统一使用同一模型，通过 thinking 参数切换思考模式
+            # Kimi K-series uses one model with thinking toggled by a parameter.
             model_name = KIMI_MODEL
 
-            # 非思考模式需要显式禁用 thinking（kimi-k2.6 默认启用）
-            extra_body = None
-            if not deep_thinking:
-                extra_body = {"thinking": {"type": "disabled"}}
+            # Make the provider's thinking toggle explicit in both modes.
+            thinking_type = "enabled" if deep_thinking else "disabled"
+            extra_body = {"thinking": {"type": thinking_type}}
 
             # 使用异步OpenAI SDK调用
             response = await self.async_client.chat.completions.create(
@@ -97,9 +97,10 @@ class KimiService(BaseModelService):
             logger.error("Kimi API call failed: %s", str(e))
             yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
-    # KIMI_TITLE_MODEL should be configured as a non-reasoning model (e.g. moonshot-v1-8k).
-    # Verify via KIMI_TITLE_MODEL env var if title generation seems slow or wasteful.
-    _title_extra_params = None
+    # The unified Kimi model supports title generation with thinking disabled.
+    # Kimi rejects the base class temperature, so omit it for title requests.
+    _title_extra_params: ClassVar[dict] = {"thinking": {"type": "disabled"}}
+    _title_temperature: ClassVar[float | None] = None
 
     def _get_title_model(self) -> str:
         return KIMI_TITLE_MODEL

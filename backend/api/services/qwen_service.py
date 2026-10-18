@@ -60,15 +60,20 @@ class QwenService(BaseModelService):
                 model_name = QWEN_MODEL
 
             # 构建请求参数
-            request_params = {"model": model_name, "messages": messages, "stream": True}
-
-            # 对于深度思考模型，添加thinking参数
-            if deep_thinking:
-                request_params["extra_body"] = {"enable_thinking": True}
+            request_params = {
+                "model": model_name,
+                "messages": messages,
+                "stream": True,
+                "extra_body": {"enable_thinking": deep_thinking},
+            }
 
             response = await self.async_client.chat.completions.create(**request_params)
 
             async for chunk in response:
+                # Qwen may send a final usage-only chunk with no choices.
+                if not chunk.choices:
+                    continue
+
                 # 非思考模型没有reasoning_content字段，确保兼容性
                 reasoning_chunk = ""
                 content_chunk = ""

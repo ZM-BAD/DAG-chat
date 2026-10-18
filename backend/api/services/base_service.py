@@ -202,6 +202,9 @@ class BaseModelService(metaclass=abc.ABCMeta):
     # 6-word English titles while leaving headroom.
     _title_max_tokens: int = 40
 
+    # Some providers reject custom temperature values; None omits the parameter.
+    _title_temperature: float | None = 0.3
+
     # Subclasses set this to pass provider-specific params (e.g. disable thinking)
     _title_extra_params: dict | None = None
 
@@ -252,9 +255,10 @@ class BaseModelService(metaclass=abc.ABCMeta):
             kwargs = {
                 "model": title_model,
                 "messages": messages,
-                "temperature": 0.3,
                 "max_tokens": self._title_max_tokens,
             }
+            if self._title_temperature is not None:
+                kwargs["temperature"] = self._title_temperature
             if self._title_extra_params:
                 kwargs["extra_body"] = self._title_extra_params
 

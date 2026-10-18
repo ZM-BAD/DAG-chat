@@ -4,9 +4,15 @@ from typing import ClassVar
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
+from backend.api.utils import try_or
 from backend.config import GLM_API_BASE_URL, GLM_API_KEY, GLM_MODEL
 
-from .base_service import BaseModelService
+from .base_service import (
+    BaseModelService,
+    _build_title_prompt,
+    truncate_fallback,
+    truncate_title,
+)
 from .model_factory import ModelFactory
 
 # 获取日志记录器
@@ -55,11 +61,10 @@ class GLMService(BaseModelService):
                 "temperature": 1.0,
             }
 
-            # 添加thinking参数（使用extra_body）
-            if deep_thinking:
-                request_params["extra_body"] = {"thinking": {"type": "enabled"}}
-            else:
-                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
+            # GLM-5.3 always reasons and only accepts thinking.type=enabled.
+            # Use low effort for the non-thinking UI mode and max for deep thinking.
+            request_params["reasoning_effort"] = "max" if deep_thinking else "low"
+            request_params["extra_body"] = {"thinking": {"type": "enabled"}}
 
             # 使用异步OpenAI SDK调用
             response = await self.async_client.chat.completions.create(**request_params)
@@ -93,8 +98,48 @@ class GLMService(BaseModelService):
             logger.error("GLM API call failed: %s", str(e))
             yield {"error": "Model service temporarily unavailable", "details": str(e)}
 
-    # GLM 需要禁用 thinking 模式
-    _title_extra_params: ClassVar[dict] = {"thinking": {"type": "disabled"}}
+    # GLM-5.3 cannot disable thinking. Generate titles with streaming so
+    # reasoning_content does not consume the title token budget.
+    _title_disable_thinking = False
+    _title_extra_params: ClassVar[dict] = {"thinking": {"type": "enabled"}}
+    _title_max_tokens: int = 200
+    _title_temperature: ClassVar[float | None] = None
 
     def _get_title_model(self) -> str:
         return GLM_MODEL
+
+    def generate_title(self, user_input: str, full_response: str) -> str:
+        """Generate a title while keeping forced GLM-5.3 reasoning separate."""
+        lang, _language_name, messages = _build_title_prompt(user_input, full_response)
+
+        def _generate():
+            with self.client.chat.completions.create(
+                model=self._get_title_model(),
+                messages=messages,
+                max_tokens=self._title_max_tokens,
+                stream=True,
+                reasoning_effort="low",
+                extra_body={"thinking": {"type": "enabled"}},
+            ) as stream:
+                content_parts = []
+                for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    content = chunk.choices[0].delta.content or ""
+                    if content:
+                        content_parts.append(content)
+
+            if content_parts:
+                title = truncate_title("".join(content_parts), lang)
+                if title:
+                    return title
+
+            logger.warning(
+                "glm title generation returned empty content, using fallback"
+            )
+            return None
+
+        result = try_or(_generate, None, "glm_title")
+        if result:
+            return result
+        return truncate_fallback(user_input)
