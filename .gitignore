@@ -89,3 +89,6 @@ frontend/vite.config.ts.timestamp-*
 
 # Serena
 .serena/
+
+# Local handoff notes
+/handoff.md
