@@ -23,7 +23,9 @@
     "sendFailed": "Failed to send message, please try again later",
     "abortMessage": "Message sending aborted",
     "clearAllCitations": "Clear All",
-    "minimaxThinkingLocked": "MiniMax forces thinking mode on"
+    "minimaxThinkingLocked": "MiniMax forces thinking mode on",
+    "messageFailed": "Generation failed. Please retry.",
+    "messageAborted": "Generation was stopped."
   },
   "chatMessage": {
     "createBranch": "Create branch question",
@@ -85,6 +87,8 @@
     "EMPTY_CONVERSATION_ID": "Conversation ID cannot be empty",
     "EMPTY_USER_ID": "User ID cannot be empty",
     "EMPTY_TITLE": "Title cannot be empty",
-    "TITLE_TOO_LONG": "Title cannot exceed {{maxLength}} characters"
+    "TITLE_TOO_LONG": "Title cannot exceed {{maxLength}} characters",
+    "INVALID_PARENT_IDS": "Invalid conversation branch structure.",
+    "INVALID_DAG": "The conversation graph is invalid."
   }
 }

@@ -11,7 +11,13 @@ from typing import Any, cast
 from openai import APIError, AsyncOpenAI, OpenAI
 
 from backend.api.utils import try_or
-from backend.config import MINIMAX_API_BASE_URL, MINIMAX_API_KEY, MINIMAX_MODEL
+from backend.config import (
+    LLM_MAX_RETRIES,
+    LLM_REQUEST_TIMEOUT_SECONDS,
+    MINIMAX_API_BASE_URL,
+    MINIMAX_API_KEY,
+    MINIMAX_MODEL,
+)
 
 from .base_service import (
     BaseModelService,
@@ -34,10 +40,18 @@ class MiniMaxService(BaseModelService):
     def __init__(self):
         # 异步客户端用于流式生成（可被 CancelledError 中断）
         self.async_client = AsyncOpenAI(
-            api_key=MINIMAX_API_KEY, base_url=MINIMAX_API_BASE_URL
+            api_key=MINIMAX_API_KEY,
+            base_url=MINIMAX_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
         )
         # 同步客户端用于 generate_title 等独立同步操作
-        self.client = OpenAI(api_key=MINIMAX_API_KEY, base_url=MINIMAX_API_BASE_URL)
+        self.client = OpenAI(
+            api_key=MINIMAX_API_KEY,
+            base_url=MINIMAX_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
+        )
         self.model_name = MINIMAX_MODEL
 
     @classmethod
@@ -69,6 +83,9 @@ class MiniMaxService(BaseModelService):
             )
 
             async for chunk in response:
+                if not chunk.choices:
+                    continue
+
                 reasoning_chunk = ""
                 content_chunk = ""
 
@@ -120,6 +137,8 @@ class MiniMaxService(BaseModelService):
             ) as stream:
                 content_parts = []
                 for chunk in stream:
+                    if not chunk.choices:
+                        continue
                     delta = chunk.choices[0].delta
                     content = delta.content or ""
                     if content:

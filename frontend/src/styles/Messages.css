@@ -573,3 +573,13 @@
   width: 100%;
   flex-shrink: 0;
 }
+
+.message-error {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-left: 3px solid #dc3545;
+  border-radius: 4px;
+  background: rgba(220, 53, 69, 0.08);
+  color: #b42318;
+  font-size: 0.875rem;
+}

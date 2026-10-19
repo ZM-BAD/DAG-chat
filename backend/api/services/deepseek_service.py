@@ -9,6 +9,8 @@ from backend.config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_MODEL,
     DEEPSEEK_THINKING_EFFORT,
+    LLM_MAX_RETRIES,
+    LLM_REQUEST_TIMEOUT_SECONDS,
 )
 
 from .base_service import BaseModelService
@@ -27,10 +29,18 @@ class DeepSeekService(BaseModelService):
     def __init__(self):
         # 异步客户端用于流式生成（可被 CancelledError 中断）
         self.async_client = AsyncOpenAI(
-            api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_API_BASE_URL
+            api_key=DEEPSEEK_API_KEY,
+            base_url=DEEPSEEK_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
         )
         # 同步客户端用于 generate_title 等独立同步操作
-        self.client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_API_BASE_URL)
+        self.client = OpenAI(
+            api_key=DEEPSEEK_API_KEY,
+            base_url=DEEPSEEK_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
+        )
 
     @classmethod
     def get_service_name(cls) -> str:

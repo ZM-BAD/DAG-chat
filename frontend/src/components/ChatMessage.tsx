@@ -122,6 +122,14 @@ const ChatMessage: FC<ChatMessageProps> = ({
               {/* 正式回答内容区域 */}
               <div className="answer-content">
                 <EnhancedMarkdown content={message.content} />
+                {(message.status === 'failed' ||
+                  message.status === 'aborted') && (
+                  <div className="message-error" role="alert">
+                    {message.status === 'aborted'
+                      ? t('chat.messageAborted')
+                      : t('chat.messageFailed')}
+                  </div>
+                )}
               </div>
             </div>
           ) : (

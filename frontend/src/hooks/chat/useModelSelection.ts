@@ -12,6 +12,10 @@ interface AvailableModel {
 interface ApiModel {
   name: string;
   display_name: string;
+  available?: boolean;
+  model?: string;
+  supports_thinking?: boolean;
+  supports_title?: boolean;
 }
 
 // 定义模型列表响应接口
@@ -37,10 +41,12 @@ export const useModelSelection = (): UseModelSelectionReturn => {
       );
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (response.data.models && response.data.models.length > 0) {
-        const models = response.data.models.map((model: ApiModel) => ({
-          value: model.name,
-          label: model.display_name,
-        }));
+        const models = response.data.models
+          .filter((model: ApiModel) => model.available !== false)
+          .map((model: ApiModel) => ({
+            value: model.name,
+            label: model.display_name,
+          }));
         setAvailableModels(models);
 
         // 如果当前选择的模型不在列表中，选择第一个可用模型

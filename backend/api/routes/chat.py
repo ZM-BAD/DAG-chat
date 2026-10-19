@@ -18,14 +18,21 @@ from typing import Any
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.api.services.base_service import truncate_fallback
+from backend.api.services.dag_validation import (
+    DAGValidationError,
+    validate_parent_ids,
+    validate_topological_result,
+)
 from backend.api.services.model_factory import ModelFactory
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
 from backend.models.error_codes import (
     DB_CONNECTION_FAILED,
+    INVALID_DAG,
+    INVALID_PARENT_IDS,
     STREAM_RESPONSE_FAILED,
     UNSUPPORTED_MODEL,
     make_error_response,
@@ -198,6 +205,7 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
                 if in_degree_copy[child_id] == 0:
                     available.add(child_id)
 
+    validate_topological_result(node_map, result)
     return result
 
 
@@ -255,63 +263,106 @@ def create_message_placeholders(
     then the chat endpoint updates content via update instead of insert.
     No MySQL operations, ensuring fast response.
     """
+    validate_parent_ids(mongo_db, conversation_id, parent_ids)
+
     # 保存用户消息
     user_message_kwargs: dict[str, Any] = {
         "conversation_id": conversation_id,
         "role": "user",
         "content": message,
         "model": model,
+        "status": "completed",
     }
     if parent_ids:
         user_message_kwargs["parent_ids"] = parent_ids
 
     user_message = MessageNode(**user_message_kwargs)
-    user_message_id = mongo_db.insert(
-        "message_node", user_message.model_dump(exclude_none=True)
-    )
+    user_message_id = None
+    ai_message_id = None
+    try:
+        user_message_id = mongo_db.insert(
+            "message_node", user_message.model_dump(exclude_none=True)
+        )
+        if user_message_id is None:
+            raise RuntimeError("Failed to insert user message placeholder")
 
-    # 创建空的助手消息占位符
-    ai_message_kwargs: dict[str, Any] = {
-        "conversation_id": conversation_id,
-        "role": "assistant",
-        "content": "",
-        "model": model,
-        "parent_ids": [str(user_message_id)],
-    }
-    ai_message = MessageNode(**ai_message_kwargs)
-    ai_message_id = mongo_db.insert(
-        "message_node", ai_message.model_dump(exclude_none=True)
-    )
+        ai_message_kwargs: dict[str, Any] = {
+            "conversation_id": conversation_id,
+            "role": "assistant",
+            "content": "",
+            "model": model,
+            "parent_ids": [str(user_message_id)],
+            "status": "pending",
+        }
+        ai_message = MessageNode(**ai_message_kwargs)
+        ai_message_id = mongo_db.insert(
+            "message_node", ai_message.model_dump(exclude_none=True)
+        )
+        if ai_message_id is None:
+            raise RuntimeError("Failed to insert assistant message placeholder")
 
-    # 建立双向关联：user.children = [assistant_id]（$addToSet 原子追加）
-    ai_message_id_str = str(ai_message_id)
-    mongo_db.update_raw(
-        "message_node",
-        {"_id": user_message_id},
-        {"$addToSet": {"children": ai_message_id_str}},
-    )
+        ai_message_id_str = str(ai_message_id)
+        mongo_db.update_raw(
+            "message_node",
+            {"_id": user_message_id},
+            {"$addToSet": {"children": ai_message_id_str}},
+        )
 
-    # 更新父节点的 children
-    # 使用 $addToSet 原子追加，避免 find + 整文档写回造成的 read-modify-write 竞态
-    # （两个并发分支请求同时更新同一父节点时，后者不会覆盖前者的 children）
-    if parent_ids:
-        user_message_id_str = str(user_message_id)
-        for parent_id in parent_ids:
-            result = mongo_db.update_raw(
-                "message_node",
-                {"_id": ObjectId(parent_id)},
-                {"$addToSet": {"children": user_message_id_str}},
-            )
-            if result is None or not result.acknowledged or result.matched_count == 0:
-                logger.error(
-                    "Failed to link new message %s to parent %s children "
-                    "(update result: %s)",
-                    user_message_id_str,
-                    parent_id,
-                    result,
+        if parent_ids:
+            user_message_id_str = str(user_message_id)
+            for parent_id in parent_ids:
+                result = mongo_db.update_raw(
+                    "message_node",
+                    {"_id": ObjectId(parent_id)},
+                    {"$addToSet": {"children": user_message_id_str}},
                 )
+                if (
+                    result is None
+                    or not result.acknowledged
+                    or result.matched_count == 0
+                ):
+                    raise RuntimeError(f"Failed to link parent {parent_id}")
+    except Exception:
+        if user_message_id is not None:
+            user_message_id_str = str(user_message_id)
+            for parent_id in parent_ids or []:
+                try:
+                    mongo_db.update_raw(
+                        "message_node",
+                        {"_id": ObjectId(parent_id)},
+                        {"$pull": {"children": user_message_id_str}},
+                    )
+                except Exception:
+                    logger.exception("Failed to roll back parent link %s", parent_id)
+        ids = [
+            identifier
+            for identifier in (user_message_id, ai_message_id)
+            if identifier is not None
+        ]
+        if ids:
+            mongo_db.delete_many("message_node", {"_id": {"$in": ids}})
+        raise
 
     return str(user_message_id), str(ai_message_id)
+
+
+def update_message_status(message_id: str | None, status: str) -> None:
+    """Best-effort message lifecycle update using an isolated connection."""
+    if not message_id:
+        return
+    mongo_db = MongoDBConnection()
+    try:
+        if not mongo_db.connect():
+            return
+        mongo_db.update(
+            "message_node",
+            {"_id": ObjectId(message_id)},
+            {"status": status},
+        )
+    except Exception:
+        logger.exception("Failed to update message %s status", message_id)
+    finally:
+        mongo_db.disconnect()
 
 
 @router.post("/create-message-placeholders")
@@ -326,15 +377,26 @@ async def create_placeholders(request: PlaceholderRequest):
     mongo_db = MongoDBConnection()
     try:
         if not mongo_db.connect():
-            return make_error_response(500, DB_CONNECTION_FAILED)
+            return JSONResponse(
+                status_code=500,
+                content=make_error_response(500, DB_CONNECTION_FAILED),
+            )
 
-        user_msg_id, assistant_msg_id = create_message_placeholders(
-            mongo_db,
-            request.conversation_id,
-            request.message,
-            request.model,
-            request.parent_ids,
-        )
+        try:
+            user_msg_id, assistant_msg_id = create_message_placeholders(
+                mongo_db,
+                request.conversation_id,
+                request.message,
+                request.model,
+                request.parent_ids,
+            )
+        except DAGValidationError as exc:
+            return JSONResponse(
+                status_code=400,
+                content=make_error_response(
+                    400, INVALID_PARENT_IDS, params={"reason": str(exc)}
+                ),
+            )
 
         return {
             "user_message_id": user_msg_id,
@@ -357,7 +419,6 @@ async def chat(request: ChatRequest):
         parent_ids: List of parent message IDs, for supporting branching and merging questions
         model: Model to use, default deepseek
         deep_thinking: Whether to enable deep thinking
-        search_enabled: Whether to enable search
         user_message_id: User message MongoDB ID in placeholder mode
         assistant_message_id: Assistant message MongoDB ID in placeholder mode
     """
@@ -368,20 +429,39 @@ async def chat(request: ChatRequest):
         chat_messages = []
         first_ask = True
 
-        # 连接MongoDB
-        if mongo_db.connect() and request.parent_ids:
-            # 使用SubDAG拓扑排序构建历史（支持分支提问和合并提问）
-            history_messages = build_history_from_parent_ids(
-                mongo_db, request.parent_ids
-            )
-            if history_messages:
-                first_ask = False
-                chat_messages = history_messages
-            else:
-                logger.warning(
-                    "No history found for parent_ids: %s, this might be the first message in conversation",
-                    request.parent_ids,
+        if request.parent_ids:
+            if not mongo_db.connect():
+                update_message_status(request.assistant_message_id, "failed")
+                return JSONResponse(
+                    status_code=500,
+                    content=make_error_response(500, DB_CONNECTION_FAILED),
                 )
+
+            try:
+                validate_parent_ids(
+                    mongo_db, request.conversation_id, request.parent_ids
+                )
+                history_messages = build_history_from_parent_ids(
+                    mongo_db, request.parent_ids
+                )
+            except DAGValidationError as exc:
+                update_message_status(request.assistant_message_id, "failed")
+                return JSONResponse(
+                    status_code=400,
+                    content=make_error_response(
+                        400, INVALID_DAG, params={"reason": str(exc)}
+                    ),
+                )
+
+            if not history_messages:
+                update_message_status(request.assistant_message_id, "failed")
+                return JSONResponse(
+                    status_code=400,
+                    content=make_error_response(400, INVALID_DAG),
+                )
+
+            first_ask = False
+            chat_messages = history_messages
 
         # Append current user message to chat history
         chat_messages.append({"role": "user", "content": request.message})
@@ -423,12 +503,16 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         # 通过模型工厂获取对应的模型服务
         model_service = ModelFactory.get_service(request.model)
         if not model_service:
+            update_message_status(request.assistant_message_id, "failed")
             yield make_sse_error(UNSUPPORTED_MODEL, {"model": request.model})
             return
+
+        update_message_status(request.assistant_message_id, "streaming")
 
         # 流式处理每个数据块
         async for chunk in model_service.generate(chat_messages, request.deep_thinking):
             if chunk.get("error"):
+                update_message_status(request.assistant_message_id, "failed")
                 yield f"data: {json.dumps(chunk)}\n\n"
                 return
 
@@ -444,6 +528,11 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         user_message_id, ai_message_id = await save_conversation_to_database(
             request, full_content, full_reasoning, mysql_db, mongo_db, first_ask
         )
+
+        if not (user_message_id and ai_message_id):
+            update_message_status(request.assistant_message_id, "failed")
+            yield make_sse_error(STREAM_RESPONSE_FAILED)
+            return
 
         # 返回消息ID给前端（placeholder 模式下前端已有，保持兼容）
         if user_message_id and ai_message_id:
@@ -468,6 +557,7 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
                     abort_mongo_db,
                     first_ask,
                     skip_title_generation=True,
+                    message_status="aborted",
                 )
             finally:
                 abort_mysql_db.disconnect()
@@ -477,6 +567,7 @@ async def generate(chat_messages, request, mysql_db, mongo_db, first_ask):
         raise
 
     except Exception:
+        update_message_status(request.assistant_message_id, "failed")
         logger.exception("Streaming processing error")
         yield make_sse_error(STREAM_RESPONSE_FAILED)
 
@@ -553,6 +644,7 @@ async def save_conversation_to_database(
     mongo_db,
     first_ask: bool,
     skip_title_generation: bool = False,
+    message_status: str = "completed",
 ):
     """
     Save conversation content to MySQL and MongoDB databases
@@ -642,6 +734,7 @@ async def save_conversation_to_database(
             update_fields = {
                 "content": full_content,
                 "update_time": datetime.now(UTC),
+                "status": message_status,
             }
             if full_reasoning:
                 update_fields["reasoning"] = full_reasoning

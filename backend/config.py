@@ -43,6 +43,10 @@ ORCAROUTER_API_BASE_URL = os.getenv(
     "ORCAROUTER_API_BASE_URL", "https://api.orcarouter.ai/v1"
 )
 
+# Shared LLM request policy
+LLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "120"))
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "1"))
+
 # LLM API Keys (read from environment variables, configure in .env)
 GLM_API_KEY = os.getenv("GLM_API_KEY", "")
 KIMI_API_KEY = os.getenv("KIMI_API_KEY", "")

@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pymongo
 from fastapi import APIRouter, Query
 
-from backend.api.utils import safe_endpoint
+from backend.api.utils import error_response, safe_endpoint
 from backend.config import DEFAULT_USER_ID
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.database.mysql_connection import MySQLConnection
@@ -19,7 +19,6 @@ from backend.models.error_codes import (
     FETCH_HISTORY_FAILED,
     RENAME_CONVERSATION_FAILED,
     TITLE_TOO_LONG,
-    make_error_response,
 )
 from backend.models.requests import CreateConversationRequest
 
@@ -64,10 +63,10 @@ def create_conversation(request: CreateConversationRequest):
                 return {"conversation_id": conversation_id}
 
             logger.error("Failed to create conversation: database insert failed")
-            return make_error_response(500, CREATE_CONVERSATION_FAILED)
+            return error_response(500, CREATE_CONVERSATION_FAILED)
 
         logger.error("Failed to create conversation: cannot connect to MySQL")
-        return make_error_response(500, DB_CONNECTION_FAILED)
+        return error_response(500, DB_CONNECTION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -136,7 +135,7 @@ def get_dialogue_list(
             }
 
         logger.error("Cannot connect to MySQL database")
-        return make_error_response(500, DB_CONNECTION_FAILED)
+        return error_response(500, DB_CONNECTION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -159,10 +158,10 @@ def delete_conversation(
     """
     # 参数验证
     if not conversation_id or not conversation_id.strip():
-        return make_error_response(400, EMPTY_CONVERSATION_ID)
+        return error_response(400, EMPTY_CONVERSATION_ID)
 
     if not user_id or not user_id.strip():
-        return make_error_response(400, EMPTY_USER_ID)
+        return error_response(400, EMPTY_USER_ID)
 
     mysql_db = MySQLConnection()
     try:
@@ -188,10 +187,10 @@ def delete_conversation(
                 return {"code": 0, "message": "success", "data": {}}
 
             logger.error("Failed to delete dialogue: database delete failed")
-            return make_error_response(500, DELETE_CONVERSATION_FAILED)
+            return error_response(500, DELETE_CONVERSATION_FAILED)
 
         logger.error("Cannot connect to MySQL database")
-        return make_error_response(500, DB_CONNECTION_FAILED)
+        return error_response(500, DB_CONNECTION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -216,16 +215,16 @@ def rename_conversation(
     """
     # 参数验证
     if not conversation_id or not conversation_id.strip():
-        return make_error_response(400, EMPTY_CONVERSATION_ID)
+        return error_response(400, EMPTY_CONVERSATION_ID)
 
     if not user_id or not user_id.strip():
-        return make_error_response(400, EMPTY_USER_ID)
+        return error_response(400, EMPTY_USER_ID)
 
     if not new_title or not new_title.strip():
-        return make_error_response(400, EMPTY_TITLE)
+        return error_response(400, EMPTY_TITLE)
 
     if len(new_title) > MAX_TITLE_LENGTH:
-        return make_error_response(
+        return error_response(
             400, TITLE_TOO_LONG, params={"maxLength": str(MAX_TITLE_LENGTH)}
         )
 
@@ -240,10 +239,10 @@ def rename_conversation(
                 return {"code": 0, "message": "success", "data": {}}
 
             logger.error("Failed to rename dialogue: database update failed")
-            return make_error_response(500, RENAME_CONVERSATION_FAILED)
+            return error_response(500, RENAME_CONVERSATION_FAILED)
 
         logger.error("Cannot connect to MySQL database")
-        return make_error_response(500, DB_CONNECTION_FAILED)
+        return error_response(500, DB_CONNECTION_FAILED)
     finally:
         mysql_db.disconnect()
 
@@ -280,6 +279,7 @@ def get_dialogue_history(dialogue_id: str = Query(..., description="Dialogue ID"
                     "parent_ids": msg.get("parent_ids", []),
                     "children": msg.get("children", []),
                     "model": msg.get("model", None),
+                    "status": msg.get("status", "completed"),
                 }
 
                 # 添加reasoning字段（如果存在）
@@ -294,6 +294,6 @@ def get_dialogue_history(dialogue_id: str = Query(..., description="Dialogue ID"
             return {"code": 0, "message": "success", "data": message_list}
         else:
             logger.error("Cannot connect to MongoDB database")
-            return make_error_response(500, DB_CONNECTION_FAILED, data=[])
+            return error_response(500, DB_CONNECTION_FAILED, data=[])
     finally:
         mongo_db.disconnect()

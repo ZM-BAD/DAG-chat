@@ -16,7 +16,8 @@ import {
   PlaceholderResponse,
 } from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
-import { resolveApiError } from '../../utils/apiError';
+import { resolveApiError, resolveResponseError } from '../../utils/apiError';
+import { SSEFrame, SSEParser } from '../../utils/sseParser';
 import { Citation } from './useChatSettings';
 
 // 定义提问类型
@@ -38,7 +39,10 @@ export function determineQuestionType(citations: Citation[]): QuestionType {
 
 // 定义创建对话响应接口
 interface CreateConversationResponse {
-  conversation_id: string;
+  conversation_id?: string;
+  error_code?: string;
+  params?: Record<string, string>;
+  message?: string;
 }
 
 // 定义 SSE 数据接口
@@ -69,7 +73,6 @@ interface UseChatMessagesProps {
   currentDialogueId: string | null;
   selectedModel: string;
   deepThinkingEnabled: boolean;
-  searchEnabled: boolean;
   citations: Citation[];
   clearAllCitations: () => void;
   pathLastAssistantId: string | null;
@@ -94,7 +97,6 @@ export const useChatMessages = ({
   currentDialogueId,
   selectedModel,
   deepThinkingEnabled,
-  searchEnabled,
   citations,
   clearAllCitations,
   pathLastAssistantId,
@@ -189,6 +191,12 @@ export const useChatMessages = ({
                 deepThinkingEnabled: true,
                 isThinkingExpanded: true,
               };
+            }
+            if (
+              message.role === 'assistant' &&
+              (message.status === 'pending' || message.status === 'streaming')
+            ) {
+              return { ...message, isWaitingForFirstToken: true };
             }
             return message;
           });
@@ -327,6 +335,9 @@ export const useChatMessages = ({
             message: sentMessageContent,
           },
         );
+        if (typeof createResponse.data.conversation_id === 'undefined') {
+          throw new Error(resolveResponseError(createResponse.data));
+        }
         conversationId = createResponse.data.conversation_id;
 
         // 触发侧边栏刷新，显示新创建的对话
@@ -353,9 +364,20 @@ export const useChatMessages = ({
         },
       );
 
-      const userMessageRealId = placeholderResponse.data.user_message_id;
-      const assistantMessageRealId =
-        placeholderResponse.data.assistant_message_id;
+      const placeholderData =
+        placeholderResponse.data as PlaceholderResponse & {
+          error_code?: string;
+          params?: Record<string, string>;
+          message?: string;
+        };
+      if (
+        typeof placeholderData.user_message_id === 'undefined' ||
+        typeof placeholderData.assistant_message_id === 'undefined'
+      ) {
+        throw new Error(resolveResponseError(placeholderData));
+      }
+      const userMessageRealId = placeholderData.user_message_id;
+      const assistantMessageRealId = placeholderData.assistant_message_id;
 
       // 用 realId 构造消息对象，添加到前端状态
       const newUserMessage: Message = {
@@ -364,6 +386,7 @@ export const useChatMessages = ({
         role: 'user',
         parent_ids: parentIds,
         children: [assistantMessageRealId],
+        status: 'completed',
       };
 
       // 更新父节点的 children
@@ -389,6 +412,7 @@ export const useChatMessages = ({
         isWaitingForFirstToken: true,
         deepThinkingEnabled: deepThinkingEnabled,
         parent_ids: [userMessageRealId],
+        status: 'streaming',
       };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
@@ -405,7 +429,6 @@ export const useChatMessages = ({
           message: sentMessageContent,
           parent_ids: parentIds,
           deep_thinking: deepThinkingEnabled,
-          search_enabled: searchEnabled,
           user_message_id: userMessageRealId,
           assistant_message_id: assistantMessageRealId,
         }),
@@ -421,7 +444,8 @@ export const useChatMessages = ({
         throw new Error('无法获取响应流');
       }
 
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder('utf-8');
+      const sseParser = new SSEParser();
       let fullContent = '';
       let fullReasoning = '';
       let isThinkingPhase = true;
@@ -461,65 +485,53 @@ export const useChatMessages = ({
         );
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const dataStr = line.slice(6).trim();
-            if (!dataStr) continue;
-
-            let data: SSEData;
-            try {
-              data = JSON.parse(dataStr) as SSEData;
-            } catch (parseError) {
-              console.warn(
-                'Failed to parse SSE data:',
-                parseError,
-                'Raw data:',
-                line,
-              );
-              continue;
-            }
-
-            // 处理错误响应（在解析 try 之外：错误必须冒泡到外层
-            // catch 展示给用户，而不是被解析 catch 吞掉）
-            if (data.error) {
-              throw new Error(resolveApiError(data.error));
-            }
-
-            // 处理思考内容
-            if (data.reasoning) {
-              fullReasoning += data.reasoning;
-              isThinkingPhase = true;
-              updateThinkingContent(fullReasoning);
-            }
-
-            // 处理正式回答内容
-            if (data.content) {
-              if (fullContent === '') {
-                isThinkingPhase = false;
-              }
-              fullContent += data.content;
-              updateContent(fullContent, isThinkingPhase);
-            }
-
-            // 处理完成事件（placeholder 模式下前端已有 realId，跳过替换）
-            if (
-              data.user_message_id &&
-              data.assistant_message_id &&
-              data.complete
-            ) {
-              // realId 已通过 placeholder 获取，无需替换
-            }
-          }
+      const processSSEFrame = (frame: SSEFrame): void => {
+        if (frame.data.trim() === '') return;
+        let data: SSEData;
+        try {
+          data = JSON.parse(frame.data) as SSEData;
+        } catch (parseError) {
+          console.warn('Failed to parse SSE data:', parseError);
+          return;
         }
+        processSSEData(data);
+      };
+
+      const processSSEData = (data: SSEData): void => {
+        if (data.error) {
+          throw new Error(resolveApiError(data.error));
+        }
+        if (data.reasoning) {
+          fullReasoning += data.reasoning;
+          isThinkingPhase = true;
+          updateThinkingContent(fullReasoning);
+        }
+        if (data.content) {
+          if (fullContent === '') isThinkingPhase = false;
+          fullContent += data.content;
+          updateContent(fullContent, isThinkingPhase);
+        }
+      };
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+          const tail = decoder.decode();
+          for (const frame of sseParser.push(tail)) processSSEFrame(frame);
+          for (const frame of sseParser.flush()) processSSEFrame(frame);
+          break;
+        }
+        const text = decoder.decode(value, { stream: true });
+        for (const frame of sseParser.push(text)) processSSEFrame(frame);
       }
+
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === assistantMessageRealId
+            ? { ...msg, status: 'completed', isWaitingForFirstToken: false }
+            : msg,
+        ),
+      );
 
       // 如果是新对话，AI回答完成后检查标题是否已更新
       if (!currentDialogueId && conversationId) {
@@ -572,7 +584,11 @@ export const useChatMessages = ({
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.isWaitingForFirstToken
-              ? { ...msg, isWaitingForFirstToken: false }
+              ? {
+                  ...msg,
+                  isWaitingForFirstToken: false,
+                  status: 'aborted',
+                }
               : msg,
           ),
         );
@@ -597,34 +613,35 @@ export const useChatMessages = ({
         console.error('Network connection error:', error);
         setMessages((prevMessages) => {
           // 找到 waiting 状态的 assistant 消息并移除
-          const assistantToRemove = prevMessages.find(
-            (msg) => msg.isWaitingForFirstToken,
+          return prevMessages.map((msg) =>
+            msg.isWaitingForFirstToken
+              ? {
+                  ...msg,
+                  isWaitingForFirstToken: false,
+                  status: 'failed' as const,
+                }
+              : msg,
           );
-          if (assistantToRemove) {
-            return prevMessages.filter(
-              (msg) => msg.id !== assistantToRemove.id,
-            );
-          }
-          return prevMessages;
         });
         const errorMessage: Message = {
           id: `msg-${String(Date.now() + 2)}`,
           content: t('chat.networkError'),
           role: 'assistant',
+          status: 'failed',
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
       } else {
         console.error('Unknown error while sending message:', error);
         setMessages((prevMessages) => {
-          const assistantToRemove = prevMessages.find(
-            (msg) => msg.isWaitingForFirstToken,
+          return prevMessages.map((msg) =>
+            msg.isWaitingForFirstToken
+              ? {
+                  ...msg,
+                  isWaitingForFirstToken: false,
+                  status: 'failed' as const,
+                }
+              : msg,
           );
-          if (assistantToRemove) {
-            return prevMessages.filter(
-              (msg) => msg.id !== assistantToRemove.id,
-            );
-          }
-          return prevMessages;
         });
         const errorMessage: Message = {
           id: `msg-${String(Date.now() + 2)}`,
@@ -635,6 +652,7 @@ export const useChatMessages = ({
               ? error.message
               : t('chat.sendFailed'),
           role: 'assistant',
+          status: 'failed',
         };
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
       }

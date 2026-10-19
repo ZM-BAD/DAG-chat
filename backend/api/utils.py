@@ -3,10 +3,26 @@
 import functools
 import logging
 from collections.abc import Callable
+from typing import Any
+
+from fastapi.responses import JSONResponse
 
 from backend.models.error_codes import make_error_response
 
 logger = logging.getLogger(__name__)
+
+
+def error_response(
+    status_code: int,
+    error_code: str,
+    data: Any = None,
+    params: dict | None = None,
+) -> JSONResponse:
+    """Return a structured JSON error with a meaningful HTTP status code."""
+    return JSONResponse(
+        status_code=status_code,
+        content=make_error_response(status_code, error_code, data, params),
+    )
 
 
 def try_or[T](primary: Callable[[], T], fallback: T, tag: str) -> T:
@@ -37,7 +53,7 @@ def safe_endpoint(error_code: str):
                 return fn(*args, **kwargs)
             except Exception:
                 logger.exception("API endpoint '%s' failed", fn.__name__)
-                return make_error_response(500, error_code)
+                return error_response(500, error_code)
 
         return wrapper
 

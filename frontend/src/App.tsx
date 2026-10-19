@@ -88,11 +88,9 @@ function AppContent() {
     copyMessageToClipboard,
     handleInterruptResponse,
     deepThinkingEnabled,
-    searchEnabled,
     selectedModel,
     availableModels,
     handleDeepThinkingChange,
-    handleSearchChange,
     handleModelChange,
     citations,
     handleBranchClick,
@@ -172,10 +170,8 @@ function AppContent() {
               handleKeyPress={handleKeyPress}
               handleSendMessage={() => void handleSendMessage()}
               onDeepThinkingChange={handleDeepThinkingChange}
-              onSearchChange={handleSearchChange}
               onModelChange={handleModelChange}
               initialDeepThinking={deepThinkingEnabled}
-              initialSearch={searchEnabled}
               initialModel={selectedModel}
               availableModels={availableModels}
             />
@@ -194,10 +190,8 @@ function AppContent() {
               handleSendMessage={() => void handleSendMessage()}
               handleInterruptResponse={handleInterruptResponse}
               onDeepThinkingChange={handleDeepThinkingChange}
-              onSearchChange={handleSearchChange}
               onModelChange={handleModelChange}
               initialDeepThinking={deepThinkingEnabled}
-              initialSearch={searchEnabled}
               initialModel={selectedModel}
               availableModels={availableModels}
               citations={citations}

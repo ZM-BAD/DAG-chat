@@ -11,15 +11,16 @@ Verifies that:
 """
 
 import asyncio
-import logging
 from types import SimpleNamespace
 
+import pytest
 from bson import ObjectId
 
 from backend.api.routes.chat import (
     create_message_placeholders,
     save_conversation_to_database,
 )
+from backend.api.services.dag_validation import DAGValidationError
 from backend.database.mongodb_connection import MongoDBConnection
 from backend.models.requests import ChatRequest
 
@@ -58,7 +59,17 @@ class MockMongoDB(MongoDBConnection):
         return doc["_id"]
 
     def find(self, collection_name: str, query: dict, projection=None, sort=None):
-        return [dict(node) for node in self._nodes.values()]
+        nodes = [dict(node) for node in self._nodes.values()]
+        id_filter = query.get("_id", {})
+        if "$in" in id_filter:
+            return [node for node in nodes if node["_id"] in id_filter["$in"]]
+        return nodes
+
+    def delete_many(self, collection_name: str, query: dict):
+        id_filter = query.get("_id", {})
+        if "$in" in id_filter:
+            for object_id in id_filter["$in"]:
+                self._nodes.pop(str(object_id), None)
 
     def update_raw(self, collection_name: str, query: dict, update: dict):
         self.update_raw_calls.append((query, update))
@@ -76,7 +87,10 @@ class MockMongoDB(MongoDBConnection):
 class TestCreateMessagePlaceholders:
     def test_single_parent_children_linked(self):
         db = MockMongoDB()
-        parent_id = db.insert("message_node", {"role": "assistant", "content": "A"})
+        parent_id = db.insert(
+            "message_node",
+            {"role": "assistant", "content": "A", "conversation_id": "c1"},
+        )
         user_id, _ = create_message_placeholders(
             db, "c1", "hello", "deepseek", [str(parent_id)]
         )
@@ -92,8 +106,14 @@ class TestCreateMessagePlaceholders:
     def test_merge_question_links_all_parents(self):
         db = MockMongoDB()
         parent_ids = [
-            db.insert("message_node", {"role": "assistant", "content": "A"}),
-            db.insert("message_node", {"role": "assistant", "content": "B"}),
+            db.insert(
+                "message_node",
+                {"role": "assistant", "content": "A", "conversation_id": "c1"},
+            ),
+            db.insert(
+                "message_node",
+                {"role": "assistant", "content": "B", "conversation_id": "c1"},
+            ),
         ]
         user_id, _ = create_message_placeholders(
             db, "c1", "merge?", "deepseek", [str(p) for p in parent_ids]
@@ -105,7 +125,10 @@ class TestCreateMessagePlaceholders:
     def test_atomic_add_to_set_keeps_all_branches(self):
         # 模拟两个并发分支请求：$addToSet 语义下第二次追加不会覆盖第一次的结果
         db = MockMongoDB()
-        parent_id = db.insert("message_node", {"role": "assistant", "content": "A"})
+        parent_id = db.insert(
+            "message_node",
+            {"role": "assistant", "content": "A", "conversation_id": "c1"},
+        )
         pid = str(parent_id)
 
         first_user_id, _ = create_message_placeholders(
@@ -119,21 +142,11 @@ class TestCreateMessagePlaceholders:
         assert str(first_user_id) in children
         assert str(second_user_id) in children
 
-    def test_missing_parent_logs_error_but_keeps_flow(self, caplog):
-        # 父节点不存在（matched_count=0）：占位符流程不中断，但失败必须被记录，
-        # 而不是静默忽略
+    def test_missing_parent_is_rejected_and_rolled_back(self):
         db = MockMongoDB()
-        user_id, ai_id = create_message_placeholders(
-            db, "c1", "hi", "deepseek", [str(ObjectId())]
-        )
-
-        assert user_id is not None
-        assert ai_id is not None
-        with caplog.at_level(logging.ERROR):
-            create_message_placeholders(db, "c1", "hi2", "deepseek", [str(ObjectId())])
-        assert any(
-            "Failed to link new message" in record.message for record in caplog.records
-        )
+        with pytest.raises(DAGValidationError):
+            create_message_placeholders(db, "c1", "hi", "deepseek", [str(ObjectId())])
+        assert db._nodes == {}
 
     def test_user_ai_pair_linked(self):
         db = MockMongoDB()
@@ -141,12 +154,20 @@ class TestCreateMessagePlaceholders:
 
         user_node = db._nodes[str(user_id)]
         assert user_node["children"] == [str(ai_id)]
+        assert user_node["status"] == "completed"
         assert db._nodes[str(ai_id)]["parent_ids"] == [str(user_id)]
+        assert db._nodes[str(ai_id)]["status"] == "pending"
 
     def test_placeholder_without_parents_touches_no_other_nodes(self):
         db = MockMongoDB()
         other_id = db.insert(
-            "message_node", {"role": "assistant", "content": "A", "children": []}
+            "message_node",
+            {
+                "role": "assistant",
+                "content": "A",
+                "children": [],
+                "conversation_id": "c1",
+            },
         )
 
         create_message_placeholders(db, "c1", "hi", "deepseek")
@@ -159,7 +180,10 @@ class TestLegacySavePath:
         async def run():
             db = MockMongoDB()
             mysql = SimpleNamespace(connect=lambda: False)
-            parent_id = db.insert("message_node", {"role": "assistant", "content": "A"})
+            parent_id = db.insert(
+                "message_node",
+                {"role": "assistant", "content": "A", "conversation_id": "c1"},
+            )
             request = ChatRequest(
                 conversation_id="c1", message="hi", parent_ids=[str(parent_id)]
             )
@@ -176,3 +200,22 @@ class TestLegacySavePath:
             assert any("$addToSet" in update for _, update in db.update_raw_calls)
 
         asyncio.run(run())
+
+
+class FailingAssistantMongo(MockMongoDB):
+    def __init__(self):
+        super().__init__()
+        self.insert_calls = 0
+
+    def insert(self, collection_name: str, document: dict):
+        self.insert_calls += 1
+        if self.insert_calls == 2:
+            raise RuntimeError("assistant insert failed")
+        return super().insert(collection_name, document)
+
+
+def test_placeholder_rolls_back_user_when_assistant_insert_fails():
+    db = FailingAssistantMongo()
+    with pytest.raises(RuntimeError, match="assistant insert failed"):
+        create_message_placeholders(db, "c1", "hi", "deepseek")
+    assert db._nodes == {}

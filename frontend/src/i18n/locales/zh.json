@@ -23,7 +23,9 @@
     "sendFailed": "发送消息失败，请稍后重试",
     "abortMessage": "消息发送已中止",
     "clearAllCitations": "清除全部",
-    "minimaxThinkingLocked": "MiniMax 强制开启思考模式"
+    "minimaxThinkingLocked": "MiniMax 强制开启思考模式",
+    "messageFailed": "生成失败，请重试。",
+    "messageAborted": "生成已中止。"
   },
   "chatMessage": {
     "createBranch": "创建分支问",
@@ -85,6 +87,8 @@
     "EMPTY_CONVERSATION_ID": "对话ID不能为空",
     "EMPTY_USER_ID": "用户ID不能为空",
     "EMPTY_TITLE": "标题不能为空",
-    "TITLE_TOO_LONG": "标题长度不能超过{{maxLength}}个字符"
+    "TITLE_TOO_LONG": "标题长度不能超过{{maxLength}}个字符",
+    "INVALID_PARENT_IDS": "对话分支结构不合法。",
+    "INVALID_DAG": "对话 DAG 结构不合法。"
   }
 }

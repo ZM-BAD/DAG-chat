@@ -7,7 +7,21 @@ from urllib.request import urlopen
 from fastapi import APIRouter
 
 from backend.api.services.model_factory import ModelFactory
-from backend.config import OLLAMA_API_BASE_URL
+from backend.config import (
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_MODEL,
+    GLM_API_KEY,
+    GLM_MODEL,
+    KIMI_API_KEY,
+    KIMI_MODEL,
+    MINIMAX_API_KEY,
+    MINIMAX_MODEL,
+    OLLAMA_API_BASE_URL,
+    ORCAROUTER_API_KEY,
+    ORCAROUTER_MODEL,
+    QWEN_API_KEY,
+    QWEN_MODEL,
+)
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
@@ -67,12 +81,33 @@ def get_available_models():
             }
 
             display_name = display_name_map.get(model_name.lower(), model_name)
-            models_info.append({"name": model_name, "display_name": display_name})
+            models_info.append(_provider_info(model_name, display_name))
 
     # Ollama模型追加到列表末尾
     models_info.extend(ollama_models)
 
     return {"models": models_info, "count": len(models_info)}
+
+
+def _provider_info(provider: str, display_name: str) -> dict:
+    """Return configured model and availability metadata for a provider."""
+    provider_config = {
+        "deepseek": (DEEPSEEK_API_KEY, DEEPSEEK_MODEL, True),
+        "qwen": (QWEN_API_KEY, QWEN_MODEL, True),
+        "kimi": (KIMI_API_KEY, KIMI_MODEL, True),
+        "glm": (GLM_API_KEY, GLM_MODEL, True),
+        "minimax": (MINIMAX_API_KEY, MINIMAX_MODEL, True),
+        "orcarouter": (ORCAROUTER_API_KEY, ORCAROUTER_MODEL, True),
+    }
+    api_key, model, supports_thinking = provider_config.get(provider, ("", "", False))
+    return {
+        "name": provider,
+        "display_name": display_name,
+        "available": bool(api_key),
+        "model": model,
+        "supports_thinking": supports_thinking,
+        "supports_title": True,
+    }
 
 
 def _fetch_ollama_models() -> list:
@@ -99,6 +134,10 @@ def _fetch_ollama_models() -> list:
                     {
                         "name": f"ollama/{model_name}",
                         "display_name": f"Ollama - {display_name}",
+                        "available": True,
+                        "model": model_name,
+                        "supports_thinking": False,
+                        "supports_title": True,
                     }
                 )
 

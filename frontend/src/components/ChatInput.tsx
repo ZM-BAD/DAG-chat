@@ -123,10 +123,8 @@ interface ChatInputProps {
   handleSendMessage: () => void;
   handleInterruptResponse?: () => void;
   onDeepThinkingChange?: (enabled: boolean) => void;
-  onSearchChange?: (enabled: boolean) => void;
   onModelChange?: (model: string) => void;
   initialDeepThinking?: boolean;
-  initialSearch?: boolean;
   initialModel?: string;
   availableModels?: { value: string; label: string }[];
   citations?: Citation[];
@@ -143,10 +141,8 @@ const ChatInput: FC<ChatInputProps> = ({
   handleSendMessage,
   handleInterruptResponse,
   onDeepThinkingChange,
-  onSearchChange,
   onModelChange,
   initialDeepThinking = false,
-  initialSearch = false,
   initialModel = 'deepseek',
   availableModels = [],
   citations = [],
@@ -158,7 +154,6 @@ const ChatInput: FC<ChatInputProps> = ({
   const isInputEmpty = inputMessage.trim() === '';
   const [deepThinkingEnabled, setDeepThinkingEnabled] =
     useState(initialDeepThinking);
-  const [searchEnabled, setSearchEnabled] = useState(initialSearch);
   const [selectedModel, setSelectedModel] = useState(initialModel);
 
   // 同步 hook 层的状态变化到组件本地状态
@@ -196,14 +191,6 @@ const ChatInput: FC<ChatInputProps> = ({
     setDeepThinkingEnabled(newValue);
     if (onDeepThinkingChange) {
       onDeepThinkingChange(newValue);
-    }
-  };
-
-  const handleSearchToggle = () => {
-    const newValue = !searchEnabled;
-    setSearchEnabled(newValue);
-    if (onSearchChange) {
-      onSearchChange(newValue);
     }
   };
 
@@ -285,14 +272,6 @@ const ChatInput: FC<ChatInputProps> = ({
           title={t('chat.deepThinkingTitle')}
         >
           🧠 {t('chat.deepThinking')}
-        </button>
-
-        <button
-          className={`control-button search ${searchEnabled ? 'active' : ''}`}
-          onClick={handleSearchToggle}
-          title={t('chat.searchTitle')}
-        >
-          🔍 {t('chat.search')}
         </button>
 
         <div className="model-selector">

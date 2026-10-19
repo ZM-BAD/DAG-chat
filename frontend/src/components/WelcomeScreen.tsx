@@ -125,10 +125,8 @@ interface WelcomeScreenProps {
   handleKeyPress: (e: KeyboardEvent) => void;
   handleSendMessage: () => void;
   onDeepThinkingChange?: (enabled: boolean) => void;
-  onSearchChange?: (enabled: boolean) => void;
   onModelChange?: (model: string) => void;
   initialDeepThinking?: boolean;
-  initialSearch?: boolean;
   initialModel?: string;
   availableModels?: { value: string; label: string }[];
 }
@@ -141,10 +139,8 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({
   handleKeyPress,
   handleSendMessage,
   onDeepThinkingChange,
-  onSearchChange,
   onModelChange,
   initialDeepThinking = false,
-  initialSearch = false,
   initialModel = 'deepseek',
   availableModels = [],
 }) => {
@@ -152,7 +148,6 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({
   const toast = useToast();
   const [deepThinkingEnabled, setDeepThinkingEnabled] =
     useState(initialDeepThinking);
-  const [searchEnabled, setSearchEnabled] = useState(initialSearch);
   const [selectedModel, setSelectedModel] = useState(initialModel);
 
   // 同步 hook 层的状态变化到组件本地状态
@@ -173,14 +168,6 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({
     setDeepThinkingEnabled(newValue);
     if (onDeepThinkingChange) {
       onDeepThinkingChange(newValue);
-    }
-  };
-
-  const handleSearchToggle = () => {
-    const newValue = !searchEnabled;
-    setSearchEnabled(newValue);
-    if (onSearchChange) {
-      onSearchChange(newValue);
     }
   };
 
@@ -225,14 +212,6 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({
             title={t('chat.deepThinkingTitle')}
           >
             🧠 {t('chat.deepThinking')}
-          </button>
-
-          <button
-            className={`control-button search ${searchEnabled ? 'active' : ''}`}
-            onClick={handleSearchToggle}
-            title={t('chat.searchTitle')}
-          >
-            🔍 {t('chat.search')}
           </button>
 
           <div className="model-selector">

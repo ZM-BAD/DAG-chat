@@ -38,10 +38,8 @@ export const useChat = ({
   // 3. 聊天设置
   const {
     deepThinkingEnabled,
-    searchEnabled,
     citations,
     handleDeepThinkingChange,
-    handleSearchChange,
     handleBranchClick,
     handleMergeClick,
     removeCitation,
@@ -88,7 +86,6 @@ export const useChat = ({
     currentDialogueId,
     selectedModel,
     deepThinkingEnabled,
-    searchEnabled,
     citations,
     clearAllCitations,
     pathLastAssistantId,
@@ -121,11 +118,9 @@ export const useChat = ({
     copyMessageToClipboard,
     handleInterruptResponse,
     deepThinkingEnabled,
-    searchEnabled,
     selectedModel,
     availableModels,
     handleDeepThinkingChange,
-    handleSearchChange,
     handleModelChange: handleModelChangeWithDeepThinking,
     // 新的引用系统
     citations,

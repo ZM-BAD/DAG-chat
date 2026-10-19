@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, FC } from 'react';
 import Toast from '../components/Toast';
+import '../styles/Toast.css';
 
 interface ToastItem {
   id: string;
@@ -38,17 +39,19 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onClose={() => {
-            removeToast(toast.id);
-          }}
-        />
-      ))}
+      <div className="toast-stack">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={() => {
+              removeToast(toast.id);
+            }}
+          />
+        ))}
+      </div>
     </ToastContext.Provider>
   );
 };

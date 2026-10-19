@@ -4,7 +4,12 @@ from typing import Any, cast
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
-from backend.config import OLLAMA_API_BASE_URL, OLLAMA_MODEL
+from backend.config import (
+    LLM_MAX_RETRIES,
+    LLM_REQUEST_TIMEOUT_SECONDS,
+    OLLAMA_API_BASE_URL,
+    OLLAMA_MODEL,
+)
 
 from .base_service import BaseModelService
 from .model_factory import ModelFactory
@@ -31,9 +36,19 @@ class OllamaService(BaseModelService):
             self.ollama_model = OLLAMA_MODEL
 
         # 异步客户端用于流式生成（可被 CancelledError 中断）
-        self.async_client = AsyncOpenAI(api_key="ollama", base_url=OLLAMA_API_BASE_URL)
+        self.async_client = AsyncOpenAI(
+            api_key="ollama",
+            base_url=OLLAMA_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
+        )
         # 同步客户端用于 generate_title 等独立同步操作
-        self.client = OpenAI(api_key="ollama", base_url=OLLAMA_API_BASE_URL)
+        self.client = OpenAI(
+            api_key="ollama",
+            base_url=OLLAMA_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
+        )
 
     @classmethod
     def get_service_name(cls) -> str:
@@ -61,6 +76,9 @@ class OllamaService(BaseModelService):
             )
 
             async for chunk in response:
+                if not chunk.choices:
+                    continue
+
                 content_chunk = chunk.choices[0].delta.content or ""
                 if content_chunk:
                     yield {"content": content_chunk, "reasoning": ""}

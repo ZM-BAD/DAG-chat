@@ -7,6 +7,8 @@ from typing import Any, ClassVar
 from openai import APIError, AsyncOpenAI, OpenAI
 
 from backend.config import (
+    LLM_MAX_RETRIES,
+    LLM_REQUEST_TIMEOUT_SECONDS,
     ORCAROUTER_API_BASE_URL,
     ORCAROUTER_API_KEY,
     ORCAROUTER_MODEL,
@@ -31,11 +33,17 @@ class OrcaRouterService(BaseModelService):
     def __init__(self):
         # 异步客户端用于流式生成（可被 CancelledError 中断）
         self.async_client = AsyncOpenAI(
-            api_key=ORCAROUTER_API_KEY, base_url=ORCAROUTER_API_BASE_URL
+            api_key=ORCAROUTER_API_KEY,
+            base_url=ORCAROUTER_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
         )
         # 同步客户端用于 generate_title 等独立同步操作
         self.client = OpenAI(
-            api_key=ORCAROUTER_API_KEY, base_url=ORCAROUTER_API_BASE_URL
+            api_key=ORCAROUTER_API_KEY,
+            base_url=ORCAROUTER_API_BASE_URL,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
         )
 
     @classmethod

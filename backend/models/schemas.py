@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -18,6 +19,9 @@ class Conversation(BaseModel):
     update_time: datetime | None = Field(default_factory=datetime.now)
 
 
+MessageStatus = Literal["pending", "streaming", "completed", "failed", "aborted"]
+
+
 # 消息节点类
 class MessageNode(BaseModel):
     _id: str | None = None
@@ -30,3 +34,4 @@ class MessageNode(BaseModel):
     parent_ids: list[str] = []
     children: list[str] = []
     model: str | None = None  # 记录消息使用的模型
+    status: MessageStatus = "completed"

@@ -36,6 +36,7 @@ export interface Message {
   children?: string[]; // 子消息ID列表
   model?: string; // 模型名称（仅assistant角色使用）
   deepThinkingEnabled?: boolean; // 是否启用了深度思考模式（仅assistant角色使用）
+  status?: 'pending' | 'streaming' | 'completed' | 'failed' | 'aborted';
 }
 
 /**

@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import remarkGfm from 'remark-gfm';
@@ -16,6 +17,17 @@ import remarkEmoji from 'remark-emoji';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'input'],
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [...(defaultSchema.attributes?.code ?? []), 'className'],
+    input: ['type', 'checked', 'disabled'],
+    a: [...(defaultSchema.attributes?.a ?? []), 'target', 'rel'],
+  },
+};
 
 interface EnhancedMarkdownProps {
   content: string;
@@ -159,6 +171,7 @@ const EnhancedMarkdown: FC<EnhancedMarkdownProps> = ({
       <ReactMarkdown
         rehypePlugins={[
           rehypeRaw,
+          [rehypeSanitize, sanitizeSchema],
           rehypeKatex,
           [
             rehypeAutolinkHeadings,

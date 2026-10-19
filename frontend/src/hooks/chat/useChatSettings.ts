@@ -12,10 +12,8 @@ export interface Citation {
 
 interface UseChatSettingsReturn {
   deepThinkingEnabled: boolean;
-  searchEnabled: boolean;
   citations: Citation[];
   handleDeepThinkingChange: (enabled: boolean) => void;
-  handleSearchChange: (enabled: boolean) => void;
   handleBranchClick: (parentId: string, parentContent: string) => void;
   handleMergeClick: (parentId: string, parentContent: string) => void;
   removeCitation: (id: string) => void;
@@ -25,7 +23,6 @@ interface UseChatSettingsReturn {
 
 export const useChatSettings = (): UseChatSettingsReturn => {
   const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(false);
-  const [searchEnabled, setSearchEnabled] = useState(false);
   const [citations, setCitations] = useState<Citation[]>([]);
 
   // 获取当前引用模式
@@ -94,17 +91,10 @@ export const useChatSettings = (): UseChatSettingsReturn => {
     setDeepThinkingEnabled(enabled);
   };
 
-  // 处理联网搜索切换
-  const handleSearchChange = (enabled: boolean): void => {
-    setSearchEnabled(enabled);
-  };
-
   return {
     deepThinkingEnabled,
-    searchEnabled,
     citations,
     handleDeepThinkingChange,
-    handleSearchChange,
     handleBranchClick,
     handleMergeClick,
     removeCitation,
