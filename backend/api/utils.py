@@ -3,16 +3,13 @@
 import functools
 import logging
 from collections.abc import Callable
-from typing import TypeVar
 
 from backend.models.error_codes import make_error_response
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
 
-
-def try_or(primary: Callable[[], T], fallback: T, tag: str) -> T:
+def try_or[T](primary: Callable[[], T], fallback: T, tag: str) -> T:
     """Try *primary*, fall back to *fallback* on any exception.
 
     Use this for graceful degradation patterns — when a best-effort operation

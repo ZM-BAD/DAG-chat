@@ -155,7 +155,9 @@ AI：[解释 C]       AI：[对比分析]
 ### 环境要求
 
 - **Python** >= 3.14
+- **uv** >= 0.9.7
 - **Node.js** >= 24
+- **npm** >= 11
 - **Docker** >= 29（可选，容器化部署）
 - **Docker Compose** >= v5（可选，容器化部署）
 - **MongoDB** 运行于 `localhost:27017`（仅本地开发，不用 Docker 时需要）
@@ -217,20 +219,27 @@ cd DAG-chat
 
 后端：
 ```bash
-source ../.venv/bin/activate
-cd backend && pip install -r requirements.txt
-python3 run_api.py
+uv sync --frozen
+cd backend && ../.venv/bin/python run_api.py
 ```
 
 前端：
 ```bash
-cd frontend && npm install --legacy-peer-deps
+cd frontend && npm ci
 npm run dev
 ```
 
 停止所有服务：`./start.sh --stop`
 
 </details>
+
+### 质量检查
+
+```bash
+make check       # lint、格式检查、类型检查、前后端测试
+make security    # pip-audit 和 npm audit
+make precommit   # 运行全部 pre-commit hooks
+```
 
 ## 使用 Ollama（免费，无需 API Key）
 

@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import AsyncGenerator
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -47,7 +47,7 @@ class OrcaRouterService(BaseModelService):
 
     async def generate(
         self, messages: list[dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[dict[str, str], None]:
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Call OrcaRouter API to generate streaming response
 
@@ -64,7 +64,7 @@ class OrcaRouterService(BaseModelService):
             # （免费档不支持开启推理），因此：
             # - 非思考模式：显式禁用，避免模型空转推理
             # - 思考模式：不传参（网关默认允许轻量推理）
-            request_params = {
+            request_params: dict[str, Any] = {
                 "model": ORCAROUTER_MODEL,
                 "messages": messages,
                 "stream": True,
@@ -136,7 +136,7 @@ class OrcaRouterService(BaseModelService):
     # 双保险：禁用思考（标题无需推理）+ 提高预算（万一禁用参数不被接受）。
     # 注意：chat 的思考模式刻意不传 thinking 参数（免费档 402，见 generate），
     # 勿在此处与 chat 路径"统一"为传 thinking:enabled。
-    _title_max_tokens: int = 200
+    _title_max_tokens: ClassVar[int] = 200
     _title_extra_params: ClassVar[dict | None] = {"thinking": {"type": "disabled"}}
 
     def _get_title_model(self) -> str:

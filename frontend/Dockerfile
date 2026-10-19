@@ -7,7 +7,7 @@ ARG DEFAULT_USER_ID=default-user
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
 # In Docker, loadEnv resolves '..' to / (WORKDIR is /app). The actual values come
 # from these ENV directives (set via build args), not from a .env file on disk.

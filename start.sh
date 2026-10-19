@@ -127,7 +127,7 @@ start_frontend() {
     # looks incomplete (sentinel package missing — catches manual corruption).
     if [ ! -d node_modules ] || [ "$NEW_HASH" != "$OLD_HASH" ] || [ ! -d node_modules/vite ]; then
         echo "Installing frontend dependencies (npm ci)..."
-        if ! npm ci --legacy-peer-deps; then
+        if ! npm ci; then
             echo "ERROR: npm ci failed; not updating install stamp, not starting dev server." >&2
             cd ..; return 1
         fi
@@ -172,13 +172,18 @@ start_frontend() {
 start_backend() {
     echo "Starting backend service..."
     cd backend
-    echo "Installing Python dependencies..."
-    # Check if in a virtual environment, activate if not
-    if [ -z "$VIRTUAL_ENV" ] && [ -d "../.venv" ]; then
-        echo "Activating virtual environment..."
-        source ../.venv/bin/activate
+    echo "Syncing Python dependencies..."
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "ERROR: uv is required. Install it from https://docs.astral.sh/uv/" >&2
+        cd ..
+        return 1
     fi
-    pip install -r requirements.txt
+    if ! (cd .. && uv sync --frozen); then
+        echo "ERROR: uv sync failed; not starting the backend." >&2
+        cd ..
+        return 1
+    fi
+    source ../.venv/bin/activate
     echo "Starting backend server..."
     echo "Backend will run on http://localhost:8000"
     python3 run_api.py &

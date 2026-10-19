@@ -13,6 +13,7 @@ import json
 import logging
 from collections import defaultdict
 from datetime import UTC, datetime
+from typing import Any
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -94,7 +95,7 @@ def build_dag_from_parents(
                     if parent_id and parent_id not in visited:
                         try:
                             queue.append(ObjectId(parent_id))
-                        except (InvalidId, TypeError):
+                        except InvalidId, TypeError:
                             continue
 
         current_depth += 1
@@ -138,8 +139,8 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
     subdag_nodes = set(node_map.keys())
 
     # 计算 SubDAG 内每个节点的入度和出度
-    in_degree = defaultdict(int)
-    out_degree = defaultdict(int)
+    in_degree: defaultdict[str, int] = defaultdict(int)
+    out_degree: defaultdict[str, int] = defaultdict(int)
 
     for node_id in subdag_nodes:
         # 入度：来自 SubDAG 内的父节点
@@ -156,7 +157,7 @@ def topological_sort_subdag(node_map: dict, edges: dict) -> list[str]:
     logger.debug("Node out-degrees: %s", dict(out_degree))
 
     # 拓扑排序，保持链不切割
-    result = []
+    result: list[str] = []
     available = {n for n in subdag_nodes if in_degree[n] == 0}
     in_degree_copy = defaultdict(int, in_degree)
 
@@ -255,7 +256,7 @@ def create_message_placeholders(
     No MySQL operations, ensuring fast response.
     """
     # 保存用户消息
-    user_message_kwargs = {
+    user_message_kwargs: dict[str, Any] = {
         "conversation_id": conversation_id,
         "role": "user",
         "content": message,
@@ -270,7 +271,7 @@ def create_message_placeholders(
     )
 
     # 创建空的助手消息占位符
-    ai_message_kwargs = {
+    ai_message_kwargs: dict[str, Any] = {
         "conversation_id": conversation_id,
         "role": "assistant",
         "content": "",
@@ -654,7 +655,7 @@ async def save_conversation_to_database(
 
         # === 传统模式：insert 新文档 ===
         # 保存用户提问
-        user_message_kwargs = {
+        user_message_kwargs: dict[str, Any] = {
             "conversation_id": request.conversation_id,
             "role": "user",
             "content": request.message,
@@ -692,7 +693,7 @@ async def save_conversation_to_database(
                     )
 
         # 保存大模型回答（parent_ids 直接指向用户消息，随插入原子写入）
-        ai_message_kwargs = {
+        ai_message_kwargs: dict[str, Any] = {
             "conversation_id": request.conversation_id,
             "role": "assistant",
             "content": full_content,

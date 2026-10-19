@@ -1,3 +1,4 @@
+# Legacy pip export. Canonical dev dependencies live in pyproject.toml + uv.lock.
 # Development dependencies
 # Install: pip install -r requirements-dev.txt
 # Note: Runtime dependencies must be installed first: pip install -r requirements.txt

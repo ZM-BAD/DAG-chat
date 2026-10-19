@@ -2,6 +2,8 @@ import abc
 import logging
 import re
 import string
+from collections.abc import AsyncGenerator
+from typing import Any, ClassVar
 
 from langdetect import DetectorFactory, LangDetectException, detect
 
@@ -196,20 +198,25 @@ class BaseModelService(metaclass=abc.ABCMeta):
 
     # Title generation should disable thinking mode; override to False if
     # the model cannot disable reasoning (e.g. MiniMax M2).
-    _title_disable_thinking: bool = True
+    _title_disable_thinking: ClassVar[bool] = True
 
     # Token budget for title generation — raised from 20 to 40 to accommodate
     # 6-word English titles while leaving headroom.
-    _title_max_tokens: int = 40
+    _title_max_tokens: ClassVar[int] = 40
 
     # Some providers reject custom temperature values; None omits the parameter.
-    _title_temperature: float | None = 0.3
+    _title_temperature: ClassVar[float | None] = 0.3
 
     # Subclasses set this to pass provider-specific params (e.g. disable thinking)
-    _title_extra_params: dict | None = None
+    _title_extra_params: ClassVar[dict | None] = None
+
+    # All concrete providers initialise an OpenAI-compatible client.
+    client: Any = None
 
     @abc.abstractmethod
-    async def generate(self, messages, deep_thinking: bool = False):
+    def generate(
+        self, messages: list[dict[str, str]], deep_thinking: bool = False
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Generate streaming response
 
@@ -252,7 +259,7 @@ class BaseModelService(metaclass=abc.ABCMeta):
             )
 
         def _generate():
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "model": title_model,
                 "messages": messages,
                 "max_tokens": self._title_max_tokens,

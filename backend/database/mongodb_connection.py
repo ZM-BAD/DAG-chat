@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Any, cast
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
@@ -14,14 +15,14 @@ logging_config.setup_logging()
 
 class MongoDBConnection:
     def __init__(self):
-        self.uri = MONGODB_CONFIG["uri"]
-        self.database = MONGODB_CONFIG["database"]
-        self.username = MONGODB_CONFIG.get("username")
-        self.password = MONGODB_CONFIG.get("password")
-        self.host = MONGODB_CONFIG.get("host")
-        self.port = MONGODB_CONFIG.get("port")
-        self.client = None
-        self.db = None
+        self.uri = str(MONGODB_CONFIG["uri"])
+        self.database = str(MONGODB_CONFIG["database"])
+        self.username = cast(str | None, MONGODB_CONFIG.get("username"))
+        self.password = cast(str | None, MONGODB_CONFIG.get("password"))
+        self.host = cast(str | None, MONGODB_CONFIG.get("host"))
+        self.port = cast(int | None, MONGODB_CONFIG.get("port"))
+        self.client: MongoClient | None = None
+        self.db: Any = None
 
     def __enter__(self):
         self.connect()

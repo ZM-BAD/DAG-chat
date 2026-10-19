@@ -1,6 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -41,7 +41,7 @@ class KimiService(BaseModelService):
 
     async def generate(
         self, messages: list[dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[dict[str, str], None]:
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Call Kimi API to generate streaming response
 
@@ -63,7 +63,7 @@ class KimiService(BaseModelService):
             # 使用异步OpenAI SDK调用
             response = await self.async_client.chat.completions.create(
                 model=model_name,
-                messages=messages,
+                messages=cast(Any, messages),
                 stream=True,
                 extra_body=extra_body,
             )

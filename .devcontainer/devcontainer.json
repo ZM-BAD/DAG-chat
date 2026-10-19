@@ -17,5 +17,5 @@
       }
     }
   },
-  "postCreateCommand": "pip install -r backend/requirements.txt && cd frontend && npm install --legacy-peer-deps"
+  "postCreateCommand": "uv sync --frozen && cd frontend && npm ci"
 }

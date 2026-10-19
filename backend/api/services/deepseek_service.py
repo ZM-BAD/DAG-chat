@@ -1,6 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -41,7 +41,7 @@ class DeepSeekService(BaseModelService):
 
     async def generate(
         self, messages: list[dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[dict[str, str], None]:
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Call DeepSeek V4 API to generate streaming response
 
@@ -58,6 +58,7 @@ class DeepSeekService(BaseModelService):
         try:
             # V4: thinking mode controlled via parameter, not model name
             # Only "thinking" belongs in extra_body; reasoning_effort is top-level
+            kwargs: dict[str, Any]
             if deep_thinking:
                 extra_body = {"thinking": {"type": "enabled"}}
                 kwargs = {

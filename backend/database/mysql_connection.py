@@ -1,5 +1,6 @@
 import logging
 import ssl
+from typing import Any
 
 # mysql-connector-python 26.7.0 still references the legacy PROTOCOL_TLSv1*
 # constants that were removed in Python 3.14. The application does not request
@@ -24,8 +25,8 @@ class MySQLConnection:
         self.password = MYSQL_CONFIG["password"]
         self.database = MYSQL_CONFIG["database"]
         self.port = MYSQL_CONFIG["port"]
-        self.connection = None
-        self.cursor = None
+        self.connection: Any | None = None
+        self.cursor: Any | None = None
 
     def connect(self):
         try:
@@ -45,25 +46,31 @@ class MySQLConnection:
 
     def disconnect(self):
         if self.connection and self.connection.is_connected():
-            self.cursor.close()
+            if self.cursor:
+                self.cursor.close()
             self.connection.close()
 
     def execute_query(self, query, params=None):
         try:
             if not self.connection or not self.connection.is_connected():
                 self.connect()
+            if not self.connection or not self.cursor:
+                return False
             self.cursor.execute(query, params or ())
             self.connection.commit()
             return True
         except Error as e:
             logger.error(f"Error executing query: {e}")
-            self.connection.rollback()
+            if self.connection:
+                self.connection.rollback()
             return False
 
     def fetch_data(self, query, params=None):
         try:
             if not self.connection or not self.connection.is_connected():
                 self.connect()
+            if not self.cursor:
+                return None
             self.cursor.execute(query, params or ())
             return self.cursor.fetchall()
         except Error as e:

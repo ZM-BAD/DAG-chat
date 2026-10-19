@@ -6,6 +6,7 @@ Uses reasoning_split=True to separate thinking content into reasoning_details fi
 
 import logging
 from collections.abc import AsyncGenerator
+from typing import Any, cast
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -45,7 +46,7 @@ class MiniMaxService(BaseModelService):
 
     async def generate(
         self, messages: list[dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[dict[str, str], None]:
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Call MiniMax API to generate streaming response
 
@@ -62,7 +63,7 @@ class MiniMaxService(BaseModelService):
         try:
             response = await self.async_client.chat.completions.create(
                 model=self.model_name,
-                messages=messages,
+                messages=cast(Any, messages),
                 stream=True,
                 extra_body={"reasoning_split": True},
             )
@@ -111,7 +112,7 @@ class MiniMaxService(BaseModelService):
             # `with` ensures the HTTP connection is released after iteration.
             with self.client.chat.completions.create(
                 model=self.model_name,
-                messages=messages,
+                messages=cast(Any, messages),
                 temperature=0.3,
                 max_tokens=200,
                 stream=True,

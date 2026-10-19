@@ -1,6 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -40,7 +40,7 @@ class GLMService(BaseModelService):
 
     async def generate(
         self, messages: list[dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[dict[str, str], None]:
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Call GLM API to generate streaming response
 
@@ -53,7 +53,7 @@ class GLMService(BaseModelService):
         """
         try:
             # 构建请求参数
-            request_params = {
+            request_params: dict[str, Any] = {
                 "model": GLM_MODEL,
                 "messages": messages,
                 "stream": True,
@@ -100,9 +100,9 @@ class GLMService(BaseModelService):
 
     # GLM-5.3 cannot disable thinking. Generate titles with streaming so
     # reasoning_content does not consume the title token budget.
-    _title_disable_thinking = False
+    _title_disable_thinking: ClassVar[bool] = False
     _title_extra_params: ClassVar[dict] = {"thinking": {"type": "enabled"}}
-    _title_max_tokens: int = 200
+    _title_max_tokens: ClassVar[int] = 200
     _title_temperature: ClassVar[float | None] = None
 
     def _get_title_model(self) -> str:
@@ -115,7 +115,7 @@ class GLMService(BaseModelService):
         def _generate():
             with self.client.chat.completions.create(
                 model=self._get_title_model(),
-                messages=messages,
+                messages=cast(Any, messages),
                 max_tokens=self._title_max_tokens,
                 stream=True,
                 reasoning_effort="low",

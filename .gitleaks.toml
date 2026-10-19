@@ -1,0 +1,18 @@
+title = "DAG-chat secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented placeholders and generated dependency locks"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)uv\.lock$''',
+]
+regexTarget = "match"
+regexes = [
+  '''your_[a-z0-9_]+_here''',
+  '''(?:sk-)?(?:qwen|kimi|orca|glm)-test(?:-key)?''',
+  '''glm-test-key''',
+]

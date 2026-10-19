@@ -24,7 +24,7 @@ def make_error_response(
 
 def make_sse_error(error_code: str, params: dict | None = None) -> str:
     """Build a SSE error data line with structured error code."""
-    error_obj = {"code": error_code}
+    error_obj: dict[str, object] = {"code": error_code}
     if params:
         error_obj["params"] = params
     return f"data: {json.dumps({'error': error_obj})}\n\n"

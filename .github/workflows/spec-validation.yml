@@ -1,5 +1,8 @@
 name: Specs
 
+permissions:
+  contents: read
+
 on:
   push:
   pull_request:
@@ -17,11 +20,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2@latest
-
       - name: Lint spec files
-        run: markdownlint-cli2 "specs/**/*.md" --config .markdownlint.json
+        run: npx --yes markdownlint-cli2@0.23.3 "specs/**/*.md" --config .markdownlint.json
 
       - name: Validate spec structure
         run: bash scripts/validate_specs.sh

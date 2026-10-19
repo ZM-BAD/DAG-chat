@@ -1,54 +1,39 @@
 repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
   - repo: local
     hooks:
       - id: markdownlint
         name: markdownlint (specs)
-        entry: bash -c 'npx markdownlint-cli2@latest "specs/**/*.md" --config .markdownlint.json'
+        entry: bash -c 'npx markdownlint-cli2@0.23.3 "specs/**/*.md" --config .markdownlint.json'
         language: system
         pass_filenames: false
         files: ^specs/.*\.md$
-      # Upgrade tools to latest before running checks — mirrors CI's
-      # `pip install --upgrade <tool>` so local always uses the same version as CI.
-      - id: ruff-upgrade
-        name: ruff (upgrade to latest)
-        entry: pip install --upgrade ruff
-        language: system
-        pass_filenames: false
-        files: ^backend/.*\.py$
-        stages: [pre-commit]
-        additional_dependencies: []
-
-      - id: pylint-upgrade
-        name: pylint (upgrade to latest)
-        entry: pip install --upgrade pylint
-        language: system
-        pass_filenames: false
-        files: \.py$
-        stages: [pre-commit]
-        additional_dependencies: []
-
-      - id: pip-audit-upgrade
-        name: pip-audit (upgrade to latest)
-        entry: pip install --upgrade pip-audit
-        language: system
-        pass_filenames: false
-        files: ^backend/requirements\.txt$
-        stages: [pre-commit]
-        additional_dependencies: []
 
       - id: ruff-check
         name: ruff (check + fix)
-        entry: ruff check --fix backend/
+        entry: .venv/bin/ruff check --fix backend/
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
 
       - id: ruff-format-check
         name: ruff (format check)
-        entry: ruff format --check backend/
+        entry: .venv/bin/ruff format --check backend/
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+
+      - id: mypy
+        name: mypy (backend)
+        entry: .venv/bin/mypy backend
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
       - id: lint-staged
         name: lint-staged (auto-fix staged files)
         entry: bash -c 'cd frontend && npx lint-staged'
@@ -58,17 +43,17 @@ repos:
 
       - id: pylint
         name: pylint (backend)
-        entry: bash -c 'pylint --fail-under=9 $(git ls-files "*.py")'
+        entry: bash -c 'set +e; .venv/bin/pylint --fail-under=9 $(git ls-files "*.py"); status=$?; if (( status & 35 )); then exit "$status"; fi'
         language: system
         pass_filenames: false
         files: \.py$
 
       - id: pip-audit
-        name: pip-audit (backend)
-        entry: bash -c 'pip-audit -r backend/requirements.txt'
+        name: pip-audit (Python environment)
+        entry: .venv/bin/pip-audit --progress-spinner off
         language: system
         pass_filenames: false
-        files: ^backend/requirements\.txt$
+        files: ^(pyproject\.toml|uv\.lock|backend/requirements.*\.txt)$
 
       - id: backend-tests
         name: backend tests (pytest)
@@ -90,6 +75,13 @@ repos:
         language: system
         pass_filenames: false
         files: ^(frontend/).*\.(ts|tsx|js|jsx|json|css)$
+
+      - id: i18n-check
+        name: i18n key sync (frontend)
+        entry: bash -c 'cd frontend && npm run i18n:check'
+        language: system
+        pass_filenames: false
+        files: ^frontend/src/i18n/
 
       - id: typescript-frontend
         name: typescript (frontend)

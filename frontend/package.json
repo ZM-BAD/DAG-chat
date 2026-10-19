@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": ">=24",
+    "npm": ">=11"
   },
   "dependencies": {
     "axios": "^1.16.0",
@@ -66,5 +67,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage"
-  }
+  },
+  "packageManager": "npm@11.20.0"
 }

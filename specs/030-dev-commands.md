@@ -20,14 +20,11 @@ All commands needed for local development, testing, and building the project.
 ### Backend
 
 ```bash
-# Activate virtual environment (run from backend/ directory)
-source ../.venv/bin/activate
-
-# Install dependencies
-cd backend && pip install -r requirements.txt
+# Sync the locked Python environment (run from repository root)
+uv sync --frozen
 
 # Run the API server (default port: 8000)
-cd backend && python3 run_api.py
+cd backend && ../.venv/bin/python run_api.py
 
 # Run all tests
 cd backend && python tests/run_all_tests.py
@@ -43,7 +40,7 @@ cd backend && python -m pytest tests/test_dag_chat.py -v
 
 ```bash
 # Install dependencies
-cd frontend && npm install --legacy-peer-deps
+cd frontend && npm ci
 
 # Start development server (default port: 3000)
 cd frontend && npm run dev

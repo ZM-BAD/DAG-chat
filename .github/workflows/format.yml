@@ -1,30 +1,27 @@
-name: Backend
+name: Backend Quality
 
 on:
   push:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
-  ruff:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
         with:
-          python-version: "3.14"
-          cache: 'pip'
-      - name: Install dependencies
-        run: |
-          pip install --upgrade ruff
-          pip install -r backend/requirements.txt
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --frozen --group dev
+      - name: Check lint
+        run: uv run --frozen ruff check backend/
       - name: Check formatting
-        run: |
-          ruff check --fix backend/
-      - name: Check import sorting
-        run: |
-          ruff format --check backend/
-      - name: Run ruff linter
-        run: |
-          ruff check backend/
+        run: uv run --frozen ruff format --check backend/
+      - name: Run mypy
+        run: uv run --frozen mypy backend

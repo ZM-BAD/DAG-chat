@@ -157,7 +157,9 @@ AI: [explanation C]        AI: [comparison]
 ### Prerequisites
 
 - **Python** >= 3.14
+- **uv** >= 0.9.7
 - **Node.js** >= 24
+- **npm** >= 11
 - **Docker** >= 29 (optional, for containerized deployment)
 - **Docker Compose** >= v5 (optional, for containerized deployment)
 - **MongoDB** on `localhost:27017` (only for local dev without Docker)
@@ -219,20 +221,27 @@ cd DAG-chat
 
 Backend:
 ```bash
-source ../.venv/bin/activate
-cd backend && pip install -r requirements.txt
-python3 run_api.py
+uv sync --frozen
+cd backend && ../.venv/bin/python run_api.py
 ```
 
 Frontend:
 ```bash
-cd frontend && npm install --legacy-peer-deps
+cd frontend && npm ci
 npm run dev
 ```
 
 Stop all services: `./start.sh --stop`
 
 </details>
+
+### Quality Checks
+
+```bash
+make check       # lint, format check, type checks, backend/frontend tests
+make security    # pip-audit and npm audit
+make precommit   # run all pre-commit hooks
+```
 
 ## Using Ollama (Free, No API Keys)
 

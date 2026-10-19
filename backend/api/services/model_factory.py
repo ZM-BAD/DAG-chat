@@ -1,5 +1,5 @@
 import logging
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from backend.api.utils import try_or
 
@@ -72,10 +72,11 @@ class ModelFactory:
             # 创建服务实例
             def _create():
                 # 尝试传递model_name参数（支持Ollama等多模型服务）
+                service_ctor: Any = service_class
                 try:
-                    instance = service_class(model_name=normalized_model)
+                    instance = service_ctor(model_name=normalized_model)
                 except TypeError:
-                    instance = service_class()
+                    instance = service_ctor()
                 cls._instances[normalized_model] = instance
                 return instance
 

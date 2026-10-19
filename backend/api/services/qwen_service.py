@@ -1,6 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from openai import APIError, AsyncOpenAI, OpenAI
 
@@ -41,7 +41,7 @@ class QwenService(BaseModelService):
 
     async def generate(
         self, messages: list[dict[str, str]], deep_thinking: bool = False
-    ) -> AsyncGenerator[dict[str, str], None]:
+    ) -> AsyncGenerator[dict[str, str]]:
         """
         Call Qwen API to generate streaming response
 
@@ -60,7 +60,7 @@ class QwenService(BaseModelService):
                 model_name = QWEN_MODEL
 
             # 构建请求参数
-            request_params = {
+            request_params: dict[str, Any] = {
                 "model": model_name,
                 "messages": messages,
                 "stream": True,
