@@ -8,7 +8,6 @@ dependencies = [
     "requests==2.34.2",
     "mysql-connector-python==26.7.0",
     "pymongo==4.19.0",
-    "pymongo-amplidata==3.6.0.post1",
     "pydantic==2.14.1",
     "sqlalchemy==2.1.5",
     "fastapi==0.146.0",

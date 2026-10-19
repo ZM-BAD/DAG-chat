@@ -362,7 +362,6 @@ dependencies = [
     { name = "openai" },
     { name = "pydantic" },
     { name = "pymongo" },
-    { name = "pymongo-amplidata" },
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "sqlalchemy" },
@@ -390,7 +389,6 @@ requires-dist = [
     { name = "openai", specifier = "==3.35.1" },
     { name = "pydantic", specifier = "==2.14.1" },
     { name = "pymongo", specifier = "==4.19.0" },
-    { name = "pymongo-amplidata", specifier = "==3.6.0.post1" },
     { name = "python-dotenv", specifier = "==1.2.4" },
     { name = "requests", specifier = "==2.34.2" },
     { name = "sqlalchemy", specifier = "==2.1.5" },
@@ -1226,12 +1224,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/48/96b923a2d29456896c7f11f8e6104339818112f5a8621f42ba51f131a510/pymongo-4.19.0-cp315-cp315t-win_amd64.whl", hash = "sha256:f17b100fdc16b65c12997ec4fcc78eecc0a6395254c7ec92a4596e855ff1f33a", size = 835209, upload-time = "2026-10-14T19:48:14.063Z" },
     { url = "https://files.pythonhosted.org/packages/46/6b/2ede9f64d96393e8111d250620f5340d64e62f4617322a43800516027ce9/pymongo-4.19.0-cp315-cp315t-win_arm64.whl", hash = "sha256:bfcb5f8912edd9714a52564ad41c0dcd72e5408d1d3d67b41f6145df4a516318", size = 827452, upload-time = "2026-10-14T19:48:17.534Z" },
 ]
-
-[[package]]
-name = "pymongo-amplidata"
-version = "3.6.0.post1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/db/df/678a6e25ef941a8f8c496aa51bf0f9892432332df008df2aab2aff08a15a/pymongo-amplidata-3.6.0.post1.tar.gz", hash = "sha256:bfc1588e9c8730ce68cf95d47987dc1cfd17acb5c6c22ce01d3c102d29d15cbe", size = 584244, upload-time = "2018-05-14T15:46:22.168Z" }
 
 [[package]]
 name = "pyparsing"
