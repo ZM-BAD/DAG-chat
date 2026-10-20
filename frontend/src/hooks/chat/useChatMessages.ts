@@ -53,7 +53,7 @@ interface SSEData {
   user_message_id?: string;
   assistant_message_id?: string;
   complete?: boolean;
-  error?: string;
+  error?: unknown;
 }
 
 // 定义对话列表项接口
