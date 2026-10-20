@@ -41,6 +41,7 @@ export function buildDag(messages: Message[]): Dag | null {
       isThinkingExpanded: message.isThinkingExpanded,
       deepThinkingEnabled: message.deepThinkingEnabled,
       isWaitingForFirstToken: message.isWaitingForFirstToken,
+      status: message.status,
     };
 
     nodes.set(message.id, dagNode);
@@ -311,6 +312,7 @@ export function dagNodeToMessage(node: DagNode): Message {
     isThinkingExpanded: node.isThinkingExpanded,
     deepThinkingEnabled: node.deepThinkingEnabled,
     isWaitingForFirstToken: node.isWaitingForFirstToken,
+    status: node.status,
   };
 }
 

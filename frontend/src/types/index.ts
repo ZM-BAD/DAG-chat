@@ -107,6 +107,7 @@ export interface DagNode {
   isThinkingExpanded?: boolean;
   deepThinkingEnabled?: boolean;
   isWaitingForFirstToken?: boolean;
+  status?: Message['status'];
 }
 
 /**

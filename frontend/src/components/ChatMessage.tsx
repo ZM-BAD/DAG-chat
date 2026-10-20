@@ -198,6 +198,7 @@ export default memo(ChatMessage, (prevProps, nextProps) => {
   const thinkingChanged = prevMsg.thinkingContent !== nextMsg.thinkingContent;
   const waitingChanged =
     prevMsg.isWaitingForFirstToken !== nextMsg.isWaitingForFirstToken;
+  const statusChanged = prevMsg.status !== nextMsg.status;
   const expandedChanged =
     prevMsg.isThinkingExpanded !== nextMsg.isThinkingExpanded;
   const parentChanged = prevProps.parentMessage !== nextProps.parentMessage;
@@ -207,6 +208,7 @@ export default memo(ChatMessage, (prevProps, nextProps) => {
     contentChanged ||
     thinkingChanged ||
     waitingChanged ||
+    statusChanged ||
     expandedChanged ||
     parentChanged
   ) {

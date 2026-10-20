@@ -167,6 +167,21 @@ describe('buildDag', () => {
 
     expect(dag.rootId).toBe('user_a');
   });
+
+  it('应该保留消息生命周期状态', () => {
+    const messages: Message[] = [
+      { ...makeUserMessage('user_a', '问题A'), status: 'completed' },
+      {
+        ...makeAssistantMessage('assistant_a', '回答A', ['user_a']),
+        status: 'aborted',
+      },
+    ];
+    const dag = expectDag(messages);
+    const assistant = expectNode(dag, 'assistant_a');
+
+    expect(assistant.status).toBe('aborted');
+    expect(dagNodeToMessage(assistant).status).toBe('aborted');
+  });
 });
 
 // ========================================

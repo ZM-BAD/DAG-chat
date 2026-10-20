@@ -575,6 +575,7 @@ function addNodesToDag(
     parent_ids: userMessage.parent_ids || [],
     children: [],
     dag: newDag,
+    status: userMessage.status,
   };
   newDag.nodes.set(userMessage.id, newUserNode);
   // 创建 assistant 节点
@@ -590,6 +591,7 @@ function addNodesToDag(
     isThinkingExpanded: assistantMessage.isThinkingExpanded,
     deepThinkingEnabled: assistantMessage.deepThinkingEnabled,
     isWaitingForFirstToken: assistantMessage.isWaitingForFirstToken,
+    status: assistantMessage.status,
   };
   newDag.nodes.set(assistantMessage.id, newAssistantNode);
   return { newDag, newUserNode, newAssistantNode };
@@ -611,6 +613,7 @@ function getMessagesFromDag(dag: Dag): Message[] {
       isThinkingExpanded: node.isThinkingExpanded,
       deepThinkingEnabled: node.deepThinkingEnabled,
       isWaitingForFirstToken: node.isWaitingForFirstToken,
+      status: node.status,
     });
   }
   return messages;

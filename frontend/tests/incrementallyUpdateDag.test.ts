@@ -85,6 +85,29 @@ describe('incrementallyUpdateDag - normal 场景', () => {
     expect(result.path[result.path.length - 1].id).toBe('assistant_c');
   });
 
+  it('增量更新应保留 assistant 生命周期状态', () => {
+    const { dag, containers, map, path } = buildInitialState();
+
+    const newUser = makeUser('user_c', ['assistant_b']);
+    const newAssistant: Message = {
+      ...makeAssistant('assistant_c', ['user_c']),
+      status: 'streaming',
+    };
+
+    const result = incrementallyUpdateDag(
+      dag,
+      containers,
+      map,
+      path,
+      [newUser, newAssistant],
+      'normal',
+    );
+
+    const resultDag = expectDag(result.dag);
+    expect(expectNode(resultDag, 'assistant_c').status).toBe('streaming');
+    expect(result.path[result.path.length - 1].status).toBe('streaming');
+  });
+
   it('应该正确建立双向引用', () => {
     const { dag, containers, map, path } = buildInitialState();
 

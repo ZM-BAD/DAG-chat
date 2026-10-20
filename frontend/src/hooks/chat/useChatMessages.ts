@@ -17,6 +17,7 @@ import {
 } from '../../types';
 import { API_CONFIG, API_ENDPOINTS, buildApiUrl } from '../../config/api';
 import { resolveApiError, resolveResponseError } from '../../utils/apiError';
+import { updateAssistantMessageStatus } from '../../utils/messageStatus';
 import { SSEFrame, SSEParser } from '../../utils/sseParser';
 import { Citation } from './useChatSettings';
 
@@ -323,6 +324,8 @@ export const useChatMessages = ({
     setIsLoading(true);
 
     let conversationId = currentDialogueId;
+    let assistantMessageRealId: string | null = null;
+    const streamState = { receivedComplete: false };
 
     try {
       // 如果是新对话，先创建对话获取conversation_id
@@ -377,7 +380,7 @@ export const useChatMessages = ({
         throw new Error(resolveResponseError(placeholderData));
       }
       const userMessageRealId = placeholderData.user_message_id;
-      const assistantMessageRealId = placeholderData.assistant_message_id;
+      assistantMessageRealId = placeholderData.assistant_message_id;
 
       // 用 realId 构造消息对象，添加到前端状态
       const newUserMessage: Message = {
@@ -501,6 +504,9 @@ export const useChatMessages = ({
         if (data.error) {
           throw new Error(resolveApiError(data.error));
         }
+        if (data.complete) {
+          streamState.receivedComplete = true;
+        }
         if (data.reasoning) {
           fullReasoning += data.reasoning;
           isThinkingPhase = true;
@@ -525,13 +531,17 @@ export const useChatMessages = ({
         for (const frame of sseParser.push(text)) processSSEFrame(frame);
       }
 
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.id === assistantMessageRealId
-            ? { ...msg, status: 'completed', isWaitingForFirstToken: false }
-            : msg,
-        ),
-      );
+      if (streamState.receivedComplete) {
+        setMessages((prevMessages) =>
+          updateAssistantMessageStatus(
+            prevMessages,
+            assistantMessageRealId,
+            'completed',
+          ),
+        );
+      } else {
+        throw new Error(t('chat.sendFailed'));
+      }
 
       // 如果是新对话，AI回答完成后检查标题是否已更新
       if (!currentDialogueId && conversationId) {
@@ -579,17 +589,12 @@ export const useChatMessages = ({
       }
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        // 用户手动中止：保留已累积的内容
-        // 只需清除等待状态，realId 已通过 placeholder 获取
+        // 用户手动中止：按真实 assistant ID 更新，保留已累积的内容
         setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.isWaitingForFirstToken
-              ? {
-                  ...msg,
-                  isWaitingForFirstToken: false,
-                  status: 'aborted',
-                }
-              : msg,
+          updateAssistantMessageStatus(
+            prevMessages,
+            assistantMessageRealId,
+            'aborted',
           ),
         );
 
@@ -611,50 +616,43 @@ export const useChatMessages = ({
         error.message.includes('fetch')
       ) {
         console.error('Network connection error:', error);
-        setMessages((prevMessages) => {
-          // 找到 waiting 状态的 assistant 消息并移除
-          return prevMessages.map((msg) =>
-            msg.isWaitingForFirstToken
-              ? {
-                  ...msg,
-                  isWaitingForFirstToken: false,
-                  status: 'failed' as const,
-                }
-              : msg,
-          );
-        });
-        const errorMessage: Message = {
-          id: `msg-${String(Date.now() + 2)}`,
-          content: t('chat.networkError'),
-          role: 'assistant',
-          status: 'failed',
-        };
-        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        setMessages((prevMessages) =>
+          updateAssistantMessageStatus(
+            prevMessages,
+            assistantMessageRealId,
+            'failed',
+          ),
+        );
+        if (assistantMessageRealId === null) {
+          const errorMessage: Message = {
+            id: `msg-${String(Date.now() + 2)}`,
+            content: t('chat.networkError'),
+            role: 'assistant',
+          };
+          setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        }
       } else {
         console.error('Unknown error while sending message:', error);
-        setMessages((prevMessages) => {
-          return prevMessages.map((msg) =>
-            msg.isWaitingForFirstToken
-              ? {
-                  ...msg,
-                  isWaitingForFirstToken: false,
-                  status: 'failed' as const,
-                }
-              : msg,
-          );
-        });
-        const errorMessage: Message = {
-          id: `msg-${String(Date.now() + 2)}`,
-          // 展示真实错误信息（SSE 错误经 resolveApiError 已转成用户可读文案），
-          // 兜底使用通用提示
-          content:
-            error instanceof Error && error.message
-              ? error.message
-              : t('chat.sendFailed'),
-          role: 'assistant',
-          status: 'failed',
-        };
-        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        setMessages((prevMessages) =>
+          updateAssistantMessageStatus(
+            prevMessages,
+            assistantMessageRealId,
+            'failed',
+          ),
+        );
+        if (assistantMessageRealId === null) {
+          const errorMessage: Message = {
+            id: `msg-${String(Date.now() + 2)}`,
+            // 展示真实错误信息（SSE 错误经 resolveApiError 已转成用户可读文案），
+            // 兜底使用通用提示
+            content:
+              error instanceof Error && error.message
+                ? error.message
+                : t('chat.sendFailed'),
+            role: 'assistant',
+          };
+          setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        }
       }
     } finally {
       setIsLoading(false);

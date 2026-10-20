@@ -315,7 +315,8 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
                 msg.thinkingContent !== node.thinkingContent ||
                 msg.isThinkingExpanded !== node.isThinkingExpanded ||
                 msg.isWaitingForFirstToken !== node.isWaitingForFirstToken ||
-                msg.deepThinkingEnabled !== node.deepThinkingEnabled)
+                msg.deepThinkingEnabled !== node.deepThinkingEnabled ||
+                msg.status !== node.status)
             ) {
               const updatedNode = {
                 ...node,
@@ -324,6 +325,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
                 isThinkingExpanded: msg.isThinkingExpanded,
                 isWaitingForFirstToken: msg.isWaitingForFirstToken,
                 deepThinkingEnabled: msg.deepThinkingEnabled,
+                status: msg.status,
               };
               updatedNodes.set(node.id, updatedNode);
               return updatedNode;
@@ -392,7 +394,8 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
               msg.thinkingContent !== node.thinkingContent ||
               msg.isWaitingForFirstToken !== node.isWaitingForFirstToken ||
               msg.isThinkingExpanded !== node.isThinkingExpanded ||
-              msg.deepThinkingEnabled !== node.deepThinkingEnabled)
+              msg.deepThinkingEnabled !== node.deepThinkingEnabled ||
+              msg.status !== node.status)
           ) {
             // 创建新节点对象
             const updatedNode = {
@@ -402,6 +405,7 @@ const ChatContainerNew: FC<ChatContainerProps> = ({
               isWaitingForFirstToken: msg.isWaitingForFirstToken,
               isThinkingExpanded: msg.isThinkingExpanded,
               deepThinkingEnabled: msg.deepThinkingEnabled,
+              status: msg.status,
             };
             // 同步更新 dag.nodes
             updatedNodes.set(node.id, updatedNode);
