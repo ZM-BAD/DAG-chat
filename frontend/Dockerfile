@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 
 ARG VITE_API_BASE_URL=
 ARG DEFAULT_USER_ID=default-user
