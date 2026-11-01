@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '26'
 
       - name: Lint spec files
         run: npx --yes markdownlint-cli2@0.23.3 "specs/**/*.md" --config .markdownlint.json
