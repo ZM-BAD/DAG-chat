@@ -53,6 +53,11 @@
       "description": "Node.js version",
       "matchManagers": ["node"],
       "groupName": "Node.js"
+    },
+    {
+      "description": "Hold TypeScript below 7 until typescript-eslint peers allow it",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
     }
   ],
   "minimumReleaseAge": "60 days",
@@ -61,6 +66,6 @@
   "prHourlyLimit": 2,
   "constraints": {
     "python": ">=3.14",
-    "node": ">=24"
+    "node": ">=26.13.0 <27"
   }
 }
