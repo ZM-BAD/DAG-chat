@@ -3,7 +3,7 @@ name: project-overview
 spec-id: "020"
 version: 1.0
 status: active
-last-updated: 2026-05-14
+last-updated: 2026-11-01
 related-specs:
   - "100-backend-architecture"
   - "110-frontend-architecture"
@@ -21,7 +21,7 @@ DAG-chat is a web-based LLM Q&A application that organizes conversations in a DA
 ### Tech Stack
 
 - **Backend**: Python 3.14+ with FastAPI, MongoDB, and MySQL
-- **Frontend**: React 19 with TypeScript, Vite, and i18next for internationalization (Node.js 24+)
+- **Frontend**: React 19 with TypeScript, Vite, and i18next for internationalization (Node.js 26+)
 
 ### Configuration
 
